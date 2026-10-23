@@ -3,7 +3,7 @@ name: Uji coba akses data
 on:
   push:
     paths:
-      - "probe/probe.py"
+      - "probe/probe2.py"
       - ".github/workflows/probe.yml"
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -22,11 +22,11 @@ jobs:
       - name: Pasang paket
         run: pip install requests pandas lxml "yfinance>=0.2.54"
       - name: Uji akses
-        run: python probe/probe.py
+        run: python probe/probe2.py
       - name: Simpan hasil
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add probe/hasil.md probe/hasil.json
+          git add probe/
           git commit -m "Hasil uji coba akses data" || exit 0
           git push
