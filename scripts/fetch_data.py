@@ -1,0 +1,485 @@
+"""
+Pengambil data Screener Saham Indonesia (BEI).
+
+Sumber (semua gratis):
+  - Daftar saham, harga, volume, rasio, laporan keuangan, riwayat dividen: Yahoo Finance (yfinance)
+  - Label syariah: Daftar Efek Syariah OJK (file Excel terbaru)
+  - Deteksi IPO baru: e-IPO (best effort), plus data/tambahan.txt untuk kode yang ingin dipantau
+
+Hasil: data/stocks.json, data/signals.json, data/fund_cache.json, data/syariah.json
+"""
+from __future__ import annotations
+
+import io
+import json
+import math
+import os
+import re
+import sys
+import time
+import traceback
+from datetime import date, datetime, timezone
+from pathlib import Path
+
+import requests
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import strategies  # noqa: E402
+
+ROOT = Path(__file__).resolve().parent.parent
+DATA = ROOT / "data"
+OUT_FILE = DATA / "stocks.json"
+SIG_FILE = DATA / "signals.json"
+CACHE_FILE = DATA / "fund_cache.json"
+SYARIAH_FILE = DATA / "syariah.json"
+EXTRA_FILE = DATA / "tambahan.txt"
+INDEX = "^JKSE"
+ETF_CANDIDATES = ["XIIT", "XPLQ", "XBLQ", "XISI", "XIJI", "XISC", "XIIC", "XIHD", "XKIV", "XISR", "XPES", "XSBC", "XMTS", "XPFT", "XIPI"]
+LIQ_HI, LIQ_LO = 5.0, 1.0  # miliar rupiah per hari: likuid / kurang likuid
+BROWSER = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"}
+CODE = re.compile(r"^[A-Z]{4}$")
+WARN: list[str] = []
+
+
+def log(*a):
+    print(*a, flush=True)
+
+
+def summary(md: str):
+    p = os.environ.get("GITHUB_STEP_SUMMARY")
+    if p:
+        with open(p, "a", encoding="utf-8") as f:
+            f.write(md + "\n")
+
+
+def fnum(v):
+    try:
+        v = float(v)
+        return v if math.isfinite(v) else None
+    except Exception:
+        return None
+
+
+def clean(d: dict) -> dict:
+    out = {}
+    for k, v in d.items():
+        if isinstance(v, float):
+            out[k] = round(v, 4) if math.isfinite(v) else None
+        else:
+            out[k] = v
+    return out
+
+
+# ---------------------------------------------------------------- daftar saham
+def universe() -> dict[str, str]:
+    import yfinance as yf
+    from yfinance import EquityQuery
+
+    q = EquityQuery("eq", ["exchange", "JKT"])
+    names, off = {}, 0
+    while off < 2000:
+        r = yf.screen(q, offset=off, size=250, sortField="intradaymarketcap", sortAsc=False)
+        quotes = (r or {}).get("quotes") or []
+        for x in quotes:
+            s = str(x.get("symbol", ""))
+            if s.endswith(".JK") and CODE.match(s[:-3]):
+                names[s[:-3]] = x.get("longName") or x.get("shortName") or s[:-3]
+        if len(quotes) < 250:
+            break
+        off += 250
+        time.sleep(1)
+    log(f"Yahoo screener: {len(names)} saham")
+    return names
+
+
+def ipo_codes() -> set[str]:
+    """Kode saham dari halaman e-IPO (best effort; hanya dipakai bila Yahoo punya harganya)."""
+    out = set()
+    for url in ("https://e-ipo.co.id/id/ipo/index", "https://e-ipo.co.id/en/ipo/index"):
+        try:
+            r = requests.get(url, headers=BROWSER, timeout=30)
+            if r.status_code == 200:
+                out |= set(re.findall(r"\(([A-Z]{4})\)", r.text)) | set(re.findall(r">\s*([A-Z]{4})\s*<", r.text))
+        except Exception as e:
+            log(f"  e-IPO: {e}")
+    return out
+
+
+def extra_codes() -> set[str]:
+    if not EXTRA_FILE.exists():
+        return set()
+    return {x.strip().upper() for x in re.split(r"[\s,;]+", EXTRA_FILE.read_text()) if CODE.match(x.strip().upper())}
+
+
+# ---------------------------------------------------------------- syariah (OJK)
+def syariah() -> dict:
+    cur = json.loads(SYARIAH_FILE.read_text()) if SYARIAH_FILE.exists() else {}
+    if cur.get("checked") and (date.today() - date.fromisoformat(cur["checked"])).days < 7:
+        return cur
+    base = "https://www.ojk.go.id"
+    try:
+        r = requests.get(f"{base}/id/kanal/syariah/data-dan-statistik/daftar-efek-syariah/Default.aspx", headers=BROWSER, timeout=60)
+        pages = set(re.findall(r'href="([^"]*daftar-efek-syariah/Pages/Daftar-Efek-Syariah-KEP[^"]+\.aspx)"', r.text, re.I))
+
+        def key(u):
+            y = re.search(r"(\d{4})\.aspx$", u)
+            n = re.search(r"KEP-?(\d+)", u, re.I)
+            return (int(y.group(1)) if y else 0, int(n.group(1)) if n else 0)
+
+        for page in sorted(pages, key=key, reverse=True)[:3]:
+            url = page if page.startswith("http") else base + page
+            pr = requests.get(url, headers=BROWSER, timeout=60)
+            xl = re.findall(r'href="([^"]+\.xlsx?)"', pr.text, re.I)
+            for f in xl:
+                furl = f if f.startswith("http") else base + f
+                fr = requests.get(furl, headers=BROWSER, timeout=120)
+                if fr.status_code != 200:
+                    continue
+                import pandas as pd
+
+                codes = set()
+                for _, df in pd.read_excel(io.BytesIO(fr.content), sheet_name=None, header=None).items():
+                    for col in df.columns:
+                        vals = df[col].astype(str).str.strip().str.upper()
+                        codes |= set(vals[vals.str.match(r"^[A-Z]{4}$")])
+                if len(codes) > 300:
+                    res = {"checked": date.today().isoformat(), "source": furl, "kep": url.split("/")[-1], "codes": sorted(codes)}
+                    SYARIAH_FILE.write_text(json.dumps(res))
+                    log(f"Daftar Efek Syariah: {len(codes)} saham ({res['kep']})")
+                    return res
+        WARN.append("File Daftar Efek Syariah OJK tidak ditemukan; memakai daftar sebelumnya.")
+    except Exception as e:
+        WARN.append(f"Daftar Efek Syariah OJK gagal diambil ({str(e)[:100]}); memakai daftar sebelumnya.")
+    if cur:
+        cur["checked"] = date.today().isoformat()
+        SYARIAH_FILE.write_text(json.dumps(cur))
+    return cur
+
+
+# ---------------------------------------------------------------- harga
+def fetch_prices(codes: list[str]):
+    import pandas as pd
+    import yfinance as yf
+
+    syms = [c + ".JK" for c in codes] + [INDEX]
+    fc, fv = [], []
+    for i in range(0, len(syms), 100):
+        chunk = syms[i:i + 100]
+        for attempt in range(3):
+            try:
+                df = yf.download(chunk, period="3y", interval="1d", auto_adjust=True, progress=False, threads=True, group_by="column")
+                if "Close" in df and not df["Close"].empty:
+                    c, v = df["Close"], df["Volume"]
+                    if isinstance(c, pd.Series):
+                        c, v = c.to_frame(chunk[0]), v.to_frame(chunk[0])
+                    fc.append(c); fv.append(v)
+                    break
+            except Exception as e:
+                log(f"  harga batch {i}: {e}")
+            time.sleep(10 * (attempt + 1))
+        time.sleep(2)
+    if not fc:
+        return None, None
+    ren = lambda c: c[:-3] if str(c).endswith(".JK") else c
+    close = pd.concat(fc, axis=1)
+    close = close.loc[:, ~close.columns.duplicated()].rename(columns=ren).dropna(how="all")
+    vol = pd.concat(fv, axis=1)
+    vol = vol.loc[:, ~vol.columns.duplicated()].rename(columns=ren).reindex(close.index)
+    # buang hari terakhir bila hampir semua saham kosong (data hari ini belum lengkap)
+    if close.iloc[-1].notna().mean() < 0.5:
+        close, vol = close.iloc[:-1], vol.iloc[:-1]
+    return close, vol
+
+
+# ---------------------------------------------------------------- fundamental
+def _row(df, *names):
+    for n in names:
+        if df is not None and n in df.index:
+            return df.loc[n]
+    return None
+
+
+def _cagr(vals):
+    v = [x for x in vals if x is not None]
+    if len(v) < 2 or v[0] <= 0 or v[-1] <= 0:
+        return None
+    return ((v[-1] / v[0]) ** (1 / (len(v) - 1)) - 1) * 100
+
+
+def fundamentals(code: str) -> dict | None:
+    import pandas as pd
+    import yfinance as yf
+
+    tk = yf.Ticker(code + ".JK")
+    info = tk.info or {}
+    if not info or not (info.get("marketCap") or info.get("regularMarketPrice") or info.get("currentPrice")):
+        return None
+    f = {"sector": info.get("sector") or "", "industry": info.get("industry") or "", "company": info.get("longName") or info.get("shortName")}
+    mc = fnum(info.get("marketCap"))
+    f["mcap"] = mc / 1e9 if mc else None  # miliar rupiah
+    f["pe"] = fnum(info.get("trailingPE"))
+    f["pb"] = fnum(info.get("priceToBook"))
+    pct = lambda k: (fnum(info.get(k)) * 100) if fnum(info.get(k)) is not None else None
+    f["payout"] = pct("payoutRatio")
+    f["roe"] = pct("returnOnEquity")
+    f["gm"] = pct("grossMargins")
+    f["om"] = pct("operatingMargins")
+    f["epsQ"] = pct("earningsQuarterlyGrowth")
+    f["salesQ"] = pct("revenueGrowth")
+    de = fnum(info.get("debtToEquity"))
+    f["de"] = de / 100 if de is not None else None
+    f["cr"] = fnum(info.get("currentRatio"))
+    f["eps"] = fnum(info.get("trailingEps"))
+    f["bvps"] = fnum(info.get("bookValue"))
+    f["beta"] = fnum(info.get("beta"))
+    fcf = fnum(info.get("freeCashflow"))
+    f["pfcf"] = mc / fcf if mc and fcf and fcf > 0 else None
+
+    # laporan laba tahunan (±4 tahun)
+    try:
+        inc = tk.income_stmt
+        cols = sorted(inc.columns)
+        eps = _row(inc, "Diluted EPS", "Basic EPS")
+        f["epsA"] = [[c.year, round(float(eps[c]), 4)] for c in cols if eps is not None and pd.notna(eps[c])]
+        rev = _row(inc, "Total Revenue", "Operating Revenue")
+        revs = [float(rev[c]) if rev is not None and pd.notna(rev[c]) else None for c in cols]
+        f["salesG"] = _cagr(revs)
+        e = [v for _, v in f["epsA"]]
+        f["epsG"] = _cagr(e)
+        f["epsGy"] = len(e)
+        f["epsTTM"] = ((e[-1] / e[-2] - 1) * 100) if len(e) >= 2 and e[-2] > 0 else None
+        ebit = _row(inc, "EBIT", "Operating Income")
+        bs = tk.balance_sheet
+        debt, eq = _row(bs, "Total Debt"), _row(bs, "Stockholders Equity", "Common Stock Equity")
+        if ebit is not None and eq is not None:
+            c = max(set(ebit.index) & set(eq.index))
+            cap = float(eq[c]) + (float(debt[c]) if debt is not None and pd.notna(debt.get(c)) else 0)
+            if cap > 0 and pd.notna(ebit[c]):
+                f["roic"] = float(ebit[c]) * (1 - 0.22) / cap * 100
+    except Exception as e:
+        log(f"  laporan {code}: {str(e)[:80]}")
+
+    # riwayat dividen (Yahoo: sampai ±20 tahun)
+    try:
+        dv = tk.dividends
+        if len(dv):
+            by = dv.groupby(dv.index.year).sum()
+            last_full = date.today().year - 1
+            by = by[by.index <= last_full]
+            f["dpsY"] = float(by.get(last_full, 0.0))
+            yrs = 0
+            for y in range(last_full, last_full - 30, -1):
+                if by.get(y, 0) > 0:
+                    yrs += 1
+                else:
+                    break
+            f["divYears"] = yrs
+            if by.get(last_full - 5, 0) > 0 and by.get(last_full, 0) > 0:
+                f["divGrowth5y"] = ((by[last_full] / by[last_full - 5]) ** (1 / 5) - 1) * 100
+            ttm = dv[dv.index >= dv.index[-1] - pd.Timedelta(days=365)].sum() if (pd.Timestamp.now(tz=dv.index.tz) - dv.index[-1]).days < 400 else 0.0
+            f["dpsTTM"] = float(ttm)
+        else:
+            f["divYears"], f["dpsY"], f["dpsTTM"] = 0, 0.0, 0.0
+    except Exception as e:
+        log(f"  dividen {code}: {str(e)[:80]}")
+    return clean(f)
+
+
+# ---------------------------------------------------------------- teknikal ringkas
+def technicals(s) -> dict:
+    import pandas as pd
+
+    s = s.dropna()
+    out = {k: None for k in ("price", "sma20", "sma50", "sma200", "perf1m", "perf6m", "perf1y", "perfYtd", "hi52")}
+    if len(s) < 25:
+        return out
+    p = float(s.iloc[-1])
+    out["price"] = p
+    for n in (20, 50, 200):
+        if len(s) >= n:
+            out[f"sma{n}"] = (p / float(s.iloc[-n:].mean()) - 1) * 100
+    last = s.index[-1]
+
+    def back(days):
+        prev = s[s.index <= last - pd.Timedelta(days=days)]
+        return float(prev.iloc[-1]) if len(prev) else None
+
+    for k, d in (("perf1m", 30), ("perf6m", 182), ("perf1y", 365)):
+        b = back(d)
+        out[k] = (p / b - 1) * 100 if b else None
+    py = s[s.index.year < last.year]
+    out["perfYtd"] = (p / float(py.iloc[-1]) - 1) * 100 if len(py) else None
+    yr = s[s.index > last - pd.Timedelta(days=365)]
+    out["hi52"] = (p / float(yr.max()) - 1) * 100
+    return out
+
+
+def etf_info(close) -> dict:
+    import yfinance as yf
+
+    res = {}
+    for t in ETF_CANDIDATES:
+        try:
+            df = yf.download(t + ".JK", period="2y", interval="1d", auto_adjust=True, progress=False)
+            if df is None or df.empty:
+                continue
+            c = df["Close"].squeeze().dropna()
+            if len(c) < 60 or (c.index[-1] - c.index[-2]).days > 10:
+                continue
+            info = {}
+            try:
+                info = yf.Ticker(t + ".JK").info or {}
+            except Exception:
+                pass
+            d = {"name": info.get("longName") or info.get("shortName") or t, "aum": fnum(info.get("totalAssets")),
+                 "expense": fnum(info.get("netExpenseRatio") or info.get("annualReportExpenseRatio"))}
+            d.update(technicals(c))
+            vol = df["Volume"].squeeze().tail(63)
+            d["adv"] = float((c.tail(63) * vol).mean() / 1e9) if len(vol) else None
+            res[t] = clean(d)
+            time.sleep(1)
+        except Exception as e:
+            log(f"  ETF {t}: {str(e)[:80]}")
+    if close is not None and INDEX in close:
+        res["IHSG"] = clean({"name": "Indeks Harga Saham Gabungan", **technicals(close[INDEX])})
+    return res
+
+
+# ---------------------------------------------------------------- utama
+def load_state() -> dict:
+    if SIG_FILE.exists():
+        try:
+            st = json.loads(SIG_FILE.read_text())
+            if isinstance(st, dict) and st.get("v") == 2:
+                return st
+        except Exception:
+            pass
+    return {"v": 2}
+
+
+def main():
+    DATA.mkdir(exist_ok=True)
+    t0 = time.time()
+    names = universe()
+    if len(names) < 400:
+        raise RuntimeError(f"Daftar saham dari Yahoo terlalu sedikit ({len(names)}); dibatalkan agar data lama tidak tertimpa")
+    extra = extra_codes() | {c for c in ipo_codes() if c not in names}
+    codes = sorted(set(names) | extra)
+    limit = int(os.environ.get("LIMIT", "0") or 0)
+    if limit:
+        codes = codes[:limit]
+
+    log(f"Mengambil harga {len(codes)} saham ...")
+    close, volume = fetch_prices(codes)
+    if close is None:
+        raise RuntimeError("Harga dari Yahoo gagal diambil")
+    have = [c for c in codes if c in close and close[c].notna().sum() > 0]
+    dropped = sorted(set(extra) - set(have))
+    codes = have
+    day = close.index[-1].strftime("%Y-%m-%d")
+    log(f"  {len(codes)} saham dengan harga, harga penutupan {day}")
+
+    # likuiditas: rata-rata nilai transaksi 3 bulan (miliar rupiah)
+    val = (close[codes] * volume[codes]).tail(63)
+    adv = (val.mean() / 1e9).to_dict()
+    eligible = [c for c in codes if (adv.get(c) or 0) >= LIQ_LO]
+
+    syr = syariah()
+    syr_codes = set(syr.get("codes") or [])
+
+    cache = json.loads(CACHE_FILE.read_text()) if CACHE_FILE.exists() else {}
+    log(f"Mengambil fundamental {len(codes)} saham ...")
+    fresh, stale, missing = 0, 0, []
+    for i, c in enumerate(codes, 1):
+        f = None
+        for attempt in range(2):
+            try:
+                f = fundamentals(c)
+                break
+            except Exception as e:
+                msg = str(e)
+                if "429" in msg or "Too Many" in msg:
+                    time.sleep(30 * (attempt + 1))
+                else:
+                    break
+        if f:
+            f["asOf"] = day
+            cache[c] = f
+            fresh += 1
+        elif c in cache:
+            stale += 1
+        else:
+            missing.append(c)
+        if i % 100 == 0:
+            log(f"  {i}/{len(codes)}")
+        time.sleep(0.4)
+    CACHE_FILE.write_text(json.dumps(cache, separators=(",", ":")))
+
+    rows = []
+    for c in codes:
+        f = dict(cache.get(c) or {})
+        f.pop("asOf", None)
+        o = {"ticker": c, "company": f.pop("company", None) or names.get(c, c), **f}
+        o.update(technicals(close[c]))
+        a = adv.get(c)
+        o["adv"] = round(a, 3) if a is not None and math.isfinite(a) else None
+        o["liq"] = "L" if (a or 0) >= LIQ_HI else "K" if (a or 0) >= LIQ_LO else "T"
+        o["syariah"] = (c in syr_codes) if syr_codes else None
+        o["days"] = int(close[c].notna().sum())
+        if c in extra and c not in names:
+            o["ipo"] = True
+        if o.get("price") and o.get("dpsTTM") is not None:
+            o["div"] = o["dpsTTM"] / o["price"] * 100
+        rows.append(clean(o))
+
+    prev_day = None
+    if OUT_FILE.exists():
+        try:
+            prev_day = json.loads(OUT_FILE.read_text()).get("priceDate")
+        except Exception:
+            pass
+    state = load_state()
+    log("Menghitung 7 metode ...")
+    res = strategies.run(rows, close, volume, day, state, eligible)
+    SIG_FILE.write_text(json.dumps(state, separators=(",", ":")))
+    out = {
+        "updatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "priceDate": day, "prevPriceDate": prev_day, "newSession": prev_day != day,
+        "count": len(rows), "liqCount": {k: sum(1 for r in rows if r["liq"] == k) for k in "LKT"},
+        "syariahSource": syr.get("kep"), "missingFundamentals": missing,
+        "thresholds": {"liqHi": LIQ_HI, "liqLo": LIQ_LO, "divMin": strategies.DIV_MIN, "fees": [strategies.FEE_BUY, strategies.FEE_SELL]},
+        **res,
+        "stocks": rows,
+        "etf": etf_info(close),
+    }
+    OUT_FILE.write_text(json.dumps(out, separators=(",", ":")))
+    log(f"Selesai dalam {(time.time() - t0) / 60:.1f} menit -> {OUT_FILE.relative_to(ROOT)}")
+
+    lc = out["liqCount"]
+    summary(f"### Berhasil\n- {len(rows)} saham (likuid {lc['L']}, kurang likuid {lc['K']}, tidak likuid {lc['T']}), harga penutupan {day}\n"
+            f"- Fundamental baru {fresh}, memakai data sebelumnya {stale}, tanpa fundamental {len(missing)}\n"
+            f"- Syariah: {len(syr_codes)} kode dari {syr.get('kep') or '–'}\n"
+            f"- Tambahan/IPO: {len(extra)} kode dicek, {len(dropped)} belum ada harganya di Yahoo\n"
+            f"- Lama proses: {(time.time() - t0) / 60:.1f} menit")
+    cnt = lambda f: sum(1 for r in rows if f(r))
+    summary("### Kelengkapan data\n"
+            f"- Laba tahunan ≥ 3 tahun: {cnt(lambda r: len(r.get('epsA') or []) >= 3)} · ROIC: {cnt(lambda r: r.get('roic') is not None)} · "
+            f"P/FCF: {cnt(lambda r: r.get('pfcf') is not None)} · riwayat dividen: {cnt(lambda r: (r.get('divYears') or 0) > 0)} · "
+            f"pertumbuhan dividen 5 thn: {cnt(lambda r: r.get('divGrowth5y') is not None)}")
+    st = res.get("stats") or {}
+    summary("### Uji mundur 1 tahun (setelah biaya)\n" + "\n".join(
+        f"- {strategies.NAMES[m]}: {s.get('n', 0)} transaksi" + (f", {s['win']}% untung, rata-rata {s['avg']:+.2f}%, median {s['med']} hari" if s.get("n") else "")
+        for m, s in st.items()))
+    sig = {m: {k: sum(1 for r in rows if (r.get('m') or {}).get(m, {}).get('s') == k and r['liq'] == 'L') for k in ('buy', 'hold', 'sell')} for m in strategies.METHODS}
+    summary("### Sinyal hari ini (saham likuid)\n" + "\n".join(f"- {strategies.NAMES[m]}: {v['buy']} beli, {v['hold']} tahan, {v['sell']} jual" for m, v in sig.items()))
+    for w in WARN:
+        summary(f"- Peringatan: {w}")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        traceback.print_exc()
+        summary(f"### Gagal\n**{type(e).__name__}**: {e}")
+        sys.exit(1)

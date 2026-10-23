@@ -1,0 +1,27 @@
+name: Pengingat order pagi
+
+on:
+  schedule:
+    # 01:15 UTC Senin–Jumat = 08:15 WIB, sebelum pra-pembukaan BEI 08.45
+    - cron: "15 1 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Kirim pengingat ke Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          pip install -q requests
+          python scripts/notify_telegram.py --reminder

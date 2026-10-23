@@ -1,0 +1,62 @@
+name: Update data saham Indonesia
+
+on:
+  schedule:
+    # 10:43 UTC Senin–Jumat = 17:43 WIB, setelah BEI tutup pukul 16.00.
+    - cron: "43 10 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Pasang paket
+        run: pip install -r requirements.txt
+
+      - name: Ambil data dan hitung 7 metode
+        run: python scripts/fetch_data.py
+
+      - name: Simpan ke repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "Tidak ada perubahan data"
+          else
+            git commit -m "Update data $(date -u +%Y-%m-%d)"
+            git pull --rebase -q origin main || true
+            git push
+          fi
+
+      - name: Kirim ringkasan ke Telegram
+        if: success()
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python scripts/notify_telegram.py
+
+      - name: Kirim peringatan gagal ke Telegram
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python -m pip install -q requests || true
+          python scripts/notify_telegram.py --failed
