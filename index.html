@@ -293,7 +293,7 @@ function summaryOf(o){
 // ---------- render: status & tabs ----------
 function renderStatus(){
   const el=$("status");
-  if(!DATA){ el.innerHTML=`<span><span class="dot none"></span><b>Data belum tersedia.</b> Jalankan workflow "Update data saham" di tab Actions GitHub, lalu muat ulang halaman ini.</span>`; return; }
+  if(!DATA){ el.innerHTML=`<span><span class="dot none"></span><b>Data belum tersedia.</b> Jalankan workflow "Update data saham Indonesia" di tab Actions GitHub, lalu muat ulang halaman ini.</span>`; return; }
   const d=new Date(DATA.updatedAt), ageH=(Date.now()-d)/36e5;
   const wib=d.toLocaleString("id-ID",{timeZone:"Asia/Jakarta",weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"});
   const mk=DATA.market||{};

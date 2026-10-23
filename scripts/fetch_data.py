@@ -185,8 +185,11 @@ def fetch_prices(codes: list[str]):
     close = close.loc[:, ~close.columns.duplicated()].rename(columns=ren).dropna(how="all")
     vol = pd.concat(fv, axis=1)
     vol = vol.loc[:, ~vol.columns.duplicated()].rename(columns=ren).reindex(close.index)
-    # buang hari terakhir bila hampir semua saham kosong (data hari ini belum lengkap)
-    if close.iloc[-1].notna().mean() < 0.5:
+    # buang hari terakhir hanya bila hampir semua saham kosong (data hari itu belum masuk)
+    filled = close.iloc[-1].notna().mean()
+    log(f"  baris terakhir {close.index[-1].date()}: {filled:.0%} saham terisi")
+    if filled < 0.2:
+        WARN.append(f"Harga {close.index[-1].date()} baru {filled:.0%} terisi; memakai hari sebelumnya.")
         close, vol = close.iloc[:-1], vol.iloc[:-1]
     return close, vol
 
