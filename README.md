@@ -38,3 +38,7 @@ Situs BEI memblokir akses otomatis, jadi tidak dipakai.
 3. Actions → **Update data saham Indonesia** → Run workflow (±30 menit).
 
 Alat penyaring, bukan rekomendasi investasi.
+
+## Siklus & Fibonacci (tab "Siklus")
+
+Analisis waktu dan harga dari teknik yang terbuka untuk umum: titik balik ZigZag, zona konfluensi Fibonacci (retracement, proyeksi, SMA50/200, angka bulat), kalender fase bulan, stasiun planet (Merkurius, Venus, Mars), Fibonacci time zone dan pola musiman, tanggal rawan pembalikan, rentang pergerakan mingguan, dan kesehatan pasar (breadth). Setiap unsur diuji terhadap tanggal acak pada riwayat indeks sejak 2005, dan setiap ramalan dicatat di papan skor sebelum terjadi. Kalender mingguan dikirim ke Telegram setiap Senin pagi.

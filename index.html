@@ -54,7 +54,7 @@ input[type=number],input[type=search]{font:inherit;font-size:14px;color:var(--fg
 .seg button[aria-pressed=true],#syr[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .filters input[type=search]{width:170px}
 
-.tabs{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:8px}
+.tabs{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:8px}
 @media (max-width:1100px){.tabs{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media (max-width:640px){.tabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .tab{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:9px 11px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);min-width:0}
@@ -233,7 +233,7 @@ const M = [
   cols:[["rsi2","RSI(2)"],["sma200","vs SMA200",1],["perf1m","1 bln",1]]},
 ];
 const MID = Object.fromEntries(M.map(m=>[m.id,m]));
-const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"etf",name:"ETF",k:"Indeks Indonesia"}]);
+const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"etf",name:"ETF",k:"Indeks Indonesia"}]);
 const ST = {buy:"Beli",hold:"Tahan",sell:"Jual",wait:"Tunggu",na:"Tidak dinilai"};
 const PRI = {buy:0,sell:1,hold:2,wait:3,na:4};
 const REASON = {stop:"stop loss −7%",be:"kembali ke harga beli",target:"target +20%","8w":"8 minggu selesai",sma5:"di atas SMA5",rank:"keluar 20% teratas"};
@@ -309,6 +309,7 @@ function renderTabs(){
     let c="";
     if(t.id==="summary"){ const n=list.filter(o=>summaryOf(o).by.buy.length).length; c=`<b>${n}</b> saham ada sinyal beli`; }
     else if(t.id==="etf") c="Perbandingan";
+    else if(t.id==="cycles") { const f=CYC&&Object.values(CYC.indices)[0]; c=f?`<b>${(f.rawan||[]).length}</b> tanggal rawan`:"Analisis"; }
     else { const b=list.filter(o=>mget(o,t.id).s==="buy").length, h=list.filter(o=>mget(o,t.id).s==="hold").length; c=`<b>${b}</b> beli · ${h} tahan`; }
     return `<button class="tab" role="tab" type="button" aria-selected="${t.id===tab}" data-id="${t.id}"><span class="k">${esc(t.k)}</span><span class="n">${esc(t.name)}</span><span class="c">${c}</span></button>`;
   }).join("");
@@ -437,10 +438,151 @@ function renderEtf(box){
     </ul></div>`;
 }
 
+// ---------- Siklus & Fibonacci ----------
+let CYC=null, SER=null, CYC_ERR=false, LWC_P=null, cyCharts=[], cyObs=[];
+function loadCycles(){
+  if(CYC||CYC_ERR) return Promise.resolve();
+  return Promise.all([fetch("data/cycles.json",{cache:"no-cache"}).then(r=>{if(!r.ok) throw 0; return r.json()}),
+                      fetch("data/series.json",{cache:"no-cache"}).then(r=>{if(!r.ok) throw 0; return r.json()})])
+    .then(([c,s])=>{CYC=c; SER=s;}).catch(()=>{CYC_ERR=true;});
+}
+function loadLWC(){
+  if(window.LightweightCharts) return Promise.resolve();
+  if(LWC_P) return LWC_P;
+  LWC_P=new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
+  return LWC_P;
+}
+const VERD={berguna:["berguna","ok"],lemah:["lemah","wait"],acak:["tidak berbeda dari acak","na"]};
+const TYPE_ICON={bulan:"🌕",planet:"🪐",fibtime:"🔢",musiman:"📅"};
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim()||"#888"; }
+function zoneRows(zs,kind){
+  if(!zs||!zs.length) return `<p class="note">Tidak ada zona ${kind==="support"?"di bawah":"di atas"} harga dalam jarak 30%.</p>`;
+  return `<div class="dl">${zs.map((z,i)=>`<div><span><b>${kind==="support"?"S":"R"}${i+1}</b> ${usd(z.lo)}${z.hi!==z.lo?"–"+usd(z.hi):""} <span class="na">(${pct(z.dist)})</span><br><span class="note">${esc(z.why.join(" · "))}</span></span><span class="st ${z.strength==="kuat"?"buy":z.strength==="sedang"?"hold":"wait"}" style="align-self:flex-start">${z.strength}</span></div>`).join("")}</div>`;
+}
+function testTable(t){
+  if(!t||!t.time) return `<p class="note">Uji belum tersedia${t&&t.error?": "+esc(t.error):""}.</p>`;
+  const row=(name,v,kind)=>{ if(!v) return ""; const [lbl,cls]=VERD[v.verdict]||["–","na"];
+    const val = kind==="season" ? `${v.in>=0?"+":""}${nf(v.in,3)}% vs ${v.out>=0?"+":""}${nf(v.out,3)}% per hari` : `${nf(v.hit,1)}% vs ${nf(v.base,1)}% acak`;
+    return `<tr><td>${esc(name)}</td><td class="num">${val}</td><td class="num">${v.n}</td><td><span class="st ${cls==="ok"?"buy":cls==="wait"?"hold":"wait"}">${lbl}</span></td></tr>`; };
+  return `<p class="note">Riwayat ${tgl(t.from,1)} – ${tgl(t.to,1)}, ${t.pivots} titik balik (ZigZag ${nf(t.thr,1)}%). "Tepat" = ada titik balik dalam ±2 hari bursa. Tanggal acak tepat ${nf(t.base,1)}% dari waktu.</p>
+    <div class="tablebox"><table style="min-width:520px"><thead><tr><th>Unsur</th><th class="num">Hasil</th><th class="num">Kejadian</th><th>Kesimpulan</th></tr></thead><tbody>
+    <tr><td colspan="4"><h3>Waktu: apakah titik balik lebih sering terjadi di tanggal ini?</h3></td></tr>
+    ${Object.entries(t.time).map(([k,v])=>row(k,v,"time")).join("")}
+    <tr><td colspan="4"><h3>Harga</h3></td></tr>
+    ${Object.entries(t.price||{}).map(([k,v])=>row(k,v,"time")).join("")}
+    <tr><td colspan="4"><h3>Musiman: rata-rata hasil harian di periode ini vs di luar periode</h3></td></tr>
+    ${Object.entries(t.season||{}).map(([k,v])=>row(k,v,"season")).join("")}
+    </tbody></table></div><p class="note">Uji permutasi 3.000 kali terhadap tanggal acak. "Berguna" = peluang kebetulan di bawah 5% dan selisihnya berarti. Hasil masa lalu tidak menjamin masa depan.</p>`;
+}
+function scoreCard(sc){
+  if(!sc) return "";
+  const d=sc.dates, z=sc.zones;
+  return `<div class="dl">
+    <div><span>Tanggal rawan yang sudah lewat</span><span class="num">${d.n?`${d.hit} dari ${d.n} tepat (${nf(d.hit/d.n*100,0)}%)`:"belum ada"}</span></div>
+    ${d.base!=null?`<div><span>Pembanding tanggal acak</span><span class="num">${nf(d.base,1)}%</span></div>`:""}
+    <div><span>Masih menunggu</span><span class="num">${d.pending} tanggal</span></div>
+    <div><span>Zona yang tersentuh lalu bertahan</span><span class="num">${z.n?`${z.hit} dari ${z.n}`:"belum ada"}</span></div>
+    <div><span>Zona masih dipantau</span><span class="num">${z.pending}</span></div></div>
+    ${(sc.recent||[]).length?`<div class="trades" style="margin-top:8px">${sc.recent.slice().reverse().map(([d,x])=>`<div><span>${tgl(d,1)} · ${esc((x.why||[]).slice(0,2).join(", "))}</span><span class="${x.hit?"ok":"no"}">${x.hit?"tepat":"meleset"}</span></div>`).join("")}</div>`:""}
+    <p class="note">Ramalan dicatat sebelum terjadi, lalu dinilai otomatis setelah titik balik terkonfirmasi (±15 hari bursa).</p>`;
+}
+function watchSize(ch,el){ const o=new ResizeObserver(()=>{ try{ ch.applyOptions({width:el.clientWidth}); }catch(e){} }); o.observe(el); cyObs.push(o); }
+function drawChart(el, dates, vals, a, rawan, future, idr){
+  cyObs.forEach(o=>o.disconnect()); cyObs=[];
+  cyCharts.forEach(c=>{try{c.remove()}catch(e){}}); cyCharts=[];
+  const L=window.LightweightCharts; if(!L||!vals) return;
+  const fg=cssVar("--fg"), muted=cssVar("--muted"), line=cssVar("--line"), acc=cssVar("--accent"), good=cssVar("--good"), bad=cssVar("--bad"), warn=cssVar("--warn");
+  const ch=L.createChart(el,{height:380,layout:{background:{type:"solid",color:"transparent"},textColor:muted,fontFamily:"IBM Plex Mono, monospace"},
+    grid:{vertLines:{color:line},horzLines:{color:line}},rightPriceScale:{borderColor:line},timeScale:{borderColor:line},
+    crosshair:{mode:0},localization:{locale:"id-ID"}});
+  cyCharts.push(ch);
+  const data=[]; dates.forEach((d,i)=>{ if(vals[i]!=null) data.push({time:d,value:vals[i]}); });
+  const fut=(future||[]).slice(0,45);
+  const s=ch.addLineSeries({color:acc,lineWidth:2,priceLineVisible:false,priceFormat:idr?{type:"price",precision:0,minMove:1}:{type:"price",precision:2,minMove:0.01}});
+  s.setData(data.concat(fut.map(d=>({time:d}))));
+  const zz=ch.addLineSeries({color:warn,lineWidth:1,lineStyle:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+  const pts=(a.piv||[]).concat(a.tent?[a.tent]:[]).filter(p=>p[0]>=dates[0]);
+  zz.setData(pts.map(p=>({time:p[0],value:p[1]})));
+  s.setMarkers(pts.map(p=>({time:p[0],position:p[2]==="H"?"aboveBar":"belowBar",color:p[2]==="H"?bad:good,shape:"circle",size:0.6})));
+  (a.sup||[]).forEach((z,i)=>{ s.createPriceLine({price:z.mid,color:good,lineWidth:z.strength==="kuat"?2:1,lineStyle:2,axisLabelVisible:true,title:`S${i+1} ${z.strength}`}); });
+  (a.res||[]).forEach((z,i)=>{ s.createPriceLine({price:z.mid,color:bad,lineWidth:z.strength==="kuat"?2:1,lineStyle:2,axisLabelVisible:true,title:`R${i+1} ${z.strength}`}); });
+  if(rawan&&rawan.length&&fut.length){
+    const last=data[data.length-1].value, set=new Set(fut);
+    const mk=ch.addLineSeries({color:"transparent",lineVisible:false,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+    const rs=rawan.filter(x=>set.has(x.d));
+    mk.setData(fut.map(d=>({time:d,value:last})));
+    mk.setMarkers(rs.map(x=>({time:x.d,position:"aboveBar",color:warn,shape:"arrowDown",text:"rawan"})));
+  }
+  ch.timeScale().setVisibleLogicalRange({from:Math.max(0,data.length-180),to:data.length+fut.length});
+  watchSize(ch,el);
+}
+function drawBreadth(el,b){
+  const L=window.LightweightCharts; if(!L||!b||!b.series) return;
+  const line=cssVar("--line"), muted=cssVar("--muted"), acc=cssVar("--accent");
+  const ch=L.createChart(el,{height:150,layout:{background:{type:"solid",color:"transparent"},textColor:muted},grid:{vertLines:{visible:false},horzLines:{color:line}},
+    rightPriceScale:{borderColor:line},timeScale:{borderColor:line},handleScroll:false,handleScale:false});
+  cyCharts.push(ch);
+  const s=ch.addAreaSeries({lineColor:acc,topColor:acc+"55",bottomColor:acc+"05",lineWidth:2,priceLineVisible:false});
+  s.setData(b.series.map(([d,v])=>({time:d,value:v})));
+  s.createPriceLine({price:50,color:muted,lineStyle:2,lineWidth:1,axisLabelVisible:false});
+  ch.timeScale().fitContent();
+  watchSize(ch,el);
+}
+function renderCycles(box){
+  if(!CYC&&!CYC_ERR){ box.innerHTML=`<div class="tablebox"><div class="empty">Memuat analisis siklus…</div></div>`; loadCycles().then(()=>{ if(tab==="cycles"){ renderTabs(); renderResults(); } }); return; }
+  if(CYC_ERR){ box.innerHTML=`<div class="tablebox"><div class="empty">Analisis Siklus & Fibonacci belum tersedia. Akan terisi setelah pembaruan data berikutnya.</div></div>`; return; }
+  const names=Object.keys(CYC.indices);
+  let sel=store.get("cy.sel")||names[0];
+  if(!CYC.indices[sel]&&!CYC.stocks[sel]) sel=names[0];
+  const isIdx=!!CYC.indices[sel], a=isIdx?CYC.indices[sel]:CYC.stocks[sel];
+  const vals=isIdx?SER.idx[sel]:SER.stocks[sel];
+  const o=!isIdx?rows.find(x=>x.ticker===sel):null;
+  const idxName=names[0], I=CYC.indices[idxName];
+  const rg=isIdx?a.range:null, b=CYC.breadth;
+  box.innerHTML=`<div class="rhead"><div class="l"><h2>Siklus &amp; Fibonacci</h2>
+      <p class="note">Zona harga dari Fibonacci, titik balik, SMA, dan angka bulat; kalender siklus waktu (bulan, planet, Fibonacci time zone, musiman); dan uji apakah setiap unsur benar-benar lebih baik dari tebakan acak. Data ${tgl(CYC.date,1)}.</p></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <div class="seg" role="group" aria-label="Indeks">${names.map(n=>`<button type="button" data-cy="${esc(n)}" aria-pressed="${n===sel}">${esc(n)}</button>`).join("")}</div>
+        <input type="search" id="cyQ" list="cyList" placeholder="Kode saham" aria-label="Pilih saham" value="${isIdx?"":esc(sel)}" style="width:130px">
+        <datalist id="cyList">${Object.keys(CYC.stocks).map(t=>`<option value="${esc(t)}">`).join("")}</datalist></div></div>
+    <div class="tablebox" style="padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+      <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
+      <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
+      <div id="cyChart" style="width:100%;min-height:380px"></div></div>
+    <div class="dgrid" style="margin-top:12px">
+      ${isIdx&&rg?`<div class="mcard"><h4><span>Rentang minggu depan</span></h4><div class="dl">
+        <div><span>Peluang 68% di antara</span><span class="num">${nf(rg.r68[0],0)} – ${nf(rg.r68[1],0)}</span></div>
+        <div><span>Peluang 95% di antara</span><span class="num">${nf(rg.r95[0],0)} – ${nf(rg.r95[1],0)}</span></div>
+        <div><span>Volatilitas mingguan</span><span class="num">±${nf(rg.sigma,2)}%</span></div>
+        ${rg.vix!=null?`<div><span>Menurut VIX ${nf(rg.vix,1)} (68%)</span><span class="num">${nf(rg.r68vix[0],0)} – ${nf(rg.r68vix[1],0)}</span></div>`:""}</div>
+        <p class="note">Dari volatilitas 60 hari terakhir. Rentang, bukan arah.</p></div>`:""}
+      <div class="mcard"><h4><span>Zona support</span></h4>${zoneRows(a.sup,"support")}</div>
+      <div class="mcard"><h4><span>Zona resistance</span></h4>${zoneRows(a.res,"resistance")}</div>
+      ${isIdx?`<div class="mcard"><h4><span>Tanggal rawan pembalikan</span></h4>${(a.rawan||[]).length?`<div class="dl">${a.rawan.slice(0,8).map(x=>`<div><span><b>${tgl(x.d,1)}</b><br><span class="note">${esc(x.why.join(" · "))}</span></span><span class="num">${x.score} siklus</span></div>`).join("")}</div>`:`<p class="note">Tidak ada tanggal dengan beberapa siklus berdekatan dalam 3 bulan ke depan.</p>`}
+        <p class="note">Tanggal ketika ≥ 2 siklus waktu jatuh dalam ±1 hari bursa. Lihat uji ketepatan di bawah sebelum memakainya.</p></div>`
+      :`<div class="mcard"><h4><span>Fibonacci time zone saham ini</span></h4>${(a.tz||[]).length?`<div class="dl">${a.tz.map(([d,f])=>`<div><span>${tgl(d,1)}</span><span class="num">${f} hari bursa</span></div>`).join("")}</div>`:`<p class="note">Tidak ada dalam 2 bulan ke depan.</p>`}</div>
+        ${o?`<div class="mcard"><h4><span>Status di 7 metode</span></h4><div class="dl">${M.map(m=>{const st=mget(o,m.id);return `<div><span>${esc(m.name)}</span>${chip(st.s)}</div>`}).join("")}</div></div>`:""}`}
+      ${isIdx?`<div class="mcard"><h4><span>Kalender 3 bulan</span></h4><div class="dl" style="max-height:320px;overflow:auto">${(a.events||[]).map(e=>`<div><span>${TYPE_ICON[e.type]||""} ${esc(e.what)}</span><span class="num">${tgl(e.d)}</span></div>`).join("")}</div></div>`:""}
+      ${b?`<div class="mcard"><h4><span>Kesehatan pasar (${b.n} saham)</span></h4><div class="dl">
+        <div><span>Di atas SMA200</span><span class="num ${b.above200>=50?"ok":"no"}">${nf(b.above200,1)}%</span></div>
+        <div><span>Di atas SMA50</span><span class="num ${b.above50>=50?"ok":"no"}">${nf(b.above50,1)}%</span></div>
+        <div><span>Naik / turun hari ini</span><span class="num">${b.adv} / ${b.dec}</span></div>
+        <div><span>Titik tertinggi / terendah 52 minggu baru</span><span class="num">${b.newHi} / ${b.newLo}</span></div></div>
+        <div id="cyBreadth" style="width:100%;margin-top:6px"></div><p class="note">Grafik: % saham di atas SMA200 setahun terakhir. Di bawah 50% = mayoritas saham dalam tren turun.</p></div>`:""}
+    </div>
+    ${isIdx?`<div class="mcard" style="margin-top:12px"><h4><span>Uji ketepatan: ${esc(sel)}</span></h4>${testTable(CYC.tests[sel])}</div>
+      <div class="mcard" style="margin-top:12px"><h4><span>Papan skor ramalan: ${esc(sel)}</span></h4>${scoreCard((CYC.score||{})[sel])}</div>`
+      :`<p class="note" style="margin-top:8px">Uji ketepatan dan papan skor tersedia di tampilan indeks.</p>`}`;
+  box.querySelectorAll("[data-cy]").forEach(bt=>bt.addEventListener("click",()=>{ store.set("cy.sel",bt.dataset.cy); renderResults(); }));
+  $("cyQ").addEventListener("change",ev=>{ const v=ev.target.value.trim().toUpperCase(); if(CYC.stocks[v]){ store.set("cy.sel",v); renderResults(); } });
+  loadLWC().then(()=>{ if(tab!=="cycles") return; drawChart($("cyChart"),SER.dates,vals,a,isIdx?a.rawan:null,CYC.future,!isIdx&&usd(1).startsWith("Rp")); if(b) drawBreadth($("cyBreadth"),b); })
+    .catch(()=>{ $("cyChart").innerHTML=`<p class="note">Grafik tidak bisa dimuat (pustaka grafik gagal diunduh).</p>`; });
+}
+
 function renderResults(){
   const box=$("results");
   if(!DATA){ box.innerHTML=`<div class="tablebox"><div class="empty">Belum ada data. Setelah workflow selesai, tabel saham muncul di sini.</div></div>`; return; }
-  if(tab==="summary") renderSummary(box); else if(tab==="etf") renderEtf(box); else renderMethod(box,MID[tab]);
+  if(tab==="summary") renderSummary(box); else if(tab==="etf") renderEtf(box); else if(tab==="cycles") renderCycles(box); else renderMethod(box,MID[tab]);
 }
 function renderAll(){ renderStatus(); renderTabs(); renderRail(); renderResults(); }
 

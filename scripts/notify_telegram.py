@@ -170,6 +170,49 @@ def reminder(d: dict, now: datetime | None = None) -> str | None:
     return "\n".join(L)
 
 
+def weekly(now: datetime | None = None) -> str | None:
+    """Kalender siklus mingguan (Senin pagi) dari data/cycles.json."""
+    f = ROOT / "data" / "cycles.json"
+    if not f.exists():
+        print("cycles.json belum ada; kalender mingguan tidak dikirim.")
+        return None
+    c = json.loads(f.read_text())
+    today = (now or datetime.now(WIB)).astimezone(WIB).date()
+    end = today + timedelta(days=6)
+    n0 = lambda v: f"{v:,.0f}".replace(",", ".") if isinstance(v, (int, float)) else "–"
+    L = [f"🗓 🇮🇩 {b('Kalender siklus ' + hari(today.isoformat()).split(' ', 1)[1] + ' – ' + hari(end.isoformat()).split(' ', 1)[1])}"]
+    for name, a in (c.get("indices") or {}).items():
+        rg = a.get("range") or {}
+        L += ["", f"{b(name)} {n0(a.get('price'))}"]
+        if rg.get("r68"):
+            L.append(f"Rentang minggu ini (peluang 68%): {n0(rg['r68'][0])} – {n0(rg['r68'][1])}")
+        sup, res = (a.get("sup") or [])[:1], (a.get("res") or [])[:1]
+        if sup:
+            L.append(f"Support: {n0(sup[0]['lo'])}–{n0(sup[0]['hi'])} ({sup[0]['strength']})")
+        if res:
+            L.append(f"Resistance: {n0(res[0]['lo'])}–{n0(res[0]['hi'])} ({res[0]['strength']})")
+        raw = [x for x in a.get("rawan") or [] if today.isoformat() <= x["d"] <= end.isoformat()]
+        for x in raw:
+            L.append(f"⚠️ Tanggal rawan {hari(x['d'])}: {e(', '.join(x['why'][:3]))}")
+        evs = [x for x in a.get("events") or [] if today.isoformat() <= x["d"] <= end.isoformat() and x["type"] in ("bulan", "planet")]
+        if evs and name == next(iter(c["indices"])):
+            L.append("Peristiwa: " + " · ".join(f"{e(x['what'])} {hari(x['d']).split(' ', 1)[1]}" for x in evs))
+        t = (c.get("tests") or {}).get(name) or {}
+        if t.get("time"):
+            good = [k for sec in ("time", "price") for k, v in (t.get(sec) or {}).items() if v and v.get("verdict") == "berguna"]
+            L.append("Uji riwayat: " + (f"terbukti berguna: {', '.join(good)}" if good else "belum ada unsur waktu atau Fibonacci yang lebih baik dari acak"))
+        sc = ((c.get("score") or {}).get(name) or {}).get("dates") or {}
+        if sc.get("n"):
+            L.append(f"Papan skor: {sc['hit']} dari {sc['n']} tanggal rawan tepat (acak ±{sc.get('base')}%)")
+    br = c.get("breadth") or {}
+    if br.get("above200") is not None:
+        L += ["", f"Kesehatan pasar: {str(br['above200']).replace('.', ',')}% saham di atas SMA200 "
+                  + ("(mayoritas tren naik)" if br["above200"] >= 50 else "(mayoritas tren turun)")]
+    L += ["", "Siklus waktu adalah alat bantu, bukan kepastian. Cek hasil uji di website.",
+          f'🔗 <a href="{SITE}#cycles">Grafik dan kalender lengkap</a>']
+    return "\n".join(L)
+
+
 def failed_message() -> str:
     run = "{}/{}/actions/runs/{}".format(os.environ.get("GITHUB_SERVER_URL", "https://github.com"),
                                          os.environ.get("GITHUB_REPOSITORY", "sultanamra3-arch/screener-saham"),
@@ -217,7 +260,7 @@ def main():
         msg = failed_message()
     else:
         d = json.loads(DATA_FILE.read_text())
-        msg = reminder(d) if "--reminder" in sys.argv else morning(d)
+        msg = weekly() if "--weekly" in sys.argv else reminder(d) if "--reminder" in sys.argv else morning(d)
     if not msg:
         return
     if "--dry-run" in sys.argv:

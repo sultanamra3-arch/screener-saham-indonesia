@@ -348,6 +348,48 @@ def etf_info(close) -> dict:
     return res
 
 
+# ---------------------------------------------------------------- siklus & Fibonacci
+CYC_FILE = DATA / "cycles.json"
+SERIES_FILE = DATA / "series.json"
+CYC_STATE = DATA / "cycles_state.json"
+
+
+def run_cycles(close, indices: dict, cfg: dict, stock_cols: list, breadth_cols: list, tick=None, vix=None):
+    """Tidak boleh menggagalkan pembaruan utama: kesalahan hanya dicatat."""
+    try:
+        import cycles
+        import yfinance as yf
+
+        long = {}
+        for name, sym in indices.items():
+            try:
+                df = yf.download(sym, period="max", interval="1d", auto_adjust=True, progress=False)
+                c = df["Close"].squeeze().dropna()
+                if len(c) > 1000:
+                    long[name] = c
+            except Exception as e:
+                log(f"  riwayat panjang {sym}: {e}")
+        state = json.loads(CYC_STATE.read_text()) if CYC_STATE.exists() else {}
+        out, series = cycles.run(close, indices, long, stock_cols, breadth_cols, cfg, state, tick=tick, vix=vix)
+        CYC_FILE.write_text(json.dumps(out, separators=(",", ":")))
+        SERIES_FILE.write_text(cycles.dump_series(series))
+        CYC_STATE.write_text(json.dumps(state, separators=(",", ":")))
+        lines = ["### Siklus & Fibonacci"]
+        for name, t in out.get("tests", {}).items():
+            if not t or "time" not in t:
+                lines.append(f"- {name}: uji tidak tersedia ({(t or {}).get('error', 'riwayat kurang')})")
+                continue
+            useful = [k for sec in ("time", "price", "season") for k, v in t[sec].items() if v and v["verdict"] == "berguna"]
+            lines.append(f"- {name}: data {t['from']}–{t['to']}, {t['pivots']} titik balik; unsur yang terbukti berguna: {', '.join(useful) or 'tidak ada'}")
+        summary("\n".join(lines))
+        log("Siklus & Fibonacci selesai")
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        summary(f"- Peringatan: Siklus & Fibonacci gagal dihitung ({type(e).__name__}: {str(e)[:150]})")
+
+
 # ---------------------------------------------------------------- utama
 def load_state() -> dict:
     if SIG_FILE.exists():
@@ -456,6 +498,11 @@ def main():
         "etf": etf_info(close),
     }
     OUT_FILE.write_text(json.dumps(out, separators=(",", ":")))
+    import notify_telegram
+
+    liquid = [r["ticker"] for r in rows if r["liq"] == "L"]
+    run_cycles(close, {"IHSG": INDEX}, {"ramadan": True, "holidays": set(notify_telegram.HOLIDAYS)},
+               liquid, eligible, tick=strategies.tick)
     log(f"Selesai dalam {(time.time() - t0) / 60:.1f} menit -> {OUT_FILE.relative_to(ROOT)}")
 
     lc = out["liqCount"]
