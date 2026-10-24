@@ -354,7 +354,7 @@ function methodCard(o,mid){
 function detail(o, only){
   const ids = only ? [only].concat(M.map(m=>m.id).filter(x=>x!==only)) : M.map(m=>m.id);
   const tt=(o.tt||[]);
-  return `<div class="dgrid">${ids.map(id=>methodCard(o,id)).join("")}
+  return `${saranBox(`<p>${saranStock(o)}</p>`)}<div style="height:10px"></div><div class="dgrid">${ids.map(id=>methodCard(o,id)).join("")}
     ${tt.length?`<div class="mcard"><h4><span>Trend template Minervini</span><span class="na" style="font-weight:400">${tt.filter(x=>x[1]).length}/8</span></h4><div class="cl">${tt.map(x=>`<div>${x[1]?'<span class="ok">✓</span>':'<span class="no">✗</span>'}<span>${esc(x[0])}</span><span></span></div>`).join("")}</div></div>`:""}</div>`;
 }
 
@@ -366,7 +366,11 @@ function renderSummary(box){
   if(fSel==="buy") list=list.filter(x=>x.by.buy.length); else if(fSel==="hold") list=list.filter(x=>x.by.hold.length);
   else if(fSel==="sell") list=list.filter(x=>x.by.sell.length); else if(fSel==="pass3") list=list.filter(x=>x.pass>=3);
   list.sort((a,b)=>b.by.buy.length-a.by.buy.length||b.by.hold.length-a.by.hold.length||b.pass-a.pass||(b.o.mcap||0)-(a.o.mcap||0));
-  box.innerHTML=`<div class="rhead"><div class="l"><h2>Sinyal 7 metode per saham</h2>
+  if(!CYC&&!CYC_ERR&&!SARAN_LOADED){ SARAN_LOADED=true; loadCycles().then(()=>{ if(tab==="summary") renderResults(); }); }
+  const sm=saranMarket(), cand=candidates();
+  const candHtml=cand.length?`<p><b>Kandidat untuk diteliti</b> (sinyal Beli yang sesuai kondisi pasar):</p><div class="dl">${cand.map(x=>{ const z=nearZones(x.o.ticker);
+      return `<div><span><b class="tk">${esc(x.o.ticker)}</b> ${usd(x.o.price)} · Beli: ${esc(M.filter(m=>mget(x.o,m.id).s==="buy").map(m=>m.name).join(", "))}</span><span class="note">${z&&z.s?`support ${usd(z.s.lo)}–${usd(z.s.hi)}`:""}</span></div>`}).join("")}</div>`:`<p>Belum ada sinyal Beli yang cocok dengan kondisi pasar saat ini. Menunggu juga keputusan yang sah.</p>`;
+  box.innerHTML=saranBox(sm.html+candHtml)+`<div class="rhead"><div class="l"><h2>Sinyal 7 metode per saham</h2>
       <p class="note">${ixFilter==="L"?"Saham likuid saja. ":""}${counts.buy} saham punya sinyal beli baru, ${counts.hold} sedang ditahan, ${counts.sell} baru dijual. Klik baris untuk alasan, harga patokan, dan kriteria tiap metode.</p></div>
       <label for="fSel">Tampilkan <select id="fSel">${[["","Semua saham"],["buy",`Ada sinyal beli (${counts.buy})`],["hold",`Sedang ditahan (${counts.hold})`],["sell",`Baru dijual (${counts.sell})`],["pass3","Lolos kriteria ≥ 3 metode"]].map(([v,t])=>`<option value="${v}" ${v===fSel?"selected":""}>${t}</option>`).join("")}</select></label></div>
     <div class="legend">${M.map(m=>`<span><span class="mc wait" style="width:20px;height:18px">${m.abbr}</span>${esc(m.name)}</span>`).join("")}
@@ -545,6 +549,7 @@ function renderCycles(box){
         <div class="seg" role="group" aria-label="Indeks">${names.map(n=>`<button type="button" data-cy="${esc(n)}" aria-pressed="${n===sel}">${esc(n)}</button>`).join("")}</div>
         <input type="search" id="cyQ" list="cyList" placeholder="Kode saham" aria-label="Pilih saham" value="${isIdx?"":esc(sel)}" style="width:130px">
         <datalist id="cyList">${Object.keys(CYC.stocks).map(t=>`<option value="${esc(t)}">`).join("")}</datalist></div></div>
+    ${saranBox(isIdx?saranMarket().html:`<p>${o?saranStock(o):""}</p>`+saranMarket().html)}<div style="height:12px"></div>
     <div class="tablebox" style="padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
       <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
       <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
@@ -578,6 +583,94 @@ function renderCycles(box){
   loadLWC().then(()=>{ if(tab!=="cycles") return; drawChart($("cyChart"),SER.dates,vals,a,isIdx?a.rawan:null,CYC.future,!isIdx&&usd(1).startsWith("Rp")); if(b) drawBreadth($("cyBreadth"),b); })
     .catch(()=>{ $("cyChart").innerHTML=`<p class="note">Grafik tidak bisa dimuat (pustaka grafik gagal diunduh).</p>`; });
 }
+
+// ---------- Saran otomatis ----------
+const IS_ID = usd(1).startsWith("Rp");
+function breadthNow(){
+  if(CYC&&CYC.breadth&&CYC.breadth.above200!=null) return CYC.breadth.above200;
+  const pool=rows.filter(o=>!IS_ID||o.liq!=="T").filter(o=>typeof o.sma200==="number");
+  return pool.length? pool.filter(o=>o.sma200>0).length/pool.length*100 : null;
+}
+function regime(){
+  const b=breadthNow(), ok=(DATA&&DATA.market||{}).ok;
+  let k="campuran";
+  if(b!=null){ if(b>=60&&ok!==false) k="naik"; else if(b<40||(ok===false&&b<50)) k="tertekan"; }
+  else if(ok===false) k="tertekan"; else if(ok===true) k="naik";
+  return {k,b,ok};
+}
+function badTrader(){
+  const st=(DATA&&DATA.stats)||{};
+  return ["canslim","momentum","swing"].filter(m=>st[m]&&st[m].n>=10&&st[m].avg<0);
+}
+function cycleNote(){
+  if(!CYC) return "";
+  const name=Object.keys(CYC.indices)[0], t=(CYC.tests||{})[name];
+  if(!t||!t.time) return "";
+  const good=[...Object.entries(t.time),...Object.entries(t.price||{})].filter(([k,v])=>v&&v.verdict==="berguna").map(([k])=>k);
+  return good.length
+    ? `<b>Soal siklus:</b> di ${esc(name)}, yang terbukti lebih baik dari acak hanya: ${esc(good.join(", "))}. Unsur lain (bulan, planet) jangan dijadikan alasan transaksi.`
+    : `<b>Soal siklus:</b> di ${esc(name)}, belum ada unsur waktu (bulan, planet, Fibonacci time) yang terbukti lebih baik dari tebakan acak. Abaikan tanggal rawan sebagai alasan membeli atau menjual; pakai zona harga saja.`;
+}
+function saranMarket(){
+  const r=regime(), bad=badTrader(), flag=IS_ID?"🇮🇩":"🇺🇸";
+  const bTxt=r.b!=null?`${nf(r.b,0)}% saham dalam tren naik (di atas SMA200)`:"";
+  const idx=IS_ID?"IHSG":"S&P 500";
+  const head={naik:`${flag} <b>Kondisi pasar: sehat.</b> ${idx} dalam tren naik dan ${bTxt}.`,
+              campuran:`${flag} <b>Kondisi pasar: campuran.</b> ${bTxt}${r.ok===false?`; ${idx} belum dalam tren naik`:""}.`,
+              tertekan:`${flag} <b>Kondisi pasar: tertekan.</b> ${r.ok===false?`${idx} di bawah rata-rata bergeraknya dan hanya `:"Hanya "}${bTxt}.`}[r.k];
+  const avoid=[...new Set([...(r.k==="tertekan"?["canslim","momentum","swing"]:[]),...bad])].map(m=>MID[m].name);
+  const tip={naik:`<b>Saran umum:</b> semua metode boleh dipakai. Ikuti sinyal Beli, utamakan saham yang lolos di lebih dari satu metode, dan tetap pasang stop loss untuk metode trader.`,
+             campuran:`<b>Saran umum:</b> selektif. Utamakan saham yang punya sinyal Beli di ≥ 2 metode, beli bertahap, dan pakai ukuran posisi lebih kecil dari biasa.`,
+             tertekan:`<b>Saran umum:</b> kurangi pembelian baru, beli bertahap, dan simpan sebagian dana tunai. Utamakan <b>Dividen</b>, <b>Value</b>, dan <b>Quality</b>.`}[r.k];
+  const av=avoid.length?` Hindari dulu <b>${esc(avoid.join(", "))}</b>${bad.length?` (uji mundur setahun ${bad.map(m=>MID[m].name).join(", ")} rugi setelah biaya)`:""}${r.k==="tertekan"?` sampai lebih dari 50% saham kembali di atas SMA200`:""}.`:"";
+  return {r, html:`<p>${head}</p><p>${tip}${av}</p>${cycleNote()?`<p>${cycleNote()}</p>`:""}`};
+}
+function zr(z){ return z.hi!==z.lo?`${usd(z.lo)}–${usd(z.hi)}`:usd(z.lo); }
+function nearZones(t){
+  const a=CYC&&CYC.stocks&&CYC.stocks[t]; if(!a) return null;
+  return {s:(a.sup||[])[0], r:(a.res||[])[0], a};
+}
+function saranStock(o){
+  const by={buy:[],hold:[],sell:[]};
+  M.forEach(m=>{ const st=mget(o,m.id); if(by[st.s]) by[st.s].push(m); });
+  const z=nearZones(o.ticker), p=o.price, out=[];
+  const names=a=>a.map(m=>m.name).join(", ");
+  const reg=regime();
+  if(by.sell.length) out.push(`<b>Sinyal Jual</b> dari ${esc(names(by.sell))}: kalau Anda memegangnya karena metode itu, jual sesuai aturannya (${esc(by.sell.map(m=>mget(o,m.id).rs).filter(Boolean).join("; "))}).`);
+  const active=by.buy.concat(by.hold);
+  if(active.length){
+    out.push(`<b>${by.buy.length?"Beli":"Tahan"}</b> menurut ${esc(names(active))}.`);
+    if(z&&z.s&&p){
+      const inZone=p<=z.s.hi*1.015;
+      out.push(inZone
+        ? `Harga ${usd(p)} berada di dekat zona support ${z.s.strength} ${zr(z.s)}, area yang wajar untuk mencicil.`
+        : `Harga ${usd(p)} sudah ${nf((p/z.s.mid-1)*100,1)}% di atas support terdekat (${zr(z.s)}, ${z.s.strength}). ${by.buy.length?"Pertimbangkan beli sebagian dulu, sisanya bila turun ke zona itu.":"Kalau belum punya, lebih aman menunggu harga mendekati zona itu."}`);
+      const cs=mget(o,"canslim");
+      out.push(cs.s==="hold"||cs.s==="buy"
+        ? `Batas rugi CAN SLIM: ${usd((cs.lv||{}).stop)}.`
+        : `Kalau harga ditutup di bawah ${usd(z.s.lo*0.99)} (di bawah zona), tunda pembelian berikutnya dan evaluasi ulang.`);
+    }
+    if(z&&z.r&&p) out.push(`Resistance terdekat ${usd(z.r.lo)}${z.r.hi!==z.r.lo?"–"+usd(z.r.hi):""} (${pct(z.r.dist)}): wajar bila kenaikan tertahan di sana.`);
+    if(reg.k==="tertekan") out.push(`Pasar sedang tertekan, jadi beli bertahap dan jangan sekaligus.`);
+    const tr=active.filter(m=>m.kind==="tr"&&(reg.k==="tertekan"||badTrader().includes(m.id)));
+    if(tr.length) out.push(`Sinyal ${esc(names(tr))} kurang bisa diandalkan saat ini (pasar tertekan atau uji mundur negatif).`);
+  } else if(!by.sell.length){
+    out.push(`Belum ada sinyal Beli dari 7 metode. Pantau saja.`);
+    if(z&&z.s&&p) out.push(`Kalau kelak ada sinyal, area beli yang lebih aman ada di support ${usd(z.s.lo)}–${usd(z.s.hi)} (${z.s.strength}).`);
+  }
+  if(IS_ID&&o.liq&&o.liq!=="L") out.push(`⚠️ Saham ini ${o.liq==="K"?"kurang likuid":"tidak likuid"}: harga mudah digerakkan dan sinyal kurang bisa diandalkan.`);
+  return out.join(" ");
+}
+function saranBox(inner){
+  return `<div class="mcard" style="border-left:4px solid var(--accent);gap:6px;font-size:14px"><h4><span>💡 Saran</span><span class="note" style="font-weight:400">hitungan mekanis, bukan saran investasi pribadi</span></h4>${inner}</div>`;
+}
+function candidates(){
+  const r=regime(), inv=["value","growth","quality","dividend"];
+  const allow=r.k==="tertekan"?inv:M.map(m=>m.id).filter(id=>!badTrader().includes(id));
+  return filtered().map(o=>({o,b:allow.filter(id=>mget(o,id).s==="buy").length,p:M.filter(m=>mget(o,m.id).p).length}))
+    .filter(x=>x.b>0).sort((a,b)=>b.b-a.b||b.p-a.p||(b.o.mcap||0)-(a.o.mcap||0)).slice(0,5);
+}
+let SARAN_LOADED=false;
 
 function renderResults(){
   const box=$("results");

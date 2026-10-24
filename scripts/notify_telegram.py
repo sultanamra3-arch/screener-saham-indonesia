@@ -208,6 +208,17 @@ def weekly(now: datetime | None = None) -> str | None:
     if br.get("above200") is not None:
         L += ["", f"Kesehatan pasar: {str(br['above200']).replace('.', ',')}% saham di atas SMA200 "
                   + ("(mayoritas tren naik)" if br["above200"] >= 50 else "(mayoritas tren turun)")]
+        try:
+            mk = (json.loads((ROOT / "data" / "stocks.json").read_text()).get("market") or {}).get("ok")
+        except Exception:
+            mk = None
+        b200 = br["above200"]
+        if b200 >= 60 and mk is not False:
+            L.append("💡 Saran: pasar sehat. Semua metode boleh dipakai; utamakan saham yang lolos di lebih dari satu metode.")
+        elif b200 < 40 or (mk is False and b200 < 50):
+            L.append("💡 Saran: pasar tertekan. Kurangi pembelian baru, beli bertahap, utamakan Dividen/Value/Quality, hindari CAN SLIM, Momentum, dan Swing.")
+        else:
+            L.append("💡 Saran: pasar campuran. Selektif, utamakan sinyal Beli di ≥ 2 metode, ukuran posisi lebih kecil.")
     L += ["", "Siklus waktu adalah alat bantu, bukan kepastian. Cek hasil uji di website.",
           f'🔗 <a href="{SITE}#cycles">Grafik dan kalender lengkap</a>']
     return "\n".join(L)
