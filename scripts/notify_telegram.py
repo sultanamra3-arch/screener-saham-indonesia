@@ -198,13 +198,13 @@ def support_section(d: dict) -> list[str]:
         for _, _, t, o, z, (bb, hh), r1, rr, low in items[:8]:
             s = " · ".join(x for x in (f"Beli: {', '.join(bb)}" if bb else "", f"Tahan: {', '.join(hh)}" if hh else "") if x)
             tgt = f"R1 {usd(r1['lo'])} (R:R 1:{str(round(rr, 1)).replace('.', ',')})" if r1 else "R1 terbuka (tak ada resistance kuat ≤30%)"
-            L.append(f"{b(t)} {usd(o.get('price'))} · support {rng(z)} ({z['strength']}){' · turun ke S2' if low else ''} · {tgt} · jebol &lt; {usd(z['brk'])}")
+            L.append(f"{b(t)} {usd(o.get('price'))} · support {rng(z)} ({z['strength']}){' · turun ke support berikutnya' if low else ''} · {tgt} · jebol &lt; {usd(z['brk'])}")
             L.append(f"<i>{e(s)}</i>")
         if len(items) > 8:
             L.append(f"…dan {len(items) - 8} lainnya di tab Watchlist pribadi")
     if waits:
-        L += ["", b(f"🎯 Antre beli di S2 ({len(waits)})"),
-              "<i>Di S1 tapi R1 terlalu dekat; tunggu harga turun ke S2.</i>"]
+        L += ["", b(f"🎯 Antre beli di support berikutnya ({len(waits)})"),
+              "<i>Sudah di area support tapi R1 terlalu dekat; tunggu harga turun ke support berikutnya.</i>"]
         L.append(" · ".join(f"{b(t)} {usd(s2['hi'])}" for _, t, o, s2, rr2 in waits[:6])
                  + (f" · +{len(waits) - 6} lainnya" if len(waits) > 6 else ""))
     brk = []
