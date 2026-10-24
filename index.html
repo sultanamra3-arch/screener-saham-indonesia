@@ -131,6 +131,7 @@ tbody tr:last-child td{border-bottom:none}
 .cf input,.cf select{width:100%;box-sizing:border-box}
 input[type=date]{font:inherit;font-size:14px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
 .num.big{font-size:17px;font-weight:600}
+details.mcard summary{cursor:pointer}
 .mcard{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .mcard h4{margin:0;font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .trades{display:flex;flex-direction:column;gap:3px}
@@ -320,7 +321,7 @@ function renderTabs(){
     if(t.id==="summary"){ const n=list.filter(o=>summaryOf(o).by.buy.length).length; c=`<b>${n}</b> saham ada sinyal beli`; }
     else if(t.id==="etf") c="Perbandingan";
     else if(t.id==="calc") c="Lot, untung, rugi";
-    else if(t.id==="watch") { if(CYC&&CYC.watch){ const al=allowedMethods(), byT=Object.fromEntries(list.map(o=>[o.ticker,o])); const n=Object.entries(CYC.watch.in).filter(([tk,w])=>byT[tk]&&(w.strength!=="lemah")&&sigOf(byT[tk],al).any).length; c=`<b>${n}</b> di area support`; } else c="★ dan area support"; }
+    else if(t.id==="watch") { if(CYC&&CYC.watch){ const al=allowedMethods(), byT=Object.fromEntries(list.map(o=>[o.ticker,o])); const n=Object.entries(CYC.watch.in).filter(([tk,w])=>byT[tk]&&(w.strength!=="lemah")&&watchStrict(tk,w,sigOf(byT[tk],al))).length; c=`<b>${n}</b> di area support`; } else c="★ dan area support"; }
     else if(t.id==="cycles") { const f=CYC&&Object.values(CYC.indices)[0]; c=f?`<b>${(f.rawan||[]).length}</b> tanggal rawan`:"Analisis"; }
     else { const b=list.filter(o=>mget(o,t.id).s==="buy").length, h=list.filter(o=>mget(o,t.id).s==="hold").length; c=`<b>${b}</b> beli · ${h} tahan`; }
     return `<button class="tab" role="tab" type="button" aria-selected="${t.id===tab}" data-id="${t.id}"><span class="k">${esc(t.k)}</span><span class="n">${esc(t.name)}</span><span class="c">${c}</span></button>`;
@@ -473,7 +474,7 @@ const TYPE_ICON={bulan:"🌕",planet:"🪐",fibtime:"🔢",musiman:"📅"};
 function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim()||"#888"; }
 function zoneRows(zs,kind){
   if(!zs||!zs.length) return `<p class="note">Tidak ada zona ${kind==="support"?"di bawah":"di atas"} harga dalam jarak 30%.</p>`;
-  return `<div class="dl">${zs.map((z,i)=>`<div><span><b>${kind==="support"?"S":"R"}${i+1}</b> ${usd(z.lo)}${z.hi!==z.lo?"–"+usd(z.hi):""} <span class="na">(${pct(z.dist)})</span><br><span class="note">${esc(z.why.join(" · "))}</span></span><span class="st ${z.strength==="kuat"?"buy":z.strength==="sedang"?"hold":"wait"}" style="align-self:flex-start">${z.strength}</span></div>`).join("")}</div>`;
+  return `<div class="dl">${zs.map((z,i)=>`<div><span><b>${kind==="support"?"S":"R"}${i+1}</b> ${usd(z.lo)}${z.hi!==z.lo?"–"+usd(z.hi):""} <span class="na">(${pct(z.dist)})</span><br><span class="note">${esc(z.why.map(plainWhy).join(" · "))}</span></span><span class="st ${z.strength==="kuat"?"buy":z.strength==="sedang"?"hold":"wait"}" style="align-self:flex-start">${z.strength}</span></div>`).join("")}</div>`;
 }
 function testTable(t){
   if(!t||!t.time) return `<p class="note">Uji belum tersedia${t&&t.error?": "+esc(t.error):""}.</p>`;
@@ -561,7 +562,7 @@ function renderCycles(box){
         <div class="seg" role="group" aria-label="Indeks">${names.map(n=>`<button type="button" data-cy="${esc(n)}" aria-pressed="${n===sel}">${esc(n)}</button>`).join("")}</div>
         <input type="search" id="cyQ" list="cyList" placeholder="Kode saham" aria-label="Pilih saham" value="${isIdx?"":esc(sel)}" style="width:130px">
         <datalist id="cyList">${Object.keys(CYC.stocks).map(t=>`<option value="${esc(t)}">`).join("")}</datalist></div></div>
-    ${saranBox(isIdx?saranMarket().html:`<p>${o?saranStock(o)+" "+calcBtn(o.ticker):""}</p>`+saranMarket().html)}<div style="height:12px"></div>
+    ${cycleGuide(idxName)}${saranBox(isIdx?saranMarket().html:`<p>${o?saranStock(o)+" "+calcBtn(o.ticker):""}</p>`+saranMarket().html)}<div style="height:12px"></div>
     <div class="tablebox" style="padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
       <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
       <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
@@ -575,9 +576,8 @@ function renderCycles(box){
         <p class="note">Dari volatilitas 60 hari terakhir. Rentang, bukan arah.</p></div>`:""}
       <div class="mcard"><h4><span>Zona support</span></h4>${zoneRows(a.sup,"support")}</div>
       <div class="mcard"><h4><span>Zona resistance</span></h4>${zoneRows(a.res,"resistance")}</div>
-      ${isIdx?`<div class="mcard"><h4><span>Tanggal rawan pembalikan</span></h4>${(a.rawan||[]).length?`<div class="dl">${a.rawan.slice(0,8).map(x=>`<div><span><b>${tgl(x.d,1)}</b><br><span class="note">${esc(x.why.join(" · "))}</span></span><span class="num">${x.score} siklus</span></div>`).join("")}</div>`:`<p class="note">Tidak ada tanggal dengan beberapa siklus berdekatan dalam 3 bulan ke depan.</p>`}
-        <p class="note">Tanggal ketika ≥ 2 siklus waktu jatuh dalam ±1 hari bursa. Lihat uji ketepatan di bawah sebelum memakainya.</p></div>`
-      :`<div class="mcard"><h4><span>Fibonacci time zone saham ini</span></h4>${(a.tz||[]).length?`<div class="dl">${a.tz.map(([d,f])=>`<div><span>${tgl(d,1)}</span><span class="num">${f} hari bursa</span></div>`).join("")}</div>`:`<p class="note">Tidak ada dalam 2 bulan ke depan.</p>`}</div>
+      ${isIdx?rawanCard(a,sel)
+      :`${tzCard(a,idxName)}
         ${o?`<div class="mcard"><h4><span>Status di 7 metode</span></h4><div class="dl">${M.map(m=>{const st=mget(o,m.id);return `<div><span>${esc(m.name)}</span>${chip(st.s)}</div>`}).join("")}</div></div>`:""}`}
       ${isIdx?`<div class="mcard"><h4><span>Kalender 3 bulan</span></h4><div class="dl" style="max-height:320px;overflow:auto">${(a.events||[]).map(e=>`<div><span>${TYPE_ICON[e.type]||""} ${esc(e.what)}</span><span class="num">${tgl(e.d)}</span></div>`).join("")}</div></div>`:""}
       ${b?`<div class="mcard"><h4><span>Kesehatan pasar (${b.n} saham)</span></h4><div class="dl">
@@ -640,7 +640,7 @@ function saranMarket(){
 function zr(z){ return z.hi!==z.lo?`${usd(z.lo)}–${usd(z.hi)}`:usd(z.lo); }
 function nearZones(t){
   const a=CYC&&CYC.stocks&&CYC.stocks[t]; if(!a) return null;
-  return {s:(a.sup||[])[0], r:(a.res||[])[0], a};
+  return {s:(a.sup||[])[0], r:strongRes(a), a};
 }
 function saranStock(o){
   const by={buy:[],hold:[],sell:[]};
@@ -699,60 +699,96 @@ function sigOf(o, allow){
   M.forEach(m=>{ if(!allow.includes(m.id)) return; const s=mget(o,m.id).s; if(s==="buy") b.push(m.name); else if(s==="hold") h.push(m.name); });
   return {b,h,any:b.length+h.length>0};
 }
-function shortAdvice(w, sg){
-  if(w.dist<=0) return sg.any?"di dalam zona: wajar mencicil":"di dalam zona, belum ada sinyal";
-  return sg.any?`+${nf(w.dist,1)}% di atas zona: beli sebagian, sisanya di zona`:"dekat zona, belum ada sinyal";
+// ---------- Ruang naik: S1 / S2 / R1 ----------
+const RR_MIN=2, UP_MIN=4;
+function floorTick(v){ if(!IS_ID) return Math.floor(v*100)/100; const t=v<200?1:v<500?2:v<2000?5:v<5000?10:25; return Math.floor(v/t)*t; }
+function strongRes(a){ return (a&&a.res||[]).find(z=>z.strength!=="lemah")||null; }
+function roomOf(t,w){
+  const a=CYC&&CYC.stocks&&CYC.stocks[t]; if(!a||!w) return null;
+  const p=w.price||a.price, r1=strongRes(a), risk=Math.max(p-w.brk,p*0.005);
+  const up=r1?(r1.lo/p-1)*100:null, rr=r1?(r1.lo-p)/risk:null;
+  const s2=(a.sup||[]).find(z=>z.hi<w.lo&&z.strength!=="lemah")||null;
+  let s2buy=null,s2brk=null,rr2=null;
+  if(s2){ s2buy=s2.hi; s2brk=floorTick(s2.lo*0.99); if(r1) rr2=(r1.lo-s2buy)/Math.max(s2buy-s2brk,s2buy*0.005); }
+  const up2=s2&&r1?(r1.lo/s2buy-1)*100:null, s2ok=!!s2&&(rr2==null||(rr2>=RR_MIN&&up2>=UP_MIN));
+  return {r1,up,rr,s2,s2buy,s2brk,rr2,up2,s2ok,risk:risk/p*100,ok:rr==null||(rr>=RR_MIN&&up>=UP_MIN)};
+}
+const rrTxt=x=>!x?"–":x.rr==null?'<span class="ok">terbuka</span>':`<span class="${x.ok?"ok":x.rr<1?"no":""}">1 : ${nf(x.rr,1)}</span>`;
+const strCls=s=>s==="kuat"?"buy":s==="sedang"?"hold":"wait";
+function shortAdvice(w, sg, rm){
+  if(!sg.any) return w.dist<=0?"di dalam zona, belum ada sinyal":"dekat zona, belum ada sinyal";
+  if(rm&&!rm.ok) return rm.s2?`ruang ke R1 sempit: antre beli di S2 ${usd(rm.s2buy)}`:"ruang ke R1 sempit: lewati dulu";
+  if(w.dist<=0) return "di dalam zona: wajar mencicil";
+  return `+${nf(w.dist,1)}% di atas zona: beli sebagian, sisanya di zona`;
 }
 function sigCell(sg){
   if(!sg.any) return '<span class="na">–</span>';
   return [sg.b.length?`<b class="ok">Beli:</b> ${esc(sg.b.join(", "))}`:"", sg.h.length?`<b>Tahan:</b> ${esc(sg.h.join(", "))}`:""].filter(Boolean).join("<br>");
 }
+function watchStrict(t,w,sg){ return (w.strength==="kuat"||w.strength==="sedang")&&sg.any&&(roomOf(t,w)||{ok:true}).ok; }
 function renderWatch(box){
   if(!CYC&&!CYC_ERR){ box.innerHTML=`<div class="tablebox"><div class="empty">Memuat data area support…</div></div>`; loadCycles().then(()=>{ if(tab==="watch"){ renderTabs(); renderResults(); } }); return; }
   if(CYC_ERR||!CYC.watch){ box.innerHTML=`<div class="tablebox"><div class="empty">Data area support belum tersedia. Akan terisi setelah pembaruan data berikutnya.</div></div>`; return; }
   const W=CYC.watch, allow=allowedMethods(), r=regime();
   const showAll=store.get(WP+"w.all")==="1", onlyNew=store.get(WP+"w.new")==="1";
   const byT=Object.fromEntries(filtered().map(o=>[o.ticker,o]));
-  const newSet=new Set(W.new||[]);
-  const mk=(src)=>Object.entries(src).filter(([t])=>byT[t]).map(([t,w])=>({t,w,o:byT[t],sg:sigOf(byT[t],allow)}));
+  const newSet=new Set(W.new||[]), lowSet=new Set(W.lower||[]);
+  const mk=(src)=>Object.entries(src).filter(([t])=>byT[t]).map(([t,w])=>({t,w,o:byT[t],sg:sigOf(byT[t],allow),rm:roomOf(t,w)}));
   let inList=mk(W.in), nearList=mk(W.near);
-  const strict=x=>(x.w.strength==="kuat"||x.w.strength==="sedang")&&x.sg.any;
+  const base=x=>(x.w.strength==="kuat"||x.w.strength==="sedang")&&x.sg.any;
   const totalIn=inList.length;
-  if(!showAll){ inList=inList.filter(strict); nearList=nearList.filter(x=>x.sg.any); }
+  const waitS2=inList.filter(x=>base(x)&&x.rm&&!x.rm.ok&&x.rm.s2ok);
+  if(!showAll){ inList=inList.filter(x=>base(x)&&(!x.rm||x.rm.ok)); nearList=nearList.filter(x=>x.sg.any&&(!x.rm||x.rm.ok)); }
   if(onlyNew) inList=inList.filter(x=>newSet.has(x.t));
-  const rank={kuat:0,sedang:1,lemah:2};
-  const sorter=(a,b)=>(b.sg.any-a.sg.any)||(b.sg.b.length-a.sg.b.length)||(rank[a.w.strength]-rank[b.w.strength])||(a.w.dist-b.w.dist);
-  inList.sort(sorter); nearList.sort((a,b)=>(rank[a.w.strength]-rank[b.w.strength])||(a.w.dist-b.w.dist));
+  const rank={kuat:0,sedang:1,lemah:2}, rrv=x=>x.rm&&x.rm.rr!=null?x.rm.rr:9;
+  const sorter=(a,b)=>(b.sg.any-a.sg.any)||((b.rm?b.rm.ok:1)-(a.rm?a.rm.ok:1))||(rrv(b)-rrv(a))||(rank[a.w.strength]-rank[b.w.strength]);
+  inList.sort(sorter); nearList.sort(sorter); waitS2.sort((a,b)=>(b.rm.rr2||9)-(a.rm.rr2||9));
   const idxName=Object.keys(CYC.indices)[0], zs=((CYC.score||{})[idxName]||{}).zones||{};
+  const r1Cell=(rm,t)=>{ if(rm&&rm.r1) return `${usd(rm.r1.lo)} <span class="st ${strCls(rm.r1.strength)}">${rm.r1.strength}</span>`;
+    const wk=((CYC.stocks[t]||{}).res||[])[0]; return `<span class="na">tidak ada kuat/sedang dalam 30%</span>${wk?`<br><span class="note">terdekat lemah ${usd(wk.lo)} (${pct(wk.dist)})</span>`:""}`; };
   const row=x=>`<tr class="row wrow" data-go="${esc(x.t)}" tabindex="0">${stockCell(x.o)}
-      <td class="num">${usd(x.o.price)}</td><td class="num">${zr(x.w)}${newSet.has(x.t)?' <span class="st buy">baru</span>':""}</td>
-      <td><span class="st ${x.w.strength==="kuat"?"buy":x.w.strength==="sedang"?"hold":"wait"}">${x.w.strength}</span></td>
-      <td class="num">${x.w.dist<=0?"di zona":"+"+nf(x.w.dist,1)+"%"}</td><td class="num">${usd(x.w.brk)}</td>
-      <td style="font-size:13px">${sigCell(x.sg)}</td><td class="why">${esc(shortAdvice(x.w,x.sg))} ${calcBtn(x.t)}</td></tr>`;
-  const head=`<thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Zona support</th><th>Kekuatan</th><th class="num">Jarak</th><th class="num">Batas jebol</th><th>Sinyal</th><th>Saran singkat</th></tr></thead>`;
+      <td class="num">${usd(x.o.price)}</td>
+      <td class="num">${zr(x.w)} <span class="st ${strCls(x.w.strength)}">${x.w.strength}</span>${newSet.has(x.t)?' <span class="st buy">baru</span>':""}${lowSet.has(x.t)?' <span class="st hold">turun ke support berikutnya</span>':""}<br><span class="note">${x.w.dist<=0?"di zona":"+"+nf(x.w.dist,1)+"% di atas"} · jebol &lt; ${usd(x.w.brk)}</span></td>
+      <td class="num">${r1Cell(x.rm,x.t)}</td>
+      <td class="num">${x.rm&&x.rm.up!=null?"+"+nf(x.rm.up,1)+"%":"–"}<br>${rrTxt(x.rm)}</td>
+      <td class="num">${x.rm&&x.rm.s2?zr(x.rm.s2)+`<br><span class="note">${pct(x.rm.s2.dist)}</span>`:'<span class="na">–</span>'}</td>
+      <td style="font-size:13px">${sigCell(x.sg)}</td><td class="why">${esc(shortAdvice(x.w,x.sg,x.rm))} ${calcBtn(x.t)}</td></tr>`;
+  const head=`<thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">S1 (zona sekarang)</th><th class="num">R1</th><th class="num">Ruang naik · R:R</th><th class="num">S2</th><th>Sinyal</th><th>Saran singkat</th></tr></thead>`;
   const st=stars(), starred=[...st].map(t=>({t,o:rows.find(x=>x.ticker===t),z:nearZones(t)})).filter(x=>x.o);
   const broken=(W.broken||[]).filter(b=>byT[b.t]);
   box.innerHTML=saranBox(`<p>${saranMarket().html.split("</p>")[0]}</p><p>${r.k==="tertekan"
       ?"Pasar tertekan: sinyal yang dihitung di sini hanya dari <b>Dividen, Value, dan Quality</b>, karena support lebih sering jebol dan metode trader sedang tidak bisa diandalkan."
-      :`Sinyal dihitung dari ${esc(allow.map(id=>MID[id].name).join(", "))}.`} Belilah bertahap, dan tunda pembelian bila harga ditutup di bawah <b>batas jebol</b>.</p>`)+`
-    <div class="rhead" style="margin-top:12px"><div class="l"><h2>Di area support</h2>
-      <p class="note">Harga di dalam zona support atau maksimal ${nf(W.rules.in,0)}% di atasnya, dan belum jebol. ${showAll?`Menampilkan semua (${totalIn}).`:`Menampilkan zona kuat/sedang yang punya sinyal Beli/Tahan (${inList.length} dari ${totalIn}).`}
+      :`Sinyal dihitung dari ${esc(allow.map(id=>MID[id].name).join(", "))}.`} Beli hanya bila <b>ruang naik ke R1 minimal ${UP_MIN}% dan ${RR_MIN}× risikonya</b> (R:R ≥ 1 : ${RR_MIN}). Bila ruangnya sempit, antre di S2. Tunda pembelian bila harga ditutup di bawah <b>batas jebol</b>.</p>`)+`
+    <details class="mcard" style="margin-top:10px"><summary><b>Arti S1, S2, R1, dan R:R</b></summary><div class="dl" style="font-size:14px;margin-top:6px">
+      <div><span><b>S1</b>: zona support tempat harga berada sekarang. <b>S2</b>: zona support kuat/sedang berikutnya di bawahnya.</span></div>
+      <div><span><b>R1</b>: resistance kuat/sedang terdekat di atas harga, tempat kenaikan biasanya tertahan. Resistance lemah (hanya satu garis) tidak dihitung.</span></div>
+      <div><span><b>Ruang naik</b>: jarak harga sekarang ke R1. <b>R:R</b>: ruang naik dibagi jarak ke batas jebol (risiko). 1 : 2 artinya potensi untung dua kali potensi rugi.</span></div>
+      <div><span><b>terbuka</b>: tidak ada resistance kuat/sedang dalam 30% di atas harga.</span></div></div></details>
+    <div class="rhead" style="margin-top:12px"><div class="l"><h2>Di area support, ruang naik cukup</h2>
+      <p class="note">Harga di dalam zona support atau maksimal ${nf(W.rules.in,0)}% di atasnya, dan belum jebol. ${showAll?`Menampilkan semua (${totalIn}).`:`Hanya zona kuat/sedang, ada sinyal Beli/Tahan, ruang naik ≥ ${UP_MIN}%, dan R:R ≥ 1 : ${RR_MIN} (${inList.length} dari ${totalIn}).`}
       ${zs.n?` Rekam jejak zona ${esc(idxName)}: ${zs.hit} dari ${zs.n} zona yang tersentuh bertahan.`:` Rekam jejak zona masih dikumpulkan.`}</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="wAll" aria-pressed="${showAll}">${showAll?"Tampilkan yang ketat saja":"Tampilkan semua"}</button>
       <button type="button" id="wNew" aria-pressed="${onlyNew}">Baru masuk hari ini (${(W.new||[]).filter(t=>byT[t]).length})</button></div></div>
-    <div class="tablebox"><table>${head}<tbody>${inList.length?inList.map(row).join(""):`<tr><td colspan="8" class="empty">${onlyNew?"Tidak ada saham yang baru masuk area support hari ini.":"Tidak ada saham yang cocok saat ini. Coba “Tampilkan semua”."}</td></tr>`}</tbody></table></div>
-    <div class="rhead" style="margin-top:16px"><div class="l"><h2>Mendekati support</h2><p class="note">${nf(W.rules.in,0)}–${nf(W.rules.near,0)}% di atas zona support kuat/sedang${showAll?"":", hanya yang punya sinyal Beli/Tahan"}. Bersiap sebelum harga sampai di zona.</p></div></div>
+    <div class="tablebox"><table>${head}<tbody>${inList.length?inList.map(row).join(""):`<tr><td colspan="8" class="empty">${onlyNew?"Tidak ada saham yang baru masuk area support hari ini.":"Tidak ada saham yang cocok saat ini. Lihat bagian “Tunggu di S2” di bawah."}</td></tr>`}</tbody></table></div>
+    <div class="rhead" style="margin-top:16px"><div class="l"><h2>Tunggu di S2 (${waitS2.length})</h2><p class="note">Sedang di S1 dan ada sinyal, tapi R1 terlalu dekat (ruang naik di bawah ${UP_MIN}% atau R:R di bawah 1 : ${RR_MIN}). Bila harga turun ke S2, ruang naiknya cukup. Pasang antrean beli di harga S2, dan batalkan bila harga ditutup di bawah batas jebol S2.</p></div></div>
+    <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">R:R di S1</th><th class="num">Antre beli di S2</th><th class="num">Batas jebol S2</th><th class="num">R1</th><th class="num">R:R di S2</th><th>Sinyal</th></tr></thead><tbody>
+    ${waitS2.length?waitS2.slice(0,40).map(x=>`<tr class="row wrow" data-go="${esc(x.t)}" tabindex="0">${stockCell(x.o)}<td class="num">${usd(x.o.price)}</td><td class="num">${rrTxt(x.rm)}</td>
+      <td class="num"><b>${usd(x.rm.s2buy)}</b> <span class="st ${strCls(x.rm.s2.strength)}">${x.rm.s2.strength}</span><br><span class="note">${pct(x.rm.s2.dist)} dari harga</span></td>
+      <td class="num">${usd(x.rm.s2brk)}</td><td class="num">${r1Cell(x.rm,x.t)}</td><td class="num ok">${x.rm.rr2==null?"terbuka":"1 : "+nf(x.rm.rr2,1)}</td>
+      <td style="font-size:13px">${sigCell(x.sg)} ${calcBtn(x.t)}</td></tr>`).join(""):`<tr><td colspan="8" class="empty">Tidak ada saat ini.</td></tr>`}</tbody></table></div>
+    <div class="rhead" style="margin-top:16px"><div class="l"><h2>Mendekati support</h2><p class="note">${nf(W.rules.in,0)}–${nf(W.rules.near,0)}% di atas zona support kuat/sedang${showAll?"":`, hanya yang punya sinyal Beli/Tahan dan R:R ≥ 1 : ${RR_MIN}`}. Bersiap sebelum harga sampai di zona.</p></div></div>
     <div class="tablebox"><table>${head}<tbody>${nearList.length?nearList.slice(0,40).map(row).join(""):`<tr><td colspan="8" class="empty">Tidak ada saat ini.</td></tr>`}</tbody></table></div>
     <div class="rhead" style="margin-top:16px"><div class="l"><h2>★ Saham yang Anda tandai</h2><p class="note">Klik ☆ di tabel mana pun untuk menandai. Tersimpan di browser ini.</p></div></div>
-    <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Support terdekat</th><th class="num">Jarak</th><th>Status</th></tr></thead><tbody>
-    ${starred.length?starred.map(x=>{ const z=x.z&&x.z.s, w=W.in[x.t]; return `<tr class="row wrow" data-go="${esc(x.t)}" tabindex="0">${stockCell(x.o)}<td class="num">${usd(x.o.price)}</td>
+    <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Support terdekat</th><th class="num">Jarak</th><th class="num">R1</th><th>Status</th></tr></thead><tbody>
+    ${starred.length?starred.map(x=>{ const z=x.z&&x.z.s, w=W.in[x.t], rm=w?roomOf(x.t,w):null, r1=x.z?strongRes(x.z.a):null; return `<tr class="row wrow" data-go="${esc(x.t)}" tabindex="0">${stockCell(x.o)}<td class="num">${usd(x.o.price)}</td>
       <td class="num">${z?zr(z)+" ("+z.strength+")":"–"}</td><td class="num">${w?(w.dist<=0?"di zona":"+"+nf(w.dist,1)+"%"):z?"+"+nf((x.o.price/z.hi-1)*100,1)+"%":"–"}</td>
-      <td style="font-size:13px">${w?'<span class="st buy">di area support</span> ':""}${sigCell(sigOf(x.o,M.map(m=>m.id)))}</td></tr>`}).join("")
-      :`<tr><td colspan="5" class="empty">Belum ada saham yang Anda tandai.</td></tr>`}</tbody></table></div>
+      <td class="num">${r1?usd(r1.lo)+" ("+pct(r1.dist)+")":"–"}${rm?"<br>"+rrTxt(rm):""}</td>
+      <td style="font-size:13px">${w?`<span class="st ${rm&&!rm.ok?"hold":"buy"}">${rm&&!rm.ok?"di S1, ruang sempit":"di area support"}</span> `:""}${sigCell(sigOf(x.o,M.map(m=>m.id)))}</td></tr>`}).join("")
+      :`<tr><td colspan="6" class="empty">Belum ada saham yang Anda tandai.</td></tr>`}</tbody></table></div>
     ${broken.length?`<div class="rhead" style="margin-top:16px"><div class="l"><h2>⚠️ Support jebol hari ini</h2><p class="note">Kemarin di area support, hari ini ditutup di bawah batas jebol. Tunda pembelian dan evaluasi ulang.</p></div></div>
       <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Zona yang jebol</th><th class="num">Di bawah zona</th></tr></thead><tbody>
       ${broken.map(b=>`<tr class="row wrow" data-go="${esc(b.t)}" tabindex="0">${stockCell(byT[b.t])}<td class="num">${usd(b.price)}</td><td class="num">${zr(b)} (${b.strength})</td><td class="num no">${pct(b.drop)}</td></tr>`).join("")}</tbody></table></div>`:""}
-    <p class="note" style="margin-top:8px">Klik baris untuk membuka grafik di tab Siklus. Zona support adalah area kemungkinan, bukan jaminan.</p>`;
+    <p class="note" style="margin-top:8px">Klik baris untuk membuka grafik di tab Siklus. Zona support dan resistance adalah area kemungkinan, bukan jaminan.</p>`;
   $("wAll").addEventListener("click",()=>{ store.set(WP+"w.all",showAll?"0":"1"); renderResults(); });
   $("wNew").addEventListener("click",()=>{ store.set(WP+"w.new",onlyNew?"0":"1"); renderResults(); });
 }
@@ -770,10 +806,10 @@ function stockLevels(t){
   let stop=null, sSrc="", target=null, tSrc="";
   if((cs.s==="buy"||cs.s==="hold")&&cs.lv&&cs.lv.stop){ stop=cs.lv.stop; sSrc="stop CAN SLIM"; }
   else if(w){ stop=w.brk; sSrc="batas jebol support"; }
-  else if(z&&z.s){ stop=z.s.lo*0.99; sSrc="di bawah support terdekat"; }
+  else if(z&&z.s){ stop=floorTick(z.s.lo*0.99); sSrc="di bawah support terdekat"; }
   else { stop=p*0.92; sSrc="−8% (tidak ada support terdekat)"; }
   if((cs.s==="buy"||cs.s==="hold")&&cs.lv&&cs.lv.target){ target=cs.lv.target; tSrc="target CAN SLIM"; }
-  else if(z&&z.r){ target=z.r.lo; tSrc="resistance terdekat"; }
+  else if(z&&z.r){ target=z.r.lo; tSrc="resistance R1 ("+z.r.strength+")"; }
   else { const v=mget(o,"value"); if(v.lv&&v.lv.target){ target=v.lv.target; tSrc="target Graham +50%"; } else { target=p*1.15; tSrc="+15% (tidak ada resistance terdekat)"; } }
   return {o,p,stop:+(+stop).toFixed(IS_ID?0:2),target:+(+target).toFixed(IS_ID?0:2),sSrc,tSrc};
 }
@@ -860,6 +896,7 @@ function renderCalc(box){
   if(st.mode==="plan"){
     form=`<div class="cgrid">${code}${fld("c_entry","Harga beli",st.entry)}${fld("c_stop","Stop loss",st.stop)}${fld("c_target","Target",st.target)}
       ${fld("c_modal","Modal ("+(IS_ID?"Rp":"$")+")",st.modal??(IS_ID?100000000:10000))}${fld("c_risk","Risiko per transaksi (% modal)",st.risk)}${fld("c_alloc","Maksimal per saham (% modal)",st.alloc)}</div>
+      ${(()=>{ const w=st.code&&CYC&&CYC.watch&&CYC.watch.in[st.code], rm=w?roomOf(st.code,w):null; return rm&&rm.s2?`<p style="margin:6px 0"><button type="button" id="c_s2">Pakai harga beli di S2 ${usd(rm.s2buy)} (stop ${usd(rm.s2brk)})</button> <button type="button" id="c_s1">Kembali ke harga sekarang</button></p>`:""; })()}
       ${L&&st.sSrc?`<p class="note">Isian otomatis untuk ${esc(st.code)}: stop dari ${esc(st.sSrc)}, target dari ${esc(st.tSrc)}. Bisa Anda ubah.</p>`:""}`;
     out=calcPlan(st);
   } else if(st.mode==="result"){
@@ -888,7 +925,58 @@ function renderCalc(box){
   $("c_code").addEventListener("change",ev=>{ const t=ev.target.value.trim().toUpperCase(); const s=calcState(); s.code=t;
     const L2=stockLevels(t); if(L2){ Object.assign(s,{entry:L2.p,stop:L2.stop,target:L2.target,sSrc:L2.sSrc,tSrc:L2.tSrc,buy:s.mode==="result"?(s.buy||L2.p):L2.p,cur:L2.p}); }
     saveCalc(s); renderResults(); });
+  const s2b=$("c_s2"); if(s2b) s2b.addEventListener("click",()=>{ const s=calcState(), w=CYC.watch.in[s.code], rm=roomOf(s.code,w); if(!rm||!rm.s2) return; s.entry=+rm.s2buy.toFixed(IS_ID?0:2); s.stop=+rm.s2brk.toFixed(IS_ID?0:2); s.sSrc="batas jebol S2"; if(rm.r1){ s.target=rm.r1.lo; s.tSrc="resistance R1"; } saveCalc(s); renderResults(); });
+  const s1b=$("c_s1"); if(s1b) s1b.addEventListener("click",()=>{ const s=calcState(), L2=stockLevels(s.code); if(L2){ Object.assign(s,{entry:L2.p,stop:L2.stop,target:L2.target,sSrc:L2.sSrc,tSrc:L2.tSrc}); saveCalc(s); renderResults(); } });
   const fill=$("c_fill"); if(fill) fill.addEventListener("click",()=>{ const s=calcState(), o=rows.find(x=>x.ticker===s.code); if(!o) return; s.yld=+(o.div||0).toFixed(2); s.grow=+Math.max(0,Math.min(15,o.divGrowth5y||0)).toFixed(1); saveCalc(s); renderResults(); });
+}
+
+// ---------- Penjelasan Siklus ----------
+function plainWhy(w){
+  let m;
+  if((m=/^Fib ([\d.]+)%$/.exec(w))) return `Fibonacci ${nf(+m[1],1)}% (koreksi ${nf(+m[1],1)}% dari ayunan terakhir${m[1]==="50"?", separuh jalan":""})`;
+  if((m=/^Proyeksi ([\d.]+)%$/.exec(w))) return `proyeksi ${nf(+m[1],1)}% dari panjang ayunan terakhir`;
+  return {"Angka bulat":"angka bulat (order sering menumpuk di sini)","SMA50":"rata-rata harga 50 hari","SMA200":"rata-rata harga 200 hari (tren jangka panjang)",
+    "Puncak sebelumnya":"bekas puncak (dulu menahan kenaikan)","Lembah sebelumnya":"bekas lembah (dulu menahan penurunan)"}[w]||w;
+}
+function testKey(w){
+  if(/hari bursa dari/.test(w)) return "Fibonacci time zone";
+  if(/purnama/i.test(w)) return "Bulan purnama";
+  if(/bulan baru/i.test(w)) return "Bulan baru";
+  for(const p of ["Merkurius","Venus","Mars"]) if(w.includes(p)) return "Stasiun "+p;
+  return null;
+}
+function verdOf(name,key){ const t=(((CYC.tests||{})[name]||{}).time||{})[key]; return t&&!t.error?t:null; }
+function verdChip(name,key){ const t=verdOf(name,key); if(!t) return ""; const [l,c]=VERD[t.verdict]||["–","na"];
+  return ` <span class="st ${c==="ok"?"buy":c==="wait"?"hold":"wait"}" title="${nf(t.hit,1)}% vs ${nf(t.base,1)}% acak">${l}</span>`; }
+function cycleGuide(idxName){
+  const fz=verdOf(idxName,"Fibonacci time zone"), pr=(((CYC.tests||{})[idxName]||{}).price)||{}, rt=Object.values(pr)[0];
+  const v=t=>t?`Hasil uji di ${esc(idxName)}: <b>${(VERD[t.verdict]||["–"])[0]}</b> (${nf(t.hit,1)}% vs ${nf(t.base,1)}% acak).`:"";
+  return `<details class="mcard" style="margin-bottom:12px"><summary><b>📖 Cara membaca tab ini</b> <span class="note">(klik untuk membuka)</span></summary>
+    <div class="dl" style="font-size:14px;margin-top:8px;gap:8px">
+    <div><span><b>Zona support (S1, S2, S3)</b>: area di bawah harga tempat penurunan biasanya tertahan. <b>Zona resistance (R1, R2)</b>: area di atas harga tempat kenaikan biasanya tertahan. Satu zona adalah tempat beberapa garis bertemu.</span></div>
+    <div><span><b>Kuat / sedang / lemah</b>: makin banyak garis yang bertemu di satu zona, makin kuat. Setiap garis diberi bobot; kuat = skor 4 ke atas, sedang = 2,5–4, lemah = di bawahnya (biasanya hanya satu garis).</span></div>
+    <div><span><b>Fibonacci retracement (23,6%, 38,2%, 50%, 61,8%)</b>: setelah naik, harga sering turun sebagian dulu sebelum naik lagi. Persentase ini mengukur seberapa dalam koreksinya dari ayunan terakhir. ${v(rt)}</span></div>
+    <div><span><b>Proyeksi (127,2%, 161,8%)</b>: perkiraan target bila harga menembus puncak terakhir, dihitung dari panjang ayunan sebelumnya.</span></div>
+    <div><span><b>SMA50 / SMA200</b>: rata-rata harga 50 dan 200 hari, sering menjadi lantai atau atap. <b>Puncak/lembah sebelumnya</b> dan <b>angka bulat</b> juga sering menahan harga.</span></div>
+    <div><span><b>Fibonacci time zone</b>: dari setiap puncak atau lembah penting, hitung maju 13, 21, 34, 55, 89, dan 144 hari bursa. Tanggal hasilnya dicurigai bisa menjadi titik balik berikutnya. Arahnya tidak diketahui: bila harga sedang naik bisa menjadi puncak, bila turun bisa menjadi lembah. Toleransinya ±1–2 hari bursa. ${v(fz)}</span></div>
+    <div><span><b>Bulan purnama / bulan baru dan stasiun planet</b> (planet seolah berhenti lalu berbalik arah, misalnya Merkurius retrograde): dipakai sebagian trader sebagai penanda waktu. Hasil ujinya ada di tabel di bawah.</span></div>
+    <div><span><b>Tanggal rawan</b>: tanggal ketika 2 siklus waktu atau lebih jatuh berdekatan. Skor = jumlah siklus.</span></div>
+    <div><span><b>Kesimpulan uji</b>: <span class="st buy">berguna</span> = terbukti lebih sering tepat daripada tanggal acak; <span class="st hold">lemah</span> = sedikit lebih baik, belum meyakinkan; <span class="st wait">tidak berbeda dari acak</span> = sama saja dengan menebak. <b>Pakai tanggal sebagai pengingat untuk memantau lebih teliti, bukan alasan membeli atau menjual.</b> Keputusan tetap dari zona harga dan sinyal metode.</span></div>
+    </div></details>`;
+}
+function tzCard(a,idxName){
+  const fz=verdOf(idxName,"Fibonacci time zone");
+  const rowsTz=(a.tz||[]).map(x=>{ const [d,f,pd,ty,pv]=x;
+    return `<div><span><b>${tgl(d,1)}</b>${pd?`<br><span class="note">${f} hari bursa dari ${ty==="H"?"puncak":"lembah"} ${tgl(pd,1)}${pv!=null?" ("+usd(pv)+")":""}</span>`:""}</span><span class="num">${f} hari</span></div>`; }).join("");
+  return `<div class="mcard"><h4><span>Fibonacci time zone saham ini</span>${verdChip(idxName,"Fibonacci time zone")}</h4>
+    ${rowsTz?`<div class="dl">${rowsTz}</div>`:`<p class="note">Tidak ada dalam 2 bulan ke depan.</p>`}
+    <p class="note">Dihitung dari 3 puncak/lembah terakhir saham ini: maju 13, 21, 34, 55, 89, 144 hari bursa. Di sekitar tanggal itu harga <b>mungkin</b> berbalik arah, tetapi arahnya tidak diketahui.
+    ${fz?`Di ${esc(idxName)}, teknik ini tepat ${nf(fz.hit,1)}% dari kejadian, sedangkan tanggal acak ${nf(fz.base,1)}% (${(VERD[fz.verdict]||["–"])[0]}). `:""}Jadikan pengingat untuk memantau, bukan alasan transaksi.</p></div>`;
+}
+function rawanCard(a,sel){
+  const L=(a.rawan||[]).slice(0,8);
+  return `<div class="mcard"><h4><span>Tanggal rawan pembalikan</span></h4>${L.length?`<div class="dl" style="gap:8px">${L.map(x=>`<div><span><b>${tgl(x.d,1)}</b><br>${x.why.map(w=>{ const k=testKey(w); return `<span class="note">• ${esc(w)}</span>${k?verdChip(sel,k):""}`; }).join("<br>")}</span><span class="num">${x.score} siklus</span></div>`).join("")}</div>`:`<p class="note">Tidak ada tanggal dengan beberapa siklus berdekatan dalam 3 bulan ke depan.</p>`}
+    <p class="note">Artinya: di sekitar tanggal ini (±1 hari bursa) harga lebih mungkin berbalik arah menurut teknik siklus; arahnya tidak diketahui. Label di samping tiap unsur adalah hasil ujinya di ${esc(sel)}. Unsur yang “tidak berbeda dari acak” sebaiknya diabaikan.</p></div>`;
 }
 
 function renderResults(){

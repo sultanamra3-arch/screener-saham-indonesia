@@ -531,6 +531,8 @@ def watch(stocks: dict, state: dict, today: date, tick=None) -> dict:
             near[t] = rec
     first = not base and not ws.get("init")  # hari pertama: semua saham "baru", jangan dikabarkan
     new = [] if first else sorted(t for t in cur if t not in base)
+    # sudah di area support kemarin, hari ini turun ke zona support berikutnya (S2)
+    lower = [] if first else sorted(t for t in cur if t in base and cur[t]["hi"] < base[t]["lo"])
     if base:
         ws["init"] = True
     broken = []
@@ -542,7 +544,7 @@ def watch(stocks: dict, state: dict, today: date, tick=None) -> dict:
             broken.append({"t": t, "lo": b["lo"], "hi": b["hi"], "strength": b["strength"], "price": p,
                            "drop": round((p / b["lo"] - 1) * 100, 2)})
     ws["cur"] = {t: {"lo": v["lo"], "hi": v["hi"], "strength": v["strength"], "since": v["since"]} for t, v in cur.items()}
-    return {"in": cur, "near": near, "new": new, "broken": broken, "rules": {"in": IN_ABOVE * 100, "near": NEAR_ABOVE * 100, "brk": BREAK_BELOW * 100}}
+    return {"in": cur, "near": near, "new": new, "lower": lower, "broken": broken, "rules": {"in": IN_ABOVE * 100, "near": NEAR_ABOVE * 100, "brk": BREAK_BELOW * 100}}
 
 
 # ---------------------------------------------------------------- jalankan
@@ -594,7 +596,7 @@ def run(close: pd.DataFrame, indices: dict[str, str], long: dict[str, pd.Series]
             for f in FIB_TIME:
                 k = i + f - (n - 1)
                 if 1 <= k <= len(fut):
-                    tz.append([fut[k - 1], f])
+                    tz.append([fut[k - 1], f, s.index[i].strftime("%Y-%m-%d"), ty, rt(v, tick)])
         a["tz"] = sorted(tz)[:8]
         out["stocks"][t] = a
         vals = close[t].iloc[-260:]

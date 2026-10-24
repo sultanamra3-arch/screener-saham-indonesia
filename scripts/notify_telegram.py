@@ -128,6 +128,9 @@ def market_regime(d: dict, c: dict) -> str:
     return "campuran"
 
 
+RR_MIN, UP_MIN = 2, 4.0
+
+
 def support_section(d: dict) -> list[str]:
     f = ROOT / "data" / "cycles.json"
     if not f.exists():
@@ -149,24 +152,61 @@ def support_section(d: dict) -> list[str]:
         return bb, hh
 
     rng = lambda z: usd(z["lo"]) if z["lo"] == z["hi"] else f"{usd(z['lo'])}–{usd(z['hi'])}"
-    items = []
-    for t in w.get("new") or []:
-        o, z = by.get(t), (w.get("in") or {}).get(t)
+    stocks = c.get("stocks") or {}
+
+    def room(t, z):
+        """R1 = resistance kuat/sedang terdekat; R:R = ruang ke R1 / jarak ke batas jebol; S2 = support berikutnya."""
+        a = stocks.get(t) or {}
+        p = z.get("price") or a.get("price")
+        r1 = next((x for x in a.get("res") or [] if x["strength"] != "lemah"), None)
+        risk = max(p - z["brk"], p * 0.005)
+        rr = (r1["lo"] - p) / risk if r1 else None
+        if r1 and (r1["lo"] / p - 1) * 100 < UP_MIN:
+            rr = min(rr, RR_MIN - 0.01)  # ruang naik terlalu sempit
+        s2 = next((x for x in a.get("sup") or [] if x["hi"] < z["lo"] and x["strength"] != "lemah"), None)
+        rr2 = None
+        if s2 and r1:
+            rr2 = (r1["lo"] - s2["hi"]) / max(s2["hi"] - s2["lo"] * 0.99, s2["hi"] * 0.005)
+            if (r1["lo"] / s2["hi"] - 1) * 100 < UP_MIN:
+                rr2 = min(rr2, RR_MIN - 0.01)
+        return r1, rr, s2, rr2
+
+    def good(t, o, z, ms):
         if not o or not z or o.get("liq", "L") != "L" or z["strength"] == "lemah":
+            return None
+        bb, hh = sig(o, ms)
+        return (bb, hh) if (bb or hh) else None
+
+    items, waits = [], []
+    fresh = set(w.get("new") or []) | set(w.get("lower") or [])
+    for t, z in (w.get("in") or {}).items():
+        o = by.get(t)
+        g = good(t, o, z, allow)
+        if not g:
             continue
-        bb, hh = sig(o, allow)
-        if bb or hh:
-            items.append((0 if z["strength"] == "kuat" else 1, -len(bb), t, o, z, bb, hh))
-    items.sort()
+        r1, rr, s2, rr2 = room(t, z)
+        if rr is None or rr >= RR_MIN:
+            if t in fresh:
+                items.append((0 if z["strength"] == "kuat" else 1, -(rr or 9), t, o, z, g, r1, rr, t in (w.get("lower") or [])))
+        elif s2 and (rr2 is None or rr2 >= RR_MIN):
+            waits.append((-(rr2 or 9), t, o, s2, rr2))
+    items.sort(key=lambda x: x[:3])
+    waits.sort(key=lambda x: x[:2])
     L = []
     if items:
-        L += ["", b(f"📍 Masuk area support ({min(len(items), 8)})")]
-        for _, _, t, o, z, bb, hh in items[:8]:
+        L += ["", b(f"📍 Masuk area support, ruang naik cukup ({min(len(items), 8)})")]
+        for _, _, t, o, z, (bb, hh), r1, rr, low in items[:8]:
             s = " · ".join(x for x in (f"Beli: {', '.join(bb)}" if bb else "", f"Tahan: {', '.join(hh)}" if hh else "") if x)
-            L.append(f"{b(t)} {usd(o.get('price'))} · support {rng(z)} ({z['strength']}) · jebol < {usd(z['brk'])}")
+            tgt = f"R1 {usd(r1['lo'])} (R:R 1:{str(round(rr, 1)).replace('.', ',')})" if r1 else "R1 terbuka (tak ada resistance kuat ≤30%)"
+            L.append(f"{b(t)} {usd(o.get('price'))} · support {rng(z)} ({z['strength']}){' · turun ke S2' if low else ''} · {tgt} · jebol &lt; {usd(z['brk'])}")
             L.append(f"<i>{e(s)}</i>")
         if len(items) > 8:
             L.append(f"…dan {len(items) - 8} lainnya di tab Watchlist pribadi")
+    if waits:
+        L += ["", b(f"🎯 Antre beli di S2 ({len(waits)})"),
+              "<i>Di S1 tapi R1 terlalu dekat; tunggu harga turun ke S2.</i>"]
+        L.append(" · ".join(f"{b(t)} {usd(s2['hi'])}" for _, t, o, s2, rr2 in waits[:6])
+                 + (f" · +{len(waits) - 6} lainnya" if len(waits) > 6 else ""))
     brk = []
     for x in w.get("broken") or []:
         o = by.get(x["t"])
