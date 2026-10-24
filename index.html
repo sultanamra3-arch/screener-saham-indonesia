@@ -123,6 +123,14 @@ tbody tr:last-child td{border-bottom:none}
 .cl{display:flex;flex-direction:column;gap:3px;font-size:13px}
 .cl div{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:6px;align-items:baseline}
 .cl .v{font-family:var(--f-mono);font-size:12px;text-align:right;color:var(--muted)}
+.calcbtn{font-size:12.5px;padding:3px 8px;white-space:nowrap}
+.calcwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:10px}
+@media (max-width:760px){.calcwrap{grid-template-columns:1fr}}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.cf{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted)}
+.cf input,.cf select{width:100%;box-sizing:border-box}
+input[type=date]{font:inherit;font-size:14px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+.num.big{font-size:17px;font-weight:600}
 .mcard{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .mcard h4{margin:0;font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .trades{display:flex;flex-direction:column;gap:3px}
@@ -235,7 +243,7 @@ const M = [
   cols:[["rsi2","RSI(2)"],["sma200","vs SMA200",1],["perf1m","1 bln",1]]},
 ];
 const MID = Object.fromEntries(M.map(m=>[m.id,m]));
-const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"etf",name:"ETF",k:"Indeks Indonesia"}]);
+const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"calc",name:"Kalkulator",k:"Return & risiko"},{id:"etf",name:"ETF",k:"Indeks Indonesia"}]);
 const ST = {buy:"Beli",hold:"Tahan",sell:"Jual",wait:"Tunggu",na:"Tidak dinilai"};
 const PRI = {buy:0,sell:1,hold:2,wait:3,na:4};
 const REASON = {stop:"stop loss −7%",be:"kembali ke harga beli",target:"target +20%","8w":"8 minggu selesai",sma5:"di atas SMA5",rank:"keluar 20% teratas"};
@@ -311,6 +319,7 @@ function renderTabs(){
     let c="";
     if(t.id==="summary"){ const n=list.filter(o=>summaryOf(o).by.buy.length).length; c=`<b>${n}</b> saham ada sinyal beli`; }
     else if(t.id==="etf") c="Perbandingan";
+    else if(t.id==="calc") c="Lot, untung, rugi";
     else if(t.id==="watch") { if(CYC&&CYC.watch){ const al=allowedMethods(), byT=Object.fromEntries(list.map(o=>[o.ticker,o])); const n=Object.entries(CYC.watch.in).filter(([tk,w])=>byT[tk]&&(w.strength!=="lemah")&&sigOf(byT[tk],al).any).length; c=`<b>${n}</b> di area support`; } else c="★ dan area support"; }
     else if(t.id==="cycles") { const f=CYC&&Object.values(CYC.indices)[0]; c=f?`<b>${(f.rawan||[]).length}</b> tanggal rawan`:"Analisis"; }
     else { const b=list.filter(o=>mget(o,t.id).s==="buy").length, h=list.filter(o=>mget(o,t.id).s==="hold").length; c=`<b>${b}</b> beli · ${h} tahan`; }
@@ -357,7 +366,7 @@ function methodCard(o,mid){
 function detail(o, only){
   const ids = only ? [only].concat(M.map(m=>m.id).filter(x=>x!==only)) : M.map(m=>m.id);
   const tt=(o.tt||[]);
-  return `${saranBox(`<p>${saranStock(o)}</p>`)}<div style="height:10px"></div><div class="dgrid">${ids.map(id=>methodCard(o,id)).join("")}
+  return `${saranBox(`<p>${saranStock(o)}</p><p>${calcBtn(o.ticker,"🧮 Hitung lot, untung & rugi")}</p>`)}<div style="height:10px"></div><div class="dgrid">${ids.map(id=>methodCard(o,id)).join("")}
     ${tt.length?`<div class="mcard"><h4><span>Trend template Minervini</span><span class="na" style="font-weight:400">${tt.filter(x=>x[1]).length}/8</span></h4><div class="cl">${tt.map(x=>`<div>${x[1]?'<span class="ok">✓</span>':'<span class="no">✗</span>'}<span>${esc(x[0])}</span><span></span></div>`).join("")}</div></div>`:""}</div>`;
 }
 
@@ -552,7 +561,7 @@ function renderCycles(box){
         <div class="seg" role="group" aria-label="Indeks">${names.map(n=>`<button type="button" data-cy="${esc(n)}" aria-pressed="${n===sel}">${esc(n)}</button>`).join("")}</div>
         <input type="search" id="cyQ" list="cyList" placeholder="Kode saham" aria-label="Pilih saham" value="${isIdx?"":esc(sel)}" style="width:130px">
         <datalist id="cyList">${Object.keys(CYC.stocks).map(t=>`<option value="${esc(t)}">`).join("")}</datalist></div></div>
-    ${saranBox(isIdx?saranMarket().html:`<p>${o?saranStock(o):""}</p>`+saranMarket().html)}<div style="height:12px"></div>
+    ${saranBox(isIdx?saranMarket().html:`<p>${o?saranStock(o)+" "+calcBtn(o.ticker):""}</p>`+saranMarket().html)}<div style="height:12px"></div>
     <div class="tablebox" style="padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
       <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
       <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
@@ -719,7 +728,7 @@ function renderWatch(box){
       <td class="num">${usd(x.o.price)}</td><td class="num">${zr(x.w)}${newSet.has(x.t)?' <span class="st buy">baru</span>':""}</td>
       <td><span class="st ${x.w.strength==="kuat"?"buy":x.w.strength==="sedang"?"hold":"wait"}">${x.w.strength}</span></td>
       <td class="num">${x.w.dist<=0?"di zona":"+"+nf(x.w.dist,1)+"%"}</td><td class="num">${usd(x.w.brk)}</td>
-      <td style="font-size:13px">${sigCell(x.sg)}</td><td class="why">${esc(shortAdvice(x.w,x.sg))}</td></tr>`;
+      <td style="font-size:13px">${sigCell(x.sg)}</td><td class="why">${esc(shortAdvice(x.w,x.sg))} ${calcBtn(x.t)}</td></tr>`;
   const head=`<thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Zona support</th><th>Kekuatan</th><th class="num">Jarak</th><th class="num">Batas jebol</th><th>Sinyal</th><th>Saran singkat</th></tr></thead>`;
   const st=stars(), starred=[...st].map(t=>({t,o:rows.find(x=>x.ticker===t),z:nearZones(t)})).filter(x=>x.o);
   const broken=(W.broken||[]).filter(b=>byT[b.t]);
@@ -748,10 +757,144 @@ function renderWatch(box){
   $("wNew").addEventListener("click",()=>{ store.set(WP+"w.new",onlyNew?"0":"1"); renderResults(); });
 }
 
+// ---------- Kalkulator ----------
+const UNIT = IS_ID ? 100 : 1, UNAME = IS_ID ? "lot" : "lembar";
+const CALC_DEF = IS_ID
+  ? {fb:0.15, fs:0.25, tax:10, risk:1, alloc:20, modal:100000000, p0:100000000, monthly:1000000, yld:6, grow:5, years:10}
+  : {fb:0, fs:0, tax:15, risk:1, alloc:20, modal:10000, p0:10000, monthly:100, yld:3, grow:7, years:10};
+function calcState(){ try{ return Object.assign({mode:"plan"}, CALC_DEF, JSON.parse(store.get(WP+"calc")||"{}")); }catch(e){ return Object.assign({mode:"plan"}, CALC_DEF); } }
+function saveCalc(st){ store.set(WP+"calc", JSON.stringify(st)); }
+function stockLevels(t){
+  const o=rows.find(x=>x.ticker===t); if(!o) return null;
+  const p=o.price, cs=mget(o,"canslim"), z=nearZones(t), w=CYC&&CYC.watch&&CYC.watch.in[t];
+  let stop=null, sSrc="", target=null, tSrc="";
+  if((cs.s==="buy"||cs.s==="hold")&&cs.lv&&cs.lv.stop){ stop=cs.lv.stop; sSrc="stop CAN SLIM"; }
+  else if(w){ stop=w.brk; sSrc="batas jebol support"; }
+  else if(z&&z.s){ stop=z.s.lo*0.99; sSrc="di bawah support terdekat"; }
+  else { stop=p*0.92; sSrc="−8% (tidak ada support terdekat)"; }
+  if((cs.s==="buy"||cs.s==="hold")&&cs.lv&&cs.lv.target){ target=cs.lv.target; tSrc="target CAN SLIM"; }
+  else if(z&&z.r){ target=z.r.lo; tSrc="resistance terdekat"; }
+  else { const v=mget(o,"value"); if(v.lv&&v.lv.target){ target=v.lv.target; tSrc="target Graham +50%"; } else { target=p*1.15; tSrc="+15% (tidak ada resistance terdekat)"; } }
+  return {o,p,stop:+(+stop).toFixed(IS_ID?0:2),target:+(+target).toFixed(IS_ID?0:2),sSrc,tSrc};
+}
+function openCalc(t){
+  const st=calcState(), L=stockLevels(t); if(!L) return;
+  Object.assign(st,{code:t,entry:L.p,stop:L.stop,target:L.target,sSrc:L.sSrc,tSrc:L.tSrc,buy:L.p,cur:L.p});
+  if(st.mode==="sim") st.mode="plan";
+  saveCalc(st); tab="calc"; store.set(WP+"tab","calc"); try{history.replaceState(null,"","#calc")}catch(e){}
+  renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0,behavior:"smooth"});
+}
+const calcBtn = (t,label="🧮 Hitung") => `<button type="button" class="calcbtn" data-calc="${esc(t)}">${label}</button>`;
+const money = v => !isFinite(v) ? "–" : (v<0?"−":"")+usd(Math.abs(v));
+const fld = (id,label,val,extra="") => `<label class="cf" for="${id}"><span>${label}</span><input type="number" step="any" id="${id}" value="${val==null||val===""?"":val}" ${extra}></label>`;
+function rrJudge(rr){ return rr>=2.5?["bagus","buy"]:rr>=1.5?["cukup","hold"]:["kurang layak","sell"]; }
+function calcPlan(st){
+  const fb=st.fb/100, fs=st.fs/100, e=+st.entry, sp=+st.stop, tg=+st.target, modal=+st.modal;
+  if(!(e>0)||!(modal>0)) return `<p class="note">Isi harga beli dan modal.</p>`;
+  if(!(sp>0)||sp>=e) return `<p class="no">Stop loss harus di bawah harga beli.</p>`;
+  const buyC=e*(1+fb), rps=buyC-sp*(1-fs), maxRisk=modal*st.risk/100;
+  const byRisk=Math.floor(maxRisk/rps/UNIT)*UNIT, byAlloc=Math.floor(modal*st.alloc/100/buyC/UNIT)*UNIT;
+  const sh=Math.max(0,Math.min(byRisk,byAlloc)), cost=sh*buyC;
+  const win=tg>0?sh*(tg*(1-fs)-buyC):NaN, loss=sh*(sp*(1-fs)-buyC), rr=isFinite(win)&&loss<0?win/-loss:NaN;
+  const [jl,jc]=rrJudge(rr), fx=+st.fx;
+  if(sh<=0) return `<p class="no">Modal terlalu kecil untuk membeli 1 ${UNAME} dengan batas risiko ini. Naikkan modal atau batas risiko, atau pilih stop yang lebih dekat.</p>`;
+  return `<div class="dl">
+    <div><span><b>Beli</b></span><span class="num big">${nf(sh/UNIT,0)} ${UNAME}${IS_ID?` (${nf(sh,0)} lembar)`:""}</span></div>
+    <div><span>Biaya total</span><span class="num">${money(cost)} (${nf(cost/modal*100,1)}% modal)${!IS_ID&&fx>0?` ≈ Rp${nf(cost*fx,0)}`:""}</span></div>
+    <div><span>Sisa modal</span><span class="num">${money(modal-cost)}</span></div>
+    <div><span>Dibatasi oleh</span><span>${byRisk<=byAlloc?`risiko ${nf(st.risk,1)}% modal`:`alokasi maksimal ${nf(st.alloc,0)}% per saham`}</span></div>
+    <div><span>Jika kena stop ${usd(sp)}</span><span class="num no">${money(loss)} (${nf(loss/cost*100,1)}%)</span></div>
+    <div><span>Jika capai target ${usd(tg)}</span><span class="num ok">${isFinite(win)?money(win)+` (${nf(win/cost*100,1)}%)`:"–"}</span></div>
+    <div><span><b>Rasio untung : rugi</b></span><span><span class="num">1 : ${isFinite(rr)?nf(rr,2):"–"}</span> <span class="st ${jc}">${jl}</span></span></div></div>
+    <p class="note">${rr<1.5?"Target terlalu dekat dibanding stop. Tunggu harga lebih dekat ke support, atau lewati saham ini. ":""}Rugi maksimal dijaga sekitar ${nf(st.risk,1)}% modal. Sudah termasuk biaya beli ${nf(st.fb,2)}% dan jual ${nf(st.fs,2)}%.${IS_ID?" Saat saham terkena ARB, stop bisa tidak tereksekusi sehingga rugi bisa lebih besar.":""}</p>`;
+}
+function calcResult(st){
+  const fb=st.fb/100, fs=st.fs/100, b=+st.buy, c=+st.cur, q=(+st.qty||0)*UNIT, dps=+st.dps||0, tax=st.tax/100;
+  if(!(b>0)||!(q>0)) return `<p class="note">Isi harga beli dan jumlah ${UNAME}.</p>`;
+  const cost=q*b*(1+fb), val=q*c*(1-fs), div=q*dps*(1-tax), pl=val+div-cost, pc=pl/cost*100;
+  let ann="";
+  if(st.date){ const d=(Date.now()-new Date(st.date))/864e5; if(d>30) ann=`<div><span>Return per tahun</span><span class="num ${pl>=0?"ok":"no"}">${nf((Math.pow(1+pl/cost,365/d)-1)*100,1)}% <span class="na">(${nf(d/365,1)} tahun)</span></span></div>`; }
+  const bep=b*(1+fb)/(1-fs);
+  const sc=[]; const L=st.code?stockLevels(st.code):null;
+  if(L){ sc.push(["Target / resistance ("+L.tSrc+")",L.target]); sc.push(["Stop / support ("+L.sSrc+")",L.stop]);
+    const o=L.o, v=mget(o,"value"), g=mget(o,"growth");
+    if(v.lv&&v.lv.target&&(v.s==="hold"||v.s==="buy")) sc.push(["Target Graham (+50%)",v.lv.target]);
+    if(g.lv&&g.lv.target&&(g.s==="hold"||g.s==="buy")) sc.push(["Target Lynch (PEG 2)",g.lv.target]); }
+  const fx=+st.fx, fxb=+st.fxb;
+  return `<div class="dl">
+    <div><span>Modal (termasuk biaya beli)</span><span class="num">${money(cost)}</span></div>
+    <div><span>Nilai bila dijual di ${usd(c)} (setelah biaya)</span><span class="num">${money(val)}</span></div>
+    ${dps?`<div><span>Dividen bersih diterima</span><span class="num">${money(div)}</span></div>`:""}
+    <div><span><b>Untung / rugi</b></span><span class="num big ${pl>=0?"ok":"no"}">${money(pl)} (${pl>=0?"+":""}${nf(pc,2)}%)</span></div>
+    ${ann}
+    <div><span>Harga impas (setelah biaya)</span><span class="num">${usd(bep)}</span></div>
+    ${!IS_ID&&fx>0&&fxb>0?`<div><span>Dalam rupiah (kurs ${nf(fxb,0)} → ${nf(fx,0)})</span><span class="num ${(val+div)*fx-cost*fxb>=0?"ok":"no"}">Rp${nf((val+div)*fx-cost*fxb,0)} (${nf(((val+div)*fx/(cost*fxb)-1)*100,2)}%)</span></div>`:""}</div>
+    ${sc.length?`<h3 style="margin-top:10px">Skenario jual dari data screener</h3><div class="dl">${sc.map(([n,p])=>{ const x=q*p*(1-fs)+div-cost; return `<div><span>${esc(n)}: ${usd(p)}</span><span class="num ${x>=0?"ok":"no"}">${money(x)} (${x>=0?"+":""}${nf(x/cost*100,1)}%)</span></div>`}).join("")}</div>`:""}`;
+}
+function calcSim(st){
+  const P=+st.p0||0, m=+st.monthly||0, y=(+st.yld||0)/100, g=(+st.grow||0)/100, n=Math.min(50,Math.max(1,+st.years||10)), tax=st.tax/100, re=st.reinv!==false;
+  if(!(P>0||m>0)) return `<p class="note">Isi modal awal atau setoran bulanan.</p>`;
+  let v=P, paid=P, divTot=0; const rowsY=[];
+  for(let k=1;k<=n;k++){ const d=v*y*(1-tax); v=v*(1+g)+m*12*(1+g/2); paid+=m*12; if(re) v+=d; divTot+=d; rowsY.push([k,v,d,paid]); }
+  const last=rowsY[rowsY.length-1], mx=Math.max(...rowsY.map(r=>r[1]));
+  const W=Math.max(320,n*26), H=150, bw=Math.max(6,(W-20)/n-4);
+  const bars=rowsY.map((r,i)=>{ const h=r[1]/mx*(H-20), hp=Math.min(h,r[3]/mx*(H-20)); const x=10+i*((W-20)/n);
+    return `<rect x="${x}" y="${H-h}" width="${bw}" height="${h}" fill="var(--accent)" opacity=".85"><title>Tahun ${r[0]}: ${money(r[1])}</title></rect><rect x="${x}" y="${H-hp}" width="${bw}" height="${hp}" fill="var(--muted)" opacity=".45"></rect>`; }).join("");
+  return `<div class="dl">
+    <div><span>Total setoran</span><span class="num">${money(last[3])}</span></div>
+    <div><span><b>Nilai akhir tahun ke-${n}</b></span><span class="num big ok">${money(last[1])}</span></div>
+    <div><span>Total dividen bersih</span><span class="num">${money(divTot)} ${re?"(diinvestasikan ulang)":"(diambil)"}</span></div>
+    <div><span>Dividen tahun terakhir</span><span class="num">${money(last[2])} (≈ ${money(last[2]/12)} per bulan)</span></div>
+    ${!IS_ID&&+st.fx>0?`<div><span>Nilai akhir dalam rupiah (kurs sekarang)</span><span class="num">Rp${nf(last[1]*st.fx,0)}</span></div>`:""}</div>
+    <div style="overflow-x:auto;margin-top:8px"><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" role="img" aria-label="Pertumbuhan nilai per tahun">${bars}</svg></div>
+    <p class="note">Batang biru = nilai portofolio, abu-abu = total setoran. Asumsi tetap setiap tahun; kenyataan akan naik-turun. Bukan jaminan hasil.</p>`;
+}
+function renderCalc(box){
+  if(!CYC&&!CYC_ERR){ loadCycles().then(()=>{ if(tab==="calc") renderResults(); }); }
+  const st=calcState(); if(st.fx==null&&DATA&&DATA.fx) st.fx=DATA.fx; if(st.fxb==null&&st.fx) st.fxb=st.fx;
+  const L=st.code?stockLevels(st.code):null;
+  const modeBtn=(k,l)=>`<button type="button" data-cm="${k}" aria-pressed="${st.mode===k}">${l}</button>`;
+  const fees=`<div class="cgrid">${fld("c_fb","Biaya beli (%)",st.fb)}${fld("c_fs","Biaya jual (%)",st.fs)}${fld("c_tax","Pajak dividen (%)",st.tax)}${!IS_ID?fld("c_fx","Kurs USD/IDR",st.fx):""}</div>`;
+  const code=`<label class="cf" for="c_code"><span>Kode saham</span><input type="search" id="c_code" list="c_list" value="${esc(st.code||"")}" placeholder="mis. ${IS_ID?"BBCA":"AAPL"}"></label><datalist id="c_list">${rows.filter(o=>!IS_ID||o.liq!=="T").map(o=>`<option value="${esc(o.ticker)}">`).join("")}</datalist>`;
+  let form="", out="";
+  if(st.mode==="plan"){
+    form=`<div class="cgrid">${code}${fld("c_entry","Harga beli",st.entry)}${fld("c_stop","Stop loss",st.stop)}${fld("c_target","Target",st.target)}
+      ${fld("c_modal","Modal ("+(IS_ID?"Rp":"$")+")",st.modal??(IS_ID?100000000:10000))}${fld("c_risk","Risiko per transaksi (% modal)",st.risk)}${fld("c_alloc","Maksimal per saham (% modal)",st.alloc)}</div>
+      ${L&&st.sSrc?`<p class="note">Isian otomatis untuk ${esc(st.code)}: stop dari ${esc(st.sSrc)}, target dari ${esc(st.tSrc)}. Bisa Anda ubah.</p>`:""}`;
+    out=calcPlan(st);
+  } else if(st.mode==="result"){
+    form=`<div class="cgrid">${code}${fld("c_buy","Harga beli",st.buy)}${fld("c_qty","Jumlah ("+UNAME+")",st.qty)}
+      <label class="cf" for="c_date"><span>Tanggal beli (opsional)</span><input type="date" id="c_date" value="${esc(st.date||"")}"></label>
+      ${fld("c_cur","Harga jual / sekarang",st.cur)}${fld("c_dps","Dividen diterima per lembar",st.dps)}${!IS_ID?fld("c_fxb","Kurs saat beli",st.fxb):""}</div>`;
+    out=calcResult(st);
+  } else {
+    const o=st.code?rows.find(x=>x.ticker===st.code):null;
+    form=`<div class="cgrid">${code}${fld("c_p0","Modal awal",st.p0??(IS_ID?100000000:10000))}${fld("c_monthly","Setoran per bulan",st.monthly??0)}
+      ${fld("c_yld","Yield dividen (%/tahun)",st.yld??6)}${fld("c_grow","Kenaikan harga (%/tahun)",st.grow??5)}${fld("c_years","Lama (tahun)",st.years??10)}
+      <label class="cf" for="c_reinv"><span>Dividen</span><select id="c_reinv"><option value="1" ${st.reinv!==false?"selected":""}>Diinvestasikan ulang</option><option value="0" ${st.reinv===false?"selected":""}>Diambil sebagai penghasilan</option></select></label></div>
+      ${o?`<button type="button" id="c_fill">Isi yield (${nf(o.div||0,2)}%) dan pertumbuhan dividen (${nf(o.divGrowth5y||0,1)}%) dari ${esc(o.ticker)}</button>`:""}`;
+    out=calcSim(st);
+  }
+  box.innerHTML=`<div class="rhead"><div class="l"><h2>Kalkulator</h2><p class="note">Semua hitungan berjalan di browser Anda. Isian terakhir diingat di perangkat ini.</p></div>
+      <div class="seg" role="group" aria-label="Mode kalkulator">${modeBtn("plan","Rencana beli")}${modeBtn("result","Hasil posisi")}${modeBtn("sim","Simulasi jangka panjang")}</div></div>
+    <div class="calcwrap"><div class="mcard">${form}<details style="margin-top:6px"><summary class="note">Biaya, pajak${IS_ID?"":", dan kurs"}</summary>${fees}</details></div>
+    <div class="mcard" id="c_out">${out}</div></div>`;
+  box.querySelectorAll("[data-cm]").forEach(b=>b.addEventListener("click",()=>{ const s=calcState(); s.mode=b.dataset.cm; saveCalc(s); renderResults(); }));
+  const map={c_entry:"entry",c_stop:"stop",c_target:"target",c_modal:"modal",c_risk:"risk",c_alloc:"alloc",c_buy:"buy",c_qty:"qty",c_cur:"cur",c_dps:"dps",c_fb:"fb",c_fs:"fs",c_tax:"tax",c_fx:"fx",c_fxb:"fxb",c_p0:"p0",c_monthly:"monthly",c_yld:"yld",c_grow:"grow",c_years:"years"};
+  const upd=()=>{ const s=calcState(); Object.entries(map).forEach(([id,k])=>{ const el=$(id); if(el){ const v=parseFloat(el.value); s[k]=isFinite(v)?v:null; } });
+    if($("c_date")) s.date=$("c_date").value; if($("c_reinv")) s.reinv=$("c_reinv").value==="1"; saveCalc(s);
+    const s2=calcState(); $("c_out").innerHTML = s2.mode==="plan"?calcPlan(s2):s2.mode==="result"?calcResult(s2):calcSim(s2); };
+  box.querySelectorAll("input:not(#c_code),select").forEach(el=>el.addEventListener("input",upd));
+  $("c_code").addEventListener("change",ev=>{ const t=ev.target.value.trim().toUpperCase(); const s=calcState(); s.code=t;
+    const L2=stockLevels(t); if(L2){ Object.assign(s,{entry:L2.p,stop:L2.stop,target:L2.target,sSrc:L2.sSrc,tSrc:L2.tSrc,buy:s.mode==="result"?(s.buy||L2.p):L2.p,cur:L2.p}); }
+    saveCalc(s); renderResults(); });
+  const fill=$("c_fill"); if(fill) fill.addEventListener("click",()=>{ const s=calcState(), o=rows.find(x=>x.ticker===s.code); if(!o) return; s.yld=+(o.div||0).toFixed(2); s.grow=+Math.max(0,Math.min(15,o.divGrowth5y||0)).toFixed(1); saveCalc(s); renderResults(); });
+}
+
 function renderResults(){
   const box=$("results");
   if(!DATA){ box.innerHTML=`<div class="tablebox"><div class="empty">Belum ada data. Setelah workflow selesai, tabel saham muncul di sini.</div></div>`; return; }
-  if(tab==="summary") renderSummary(box); else if(tab==="etf") renderEtf(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else renderMethod(box,MID[tab]);
+  if(tab==="summary") renderSummary(box); else if(tab==="etf") renderEtf(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else if(tab==="calc") renderCalc(box); else renderMethod(box,MID[tab]);
 }
 function renderAll(){ renderStatus(); renderTabs(); renderRail(); renderResults(); }
 
@@ -759,6 +902,7 @@ function renderAll(){ renderStatus(); renderTabs(); renderRail(); renderResults(
 $("tabs").addEventListener("click",ev=>{ const b=ev.target.closest(".tab"); if(!b) return; tab=b.dataset.id; openTicker=null; store.set("si.tab",tab); try{history.replaceState(null,"","#"+tab)}catch(e){} renderTabs(); renderRail(); renderResults(); });
 function toggleRow(tr){ openTicker=openTicker===tr.dataset.t?null:tr.dataset.t; renderResults(); const again=document.querySelector(`tr.row[data-t="${CSS.escape(tr.dataset.t)}"]`); if(again) again.focus({preventScroll:true}); }
 $("results").addEventListener("click",ev=>{
+  const cb=ev.target.closest(".calcbtn"); if(cb){ ev.stopPropagation(); openCalc(cb.dataset.calc); return; }
   const sb=ev.target.closest(".star"); if(sb){ ev.stopPropagation(); toggleStar(sb.dataset.star); renderTabs(); renderResults(); return; }
   const wr=ev.target.closest("tr.wrow"); if(wr){ store.set(WP+"cy.sel",wr.dataset.go); tab="cycles"; store.set(WP+"tab","cycles"); try{history.replaceState(null,"","#cycles")}catch(e){} renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0,behavior:"smooth"}); return; }
   const tr=ev.target.closest("tr.row"); if(tr) toggleRow(tr); });
