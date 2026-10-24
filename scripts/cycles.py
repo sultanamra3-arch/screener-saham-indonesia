@@ -273,8 +273,21 @@ def run_tests(long: pd.Series, cfg: dict) -> dict:
     st = planet_stations(start, end)
     for name, _ in PLANETS:
         out["time"][f"Stasiun {name}"] = perm_test(mask, [to_idx(s.index, d) for d, k in st if k.startswith(name) and to_idx(s.index, d) is not None], 0, hi)
+    # Pembanding yang adil: jarak acak 13–144 hari dari titik balik yang SAMA (bukan tanggal acak),
+    # karena jarak antar titik balik memang punya pola sendiri.
     ev = [p + f for p in pidx for f in FIB_TIME if p + f < hi]
-    out["time"]["Fibonacci time zone"] = perm_test(mask, ev, 0, hi)
+    if len(ev) >= 8:
+        obs = float(mask[ev].mean())
+        sims = []
+        for _ in range(2000):
+            offs = RNG.integers(13, 145, size=(len(pidx), len(FIB_TIME)))
+            e2 = [p + o for p, row in zip(pidx, offs) for o in row if p + o < hi]
+            sims.append(mask[e2].mean() if e2 else 0)
+        sims = np.array(sims)
+        p = float((sims >= obs).mean())
+        out["time"]["Fibonacci time zone"] = {"n": len(ev), "hit": round(obs * 100, 1), "base": round(float(sims.mean()) * 100, 1),
+                                               "lift": round(obs / sims.mean(), 2) if sims.mean() else None, "p": round(p, 3),
+                                               "verdict": verdict(p, obs / sims.mean() if sims.mean() else 1), "vs": "jarak acak 13–144 hari"}
 
     # Fibonacci harga: apakah retracement berhenti di dekat 38,2/50/61,8% lebih sering dari acak?
     rets_ratio = []
@@ -287,11 +300,15 @@ def run_tests(long: pd.Series, cfg: dict) -> dict:
         tol = 0.03
         hit = lambda arr: np.mean([min(abs(x - f) for f in (0.382, 0.5, 0.618)) <= tol for x in arr])
         obs = float(hit(rr))
-        sims = np.array([hit(RNG.uniform(0.1, 0.95, len(rr))) for _ in range(2000)])
+        # Pembanding yang adil: tiga rasio acak di antara 25–75% diuji pada retracement yang SAMA,
+        # karena retracement memang cenderung mengumpul di tengah.
+        def hit_r(arr, ratios):
+            return np.mean([min(abs(x - f) for f in ratios) <= tol for x in arr])
+        sims = np.array([hit_r(rr, RNG.uniform(0.25, 0.75, 3)) for _ in range(2000)])
         p = float((sims >= obs).mean())
         out["price"]["Retracement berhenti di 38,2/50/61,8% (±3 poin)"] = {
             "n": int(len(rr)), "hit": round(obs * 100, 1), "base": round(float(sims.mean()) * 100, 1),
-            "lift": round(obs / sims.mean(), 2), "p": round(p, 3), "verdict": verdict(p, obs / sims.mean())}
+            "lift": round(obs / sims.mean(), 2), "p": round(p, 3), "verdict": verdict(p, obs / sims.mean()), "vs": "3 rasio acak 25–75%"}
 
     lr = np.log(s).diff().dropna()
     idx = lr.index
@@ -402,7 +419,8 @@ def weekly_range(s: pd.Series, vix: float | None = None):
 
 def breadth(close: pd.DataFrame, cols: list[str]):
     c = close[[x for x in cols if x in close]].tail(520)
-    s200, s50 = c.rolling(200, min_periods=150).mean(), c.rolling(50).mean()
+    c = c.loc[c.notna().mean(axis=1) > 0.5]  # buang hari yang hanya berisi data indeks
+    s200, s50 = c.rolling(200, min_periods=150).mean(), c.rolling(50, min_periods=40).mean()
     a200 = (c > s200).where(s200.notna()).mean(axis=1) * 100
     a50 = (c > s50).where(s50.notna()).mean(axis=1) * 100
     hi = c >= c.rolling(252, min_periods=200).max()
