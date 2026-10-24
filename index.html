@@ -54,8 +54,10 @@ input[type=number],input[type=search]{font:inherit;font-size:14px;color:var(--fg
 .seg button[aria-pressed=true],#syr[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .filters input[type=search]{width:170px}
 
-.tabs{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:8px}
-@media (max-width:1100px){.tabs{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.tabs{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:8px}
+.tab .n{white-space:normal}
+.star{border:none;background:transparent;color:var(--warn);padding:0 6px 0 0;font-size:16px;line-height:1;cursor:pointer}
+.star[aria-pressed=false]{color:var(--muted)}
 @media (max-width:640px){.tabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .tab{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:9px 11px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);min-width:0}
 .tab .k{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
@@ -233,7 +235,7 @@ const M = [
   cols:[["rsi2","RSI(2)"],["sma200","vs SMA200",1],["perf1m","1 bln",1]]},
 ];
 const MID = Object.fromEntries(M.map(m=>[m.id,m]));
-const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"etf",name:"ETF",k:"Indeks Indonesia"}]);
+const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"etf",name:"ETF",k:"Indeks Indonesia"}]);
 const ST = {buy:"Beli",hold:"Tahan",sell:"Jual",wait:"Tunggu",na:"Tidak dinilai"};
 const PRI = {buy:0,sell:1,hold:2,wait:3,na:4};
 const REASON = {stop:"stop loss −7%",be:"kembali ke harga beli",target:"target +20%","8w":"8 minggu selesai",sma5:"di atas SMA5",rank:"keluar 20% teratas"};
@@ -261,7 +263,7 @@ function fmtCol(k,v,isPct){
 }
 const LIQ={L:"",K:"kurang likuid",T:"tidak likuid"};
 const ixBadges = o => (o.syariah?`<span class="ix" title="Daftar Efek Syariah OJK">syariah</span>`:"")+(o.liq&&o.liq!=="L"?`<span class="ix" style="background:var(--warn-soft);color:var(--warn)">${LIQ[o.liq]}</span>`:"")+(o.ipo||((o.days||999)<200)?`<span class="ix" style="background:var(--sunk);color:var(--muted)">baru</span>`:"");
-const stockCell = o => `<td><span class="tk">${esc(o.ticker)}</span>${ixBadges(o)}<span class="nm">${esc(o.company||"")}${o.sector?" · "+esc(o.sector):""}</span></td>`;
+const stockCell = o => `<td>${starBtn(o.ticker)}<span class="tk">${esc(o.ticker)}</span>${ixBadges(o)}<span class="nm">${esc(o.company||"")}${o.sector?" · "+esc(o.sector):""}</span></td>`;
 const chip = s => `<span class="st ${s}">${ST[s]||s}</span>`;
 function levels(mid, st){
   const lv=st.lv||{}, p=[];
@@ -309,6 +311,7 @@ function renderTabs(){
     let c="";
     if(t.id==="summary"){ const n=list.filter(o=>summaryOf(o).by.buy.length).length; c=`<b>${n}</b> saham ada sinyal beli`; }
     else if(t.id==="etf") c="Perbandingan";
+    else if(t.id==="watch") { if(CYC&&CYC.watch){ const al=allowedMethods(), byT=Object.fromEntries(list.map(o=>[o.ticker,o])); const n=Object.entries(CYC.watch.in).filter(([tk,w])=>byT[tk]&&(w.strength!=="lemah")&&sigOf(byT[tk],al).any).length; c=`<b>${n}</b> di area support`; } else c="★ dan area support"; }
     else if(t.id==="cycles") { const f=CYC&&Object.values(CYC.indices)[0]; c=f?`<b>${(f.rawan||[]).length}</b> tanggal rawan`:"Analisis"; }
     else { const b=list.filter(o=>mget(o,t.id).s==="buy").length, h=list.filter(o=>mget(o,t.id).s==="hold").length; c=`<b>${b}</b> beli · ${h} tahan`; }
     return `<button class="tab" role="tab" type="button" aria-selected="${t.id===tab}" data-id="${t.id}"><span class="k">${esc(t.k)}</span><span class="n">${esc(t.name)}</span><span class="c">${c}</span></button>`;
@@ -536,7 +539,7 @@ function renderCycles(box){
   if(!CYC&&!CYC_ERR){ box.innerHTML=`<div class="tablebox"><div class="empty">Memuat analisis siklus…</div></div>`; loadCycles().then(()=>{ if(tab==="cycles"){ renderTabs(); renderResults(); } }); return; }
   if(CYC_ERR){ box.innerHTML=`<div class="tablebox"><div class="empty">Analisis Siklus & Fibonacci belum tersedia. Akan terisi setelah pembaruan data berikutnya.</div></div>`; return; }
   const names=Object.keys(CYC.indices);
-  let sel=store.get("cy.sel")||names[0];
+  let sel=store.get(WP+"cy.sel")||names[0];
   if(!CYC.indices[sel]&&!CYC.stocks[sel]) sel=names[0];
   const isIdx=!!CYC.indices[sel], a=isIdx?CYC.indices[sel]:CYC.stocks[sel];
   const vals=isIdx?SER.idx[sel]:SER.stocks[sel];
@@ -578,8 +581,8 @@ function renderCycles(box){
     ${isIdx?`<div class="mcard" style="margin-top:12px"><h4><span>Uji ketepatan: ${esc(sel)}</span></h4>${testTable(CYC.tests[sel])}</div>
       <div class="mcard" style="margin-top:12px"><h4><span>Papan skor ramalan: ${esc(sel)}</span></h4>${scoreCard((CYC.score||{})[sel])}</div>`
       :`<p class="note" style="margin-top:8px">Uji ketepatan dan papan skor tersedia di tampilan indeks.</p>`}`;
-  box.querySelectorAll("[data-cy]").forEach(bt=>bt.addEventListener("click",()=>{ store.set("cy.sel",bt.dataset.cy); renderResults(); }));
-  $("cyQ").addEventListener("change",ev=>{ const v=ev.target.value.trim().toUpperCase(); if(CYC.stocks[v]){ store.set("cy.sel",v); renderResults(); } });
+  box.querySelectorAll("[data-cy]").forEach(bt=>bt.addEventListener("click",()=>{ store.set(WP+"cy.sel",bt.dataset.cy); renderResults(); }));
+  $("cyQ").addEventListener("change",ev=>{ const v=ev.target.value.trim().toUpperCase(); if(CYC.stocks[v]){ store.set(WP+"cy.sel",v); renderResults(); } });
   loadLWC().then(()=>{ if(tab!=="cycles") return; drawChart($("cyChart"),SER.dates,vals,a,isIdx?a.rawan:null,CYC.future,!isIdx&&usd(1).startsWith("Rp")); if(b) drawBreadth($("cyBreadth"),b); })
     .catch(()=>{ $("cyChart").innerHTML=`<p class="note">Grafik tidak bisa dimuat (pustaka grafik gagal diunduh).</p>`; });
 }
@@ -672,17 +675,93 @@ function candidates(){
 }
 let SARAN_LOADED=false;
 
+// ---------- Watchlist pribadi ----------
+const WP = IS_ID ? "si." : "ss.";
+const STAR_KEY = WP+"star";
+function stars(){ try{ return new Set(JSON.parse(store.get(STAR_KEY)||"[]")); }catch(e){ return new Set(); } }
+function toggleStar(t){ const s=stars(); s.has(t)?s.delete(t):s.add(t); store.set(STAR_KEY,JSON.stringify([...s])); }
+const starBtn = t => { const on=stars().has(t); return `<button type="button" class="star" data-star="${esc(t)}" aria-pressed="${on}" title="${on?"Hapus dari":"Tambah ke"} watchlist">${on?"★":"☆"}</button>`; };
+function allowedMethods(){
+  const r=regime(), inv=["value","growth","quality","dividend"];
+  return r.k==="tertekan" ? inv : M.map(m=>m.id).filter(id=>!badTrader().includes(id));
+}
+function sigOf(o, allow){
+  const b=[], h=[];
+  M.forEach(m=>{ if(!allow.includes(m.id)) return; const s=mget(o,m.id).s; if(s==="buy") b.push(m.name); else if(s==="hold") h.push(m.name); });
+  return {b,h,any:b.length+h.length>0};
+}
+function shortAdvice(w, sg){
+  if(w.dist<=0) return sg.any?"di dalam zona: wajar mencicil":"di dalam zona, belum ada sinyal";
+  return sg.any?`+${nf(w.dist,1)}% di atas zona: beli sebagian, sisanya di zona`:"dekat zona, belum ada sinyal";
+}
+function sigCell(sg){
+  if(!sg.any) return '<span class="na">–</span>';
+  return [sg.b.length?`<b class="ok">Beli:</b> ${esc(sg.b.join(", "))}`:"", sg.h.length?`<b>Tahan:</b> ${esc(sg.h.join(", "))}`:""].filter(Boolean).join("<br>");
+}
+function renderWatch(box){
+  if(!CYC&&!CYC_ERR){ box.innerHTML=`<div class="tablebox"><div class="empty">Memuat data area support…</div></div>`; loadCycles().then(()=>{ if(tab==="watch"){ renderTabs(); renderResults(); } }); return; }
+  if(CYC_ERR||!CYC.watch){ box.innerHTML=`<div class="tablebox"><div class="empty">Data area support belum tersedia. Akan terisi setelah pembaruan data berikutnya.</div></div>`; return; }
+  const W=CYC.watch, allow=allowedMethods(), r=regime();
+  const showAll=store.get(WP+"w.all")==="1", onlyNew=store.get(WP+"w.new")==="1";
+  const byT=Object.fromEntries(filtered().map(o=>[o.ticker,o]));
+  const newSet=new Set(W.new||[]);
+  const mk=(src)=>Object.entries(src).filter(([t])=>byT[t]).map(([t,w])=>({t,w,o:byT[t],sg:sigOf(byT[t],allow)}));
+  let inList=mk(W.in), nearList=mk(W.near);
+  const strict=x=>(x.w.strength==="kuat"||x.w.strength==="sedang")&&x.sg.any;
+  const totalIn=inList.length;
+  if(!showAll){ inList=inList.filter(strict); nearList=nearList.filter(x=>x.sg.any); }
+  if(onlyNew) inList=inList.filter(x=>newSet.has(x.t));
+  const rank={kuat:0,sedang:1,lemah:2};
+  const sorter=(a,b)=>(b.sg.any-a.sg.any)||(b.sg.b.length-a.sg.b.length)||(rank[a.w.strength]-rank[b.w.strength])||(a.w.dist-b.w.dist);
+  inList.sort(sorter); nearList.sort((a,b)=>(rank[a.w.strength]-rank[b.w.strength])||(a.w.dist-b.w.dist));
+  const idxName=Object.keys(CYC.indices)[0], zs=((CYC.score||{})[idxName]||{}).zones||{};
+  const row=x=>`<tr class="row wrow" data-go="${esc(x.t)}" tabindex="0">${stockCell(x.o)}
+      <td class="num">${usd(x.o.price)}</td><td class="num">${zr(x.w)}${newSet.has(x.t)?' <span class="st buy">baru</span>':""}</td>
+      <td><span class="st ${x.w.strength==="kuat"?"buy":x.w.strength==="sedang"?"hold":"wait"}">${x.w.strength}</span></td>
+      <td class="num">${x.w.dist<=0?"di zona":"+"+nf(x.w.dist,1)+"%"}</td><td class="num">${usd(x.w.brk)}</td>
+      <td style="font-size:13px">${sigCell(x.sg)}</td><td class="why">${esc(shortAdvice(x.w,x.sg))}</td></tr>`;
+  const head=`<thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Zona support</th><th>Kekuatan</th><th class="num">Jarak</th><th class="num">Batas jebol</th><th>Sinyal</th><th>Saran singkat</th></tr></thead>`;
+  const st=stars(), starred=[...st].map(t=>({t,o:rows.find(x=>x.ticker===t),z:nearZones(t)})).filter(x=>x.o);
+  const broken=(W.broken||[]).filter(b=>byT[b.t]);
+  box.innerHTML=saranBox(`<p>${saranMarket().html.split("</p>")[0]}</p><p>${r.k==="tertekan"
+      ?"Pasar tertekan: sinyal yang dihitung di sini hanya dari <b>Dividen, Value, dan Quality</b>, karena support lebih sering jebol dan metode trader sedang tidak bisa diandalkan."
+      :`Sinyal dihitung dari ${esc(allow.map(id=>MID[id].name).join(", "))}.`} Belilah bertahap, dan tunda pembelian bila harga ditutup di bawah <b>batas jebol</b>.</p>`)+`
+    <div class="rhead" style="margin-top:12px"><div class="l"><h2>Di area support</h2>
+      <p class="note">Harga di dalam zona support atau maksimal ${nf(W.rules.in,0)}% di atasnya, dan belum jebol. ${showAll?`Menampilkan semua (${totalIn}).`:`Menampilkan zona kuat/sedang yang punya sinyal Beli/Tahan (${inList.length} dari ${totalIn}).`}
+      ${zs.n?` Rekam jejak zona ${esc(idxName)}: ${zs.hit} dari ${zs.n} zona yang tersentuh bertahan.`:` Rekam jejak zona masih dikumpulkan.`}</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="wAll" aria-pressed="${showAll}">${showAll?"Tampilkan yang ketat saja":"Tampilkan semua"}</button>
+      <button type="button" id="wNew" aria-pressed="${onlyNew}">Baru masuk hari ini (${(W.new||[]).filter(t=>byT[t]).length})</button></div></div>
+    <div class="tablebox"><table>${head}<tbody>${inList.length?inList.map(row).join(""):`<tr><td colspan="8" class="empty">${onlyNew?"Tidak ada saham yang baru masuk area support hari ini.":"Tidak ada saham yang cocok saat ini. Coba “Tampilkan semua”."}</td></tr>`}</tbody></table></div>
+    <div class="rhead" style="margin-top:16px"><div class="l"><h2>Mendekati support</h2><p class="note">${nf(W.rules.in,0)}–${nf(W.rules.near,0)}% di atas zona support kuat/sedang${showAll?"":", hanya yang punya sinyal Beli/Tahan"}. Bersiap sebelum harga sampai di zona.</p></div></div>
+    <div class="tablebox"><table>${head}<tbody>${nearList.length?nearList.slice(0,40).map(row).join(""):`<tr><td colspan="8" class="empty">Tidak ada saat ini.</td></tr>`}</tbody></table></div>
+    <div class="rhead" style="margin-top:16px"><div class="l"><h2>★ Saham yang Anda tandai</h2><p class="note">Klik ☆ di tabel mana pun untuk menandai. Tersimpan di browser ini.</p></div></div>
+    <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Support terdekat</th><th class="num">Jarak</th><th>Status</th></tr></thead><tbody>
+    ${starred.length?starred.map(x=>{ const z=x.z&&x.z.s, w=W.in[x.t]; return `<tr class="row wrow" data-go="${esc(x.t)}" tabindex="0">${stockCell(x.o)}<td class="num">${usd(x.o.price)}</td>
+      <td class="num">${z?zr(z)+" ("+z.strength+")":"–"}</td><td class="num">${w?(w.dist<=0?"di zona":"+"+nf(w.dist,1)+"%"):z?"+"+nf((x.o.price/z.hi-1)*100,1)+"%":"–"}</td>
+      <td style="font-size:13px">${w?'<span class="st buy">di area support</span> ':""}${sigCell(sigOf(x.o,M.map(m=>m.id)))}</td></tr>`}).join("")
+      :`<tr><td colspan="5" class="empty">Belum ada saham yang Anda tandai.</td></tr>`}</tbody></table></div>
+    ${broken.length?`<div class="rhead" style="margin-top:16px"><div class="l"><h2>⚠️ Support jebol hari ini</h2><p class="note">Kemarin di area support, hari ini ditutup di bawah batas jebol. Tunda pembelian dan evaluasi ulang.</p></div></div>
+      <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Zona yang jebol</th><th class="num">Di bawah zona</th></tr></thead><tbody>
+      ${broken.map(b=>`<tr class="row wrow" data-go="${esc(b.t)}" tabindex="0">${stockCell(byT[b.t])}<td class="num">${usd(b.price)}</td><td class="num">${zr(b)} (${b.strength})</td><td class="num no">${pct(b.drop)}</td></tr>`).join("")}</tbody></table></div>`:""}
+    <p class="note" style="margin-top:8px">Klik baris untuk membuka grafik di tab Siklus. Zona support adalah area kemungkinan, bukan jaminan.</p>`;
+  $("wAll").addEventListener("click",()=>{ store.set(WP+"w.all",showAll?"0":"1"); renderResults(); });
+  $("wNew").addEventListener("click",()=>{ store.set(WP+"w.new",onlyNew?"0":"1"); renderResults(); });
+}
+
 function renderResults(){
   const box=$("results");
   if(!DATA){ box.innerHTML=`<div class="tablebox"><div class="empty">Belum ada data. Setelah workflow selesai, tabel saham muncul di sini.</div></div>`; return; }
-  if(tab==="summary") renderSummary(box); else if(tab==="etf") renderEtf(box); else if(tab==="cycles") renderCycles(box); else renderMethod(box,MID[tab]);
+  if(tab==="summary") renderSummary(box); else if(tab==="etf") renderEtf(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else renderMethod(box,MID[tab]);
 }
 function renderAll(){ renderStatus(); renderTabs(); renderRail(); renderResults(); }
 
 // ---------- events ----------
 $("tabs").addEventListener("click",ev=>{ const b=ev.target.closest(".tab"); if(!b) return; tab=b.dataset.id; openTicker=null; store.set("si.tab",tab); try{history.replaceState(null,"","#"+tab)}catch(e){} renderTabs(); renderRail(); renderResults(); });
 function toggleRow(tr){ openTicker=openTicker===tr.dataset.t?null:tr.dataset.t; renderResults(); const again=document.querySelector(`tr.row[data-t="${CSS.escape(tr.dataset.t)}"]`); if(again) again.focus({preventScroll:true}); }
-$("results").addEventListener("click",ev=>{ const tr=ev.target.closest("tr.row"); if(tr) toggleRow(tr); });
+$("results").addEventListener("click",ev=>{
+  const sb=ev.target.closest(".star"); if(sb){ ev.stopPropagation(); toggleStar(sb.dataset.star); renderTabs(); renderResults(); return; }
+  const wr=ev.target.closest("tr.wrow"); if(wr){ store.set(WP+"cy.sel",wr.dataset.go); tab="cycles"; store.set(WP+"tab","cycles"); try{history.replaceState(null,"","#cycles")}catch(e){} renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0,behavior:"smooth"}); return; }
+  const tr=ev.target.closest("tr.row"); if(tr) toggleRow(tr); });
 $("results").addEventListener("keydown",ev=>{ if(ev.key!=="Enter"&&ev.key!==" ") return; const tr=ev.target.closest("tr.row"); if(!tr) return; ev.preventDefault(); toggleRow(tr); });
 $("q").addEventListener("input",()=>{ renderTabs(); renderResults(); });
 $("sector").addEventListener("change",()=>{ renderTabs(); renderResults(); });

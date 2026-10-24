@@ -492,6 +492,59 @@ def scoreboard(state: dict, s: pd.Series, rawan: list, sup, res, today: date, na
             "recent": sorted(([d, x] for d, x in sb["dates"].items() if "hit" in x), key=lambda t: t[0])[-8:]}
 
 
+# ---------------------------------------------------------------- area support per saham
+IN_ABOVE, NEAR_ABOVE, BREAK_BELOW = 0.02, 0.05, 0.01
+
+
+def support_status(a: dict):
+    """('in', zona) bila harga di dalam atau ≤2% di atas zona support (belum jebol),
+    ('near', zona) bila 2–5% di atas zona kuat/sedang, selain itu (None, None)."""
+    p = a.get("price")
+    if not ok(p):
+        return None, None
+    for z in a.get("sup") or []:
+        if z["lo"] * (1 - BREAK_BELOW) <= p <= z["hi"] * (1 + IN_ABOVE):
+            return "in", z
+    z = (a.get("sup") or [None])[0]
+    if z and z["strength"] in ("kuat", "sedang") and z["hi"] * (1 + IN_ABOVE) < p <= z["hi"] * (1 + NEAR_ABOVE):
+        return "near", z
+    return None, None
+
+
+def watch(stocks: dict, state: dict, today: date, tick=None) -> dict:
+    ws = state.setdefault("_watch", {})
+    if ws.get("day") != today.isoformat():
+        ws["base"] = ws.get("cur", {})
+        ws["day"] = today.isoformat()
+    base = ws.get("base", {})
+    cur, near = {}, {}
+    for t, a in stocks.items():
+        k, z = support_status(a)
+        if not z:
+            continue
+        rec = {"lo": z["lo"], "hi": z["hi"], "strength": z["strength"], "score": z["score"], "why": z["why"],
+               "dist": round((a["price"] / z["hi"] - 1) * 100, 2), "brk": rt(z["lo"] * (1 - BREAK_BELOW), tick), "price": a["price"]}
+        if k == "in":
+            rec["since"] = (base.get(t) or {}).get("since") or today.isoformat()
+            cur[t] = rec
+        else:
+            near[t] = rec
+    first = not base and not ws.get("init")  # hari pertama: semua saham "baru", jangan dikabarkan
+    new = [] if first else sorted(t for t in cur if t not in base)
+    if base:
+        ws["init"] = True
+    broken = []
+    for t, b in base.items():
+        if t in cur or t not in stocks:
+            continue
+        p = stocks[t].get("price")
+        if ok(p) and p < b["lo"] * (1 - BREAK_BELOW):
+            broken.append({"t": t, "lo": b["lo"], "hi": b["hi"], "strength": b["strength"], "price": p,
+                           "drop": round((p / b["lo"] - 1) * 100, 2)})
+    ws["cur"] = {t: {"lo": v["lo"], "hi": v["hi"], "strength": v["strength"], "since": v["since"]} for t, v in cur.items()}
+    return {"in": cur, "near": near, "new": new, "broken": broken, "rules": {"in": IN_ABOVE * 100, "near": NEAR_ABOVE * 100, "brk": BREAK_BELOW * 100}}
+
+
 # ---------------------------------------------------------------- jalankan
 def analyse(s: pd.Series, cfg: dict, today: date, tick=None):
     s = s.dropna()
@@ -547,6 +600,7 @@ def run(close: pd.DataFrame, indices: dict[str, str], long: dict[str, pd.Series]
         vals = close[t].iloc[-260:]
         series["stocks"][t] = [None if not ok(x) else (int(round(x)) if tick else round(float(x), 2)) for x in vals.tolist()]
     out["breadth"] = breadth(close, breadth_cols)
+    out["watch"] = watch(out["stocks"], state, today, tick)
     return out, series
 
 

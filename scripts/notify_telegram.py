@@ -113,6 +113,74 @@ def signals(d: dict):
     return buys, sells, holds, first
 
 
+INV = ["value", "growth", "quality", "dividend"]
+
+
+def market_regime(d: dict, c: dict) -> str:
+    b = (c.get("breadth") or {}).get("above200")
+    ok = (d.get("market") or {}).get("ok")
+    if b is None:
+        return "tertekan" if ok is False else "naik" if ok else "campuran"
+    if b >= 60 and ok is not False:
+        return "naik"
+    if b < 40 or (ok is False and b < 50):
+        return "tertekan"
+    return "campuran"
+
+
+def support_section(d: dict) -> list[str]:
+    f = ROOT / "data" / "cycles.json"
+    if not f.exists():
+        return []
+    c = json.loads(f.read_text())
+    w = c.get("watch") or {}
+    if not w:
+        return []
+    reg = market_regime(d, c)
+    st = d.get("stats") or {}
+    bad = {m for m in ("canslim", "momentum", "swing") if (st.get(m) or {}).get("n", 0) >= 10 and (st.get(m) or {}).get("avg", 0) < 0}
+    allow = INV if reg == "tertekan" else [m for m in ORDER if m not in bad]
+    by = {o["ticker"]: o for o in d.get("stocks", [])}
+
+    def sig(o, ms):
+        mm = o.get("m") or {}
+        bb = [NAMES[m] for m in ms if (mm.get(m) or {}).get("s") == "buy"]
+        hh = [NAMES[m] for m in ms if (mm.get(m) or {}).get("s") == "hold"]
+        return bb, hh
+
+    rng = lambda z: usd(z["lo"]) if z["lo"] == z["hi"] else f"{usd(z['lo'])}–{usd(z['hi'])}"
+    items = []
+    for t in w.get("new") or []:
+        o, z = by.get(t), (w.get("in") or {}).get(t)
+        if not o or not z or o.get("liq", "L") != "L" or z["strength"] == "lemah":
+            continue
+        bb, hh = sig(o, allow)
+        if bb or hh:
+            items.append((0 if z["strength"] == "kuat" else 1, -len(bb), t, o, z, bb, hh))
+    items.sort()
+    L = []
+    if items:
+        L += ["", b(f"📍 Masuk area support ({min(len(items), 8)})")]
+        for _, _, t, o, z, bb, hh in items[:8]:
+            s = " · ".join(x for x in (f"Beli: {', '.join(bb)}" if bb else "", f"Tahan: {', '.join(hh)}" if hh else "") if x)
+            L.append(f"{b(t)} {usd(o.get('price'))} · support {rng(z)} ({z['strength']}) · jebol < {usd(z['brk'])}")
+            L.append(f"<i>{e(s)}</i>")
+        if len(items) > 8:
+            L.append(f"…dan {len(items) - 8} lainnya di tab Watchlist pribadi")
+    brk = []
+    for x in w.get("broken") or []:
+        o = by.get(x["t"])
+        if o and o.get("liq", "L") == "L":
+            bb, hh = sig(o, ORDER)
+            if bb or hh:
+                brk.append((x, o))
+    if brk:
+        L += ["", b(f"⚠️ Support jebol ({min(len(brk), 5)})")]
+        for x, o in brk[:5]:
+            L.append(f"{b(x['t'])} {usd(x['price'])} · di bawah zona {rng(x)} ({pct(x['drop'])}). Tunda pembelian, evaluasi ulang.")
+    return L
+
+
 def morning(d: dict) -> str | None:
     if d.get("newSession") is False:
         print("Tidak ada sesi bursa baru sejak pembaruan sebelumnya (libur BEI); pesan tidak dikirim.")
@@ -141,6 +209,10 @@ def morning(d: dict) -> str | None:
             L.append(f"…dan {len(sells) - TOP} lainnya di website")
     if not buys and not sells:
         L += ["", "Tidak ada sinyal beli atau jual baru hari ini."]
+    try:
+        L += support_section(d)
+    except Exception as ex:
+        print(f"Bagian area support dilewati: {ex}")
     L += ["", "Hanya saham likuid (transaksi ≥ Rp5 miliar/hari). Harga sudah dibulatkan ke fraksi BEI.",
           f'🔗 <a href="{SITE}">Detail dan alasan lengkap di website</a>']
     return "\n".join(L)
