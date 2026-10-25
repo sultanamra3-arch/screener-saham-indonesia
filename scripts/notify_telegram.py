@@ -266,6 +266,13 @@ def extras_section(d: dict) -> list[str]:
             L += ["", b(f"🌏 Kepemilikan asing bulan {m} (KSEI)")]
             L.append("Masuk: " + ", ".join(f"{o['ticker']} +{o['ks']['df']:.1f} poin".replace(".", ",") for o in up if o["ks"]["df"] > 0))
             L.append("Keluar: " + ", ".join(f"{o['ticker']} {o['ks']['df']:.1f} poin".replace(".", ",") for o in dn if o["ks"]["df"] < 0))
+            try:  # tandai bulan ini sudah dikabarkan
+                kf = ROOT / "data" / "ksei.json"
+                kc = json.loads(kf.read_text())
+                kc["announced"] = ks[0]["ks"]["m"]
+                kf.write_text(json.dumps(kc, separators=(",", ":")))
+            except Exception:
+                pass
     # 📅 ex-dividen ≤ 5 hari (hanya tanggal pasti)
     soon = []
     for o in rows:

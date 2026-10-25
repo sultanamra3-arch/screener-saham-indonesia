@@ -538,7 +538,8 @@ def main():
     log("Kepemilikan efek bulanan (KSEI) ...")
     ks_new = False
     try:
-        kc, ks_new = ksei.update(DATA / "ksei.json", log)
+        kc, _ = ksei.update(DATA / "ksei.json", log)
+        ks_new = bool(kc.get("months")) and kc["months"][-1] != kc.get("announced")
         ksei.apply(rows, kc)
     except Exception as e:
         log(f"  KSEI gagal: {str(e)[:120]}")
