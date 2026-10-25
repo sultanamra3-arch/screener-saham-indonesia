@@ -293,7 +293,7 @@ def technicals(s) -> dict:
     import pandas as pd
 
     s = s.dropna()
-    out = {k: None for k in ("price", "sma20", "sma50", "sma200", "perf1m", "perf6m", "perf1y", "perfYtd", "hi52")}
+    out = {k: None for k in ("price", "sma20", "sma50", "sma200", "perf1m", "perf6m", "perf1y", "perfYtd", "hi52", "perf1w", "perf3m", "perf1mP", "perf3mP")}
     if len(s) < 25:
         return out
     p = float(s.iloc[-1])
@@ -310,6 +310,13 @@ def technicals(s) -> dict:
     for k, d in (("perf1m", 30), ("perf6m", 182), ("perf1y", 365)):
         b = back(d)
         out[k] = (p / b - 1) * 100 if b else None
+    # untuk Peta sektor: 1 minggu, 3 bulan, dan nilai yang sama 5 hari bursa lalu (arah peringkat)
+    ago = lambda k: float(s.iloc[-1 - k]) if len(s) > k else None
+    chg = lambda x, y: (x / y - 1) * 100 if x and y else None
+    out["perf1w"] = chg(p, ago(5))
+    out["perf3m"] = chg(p, ago(63))
+    out["perf1mP"] = chg(ago(5), ago(26))
+    out["perf3mP"] = chg(ago(5), ago(68))
     py = s[s.index.year < last.year]
     out["perfYtd"] = (p / float(py.iloc[-1]) - 1) * 100 if len(py) else None
     yr = s[s.index > last - pd.Timedelta(days=365)]
