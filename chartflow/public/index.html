@@ -82,11 +82,92 @@ section{padding:72px 0}
 details.faq{background:var(--surface);border-radius:14px;padding:16px 20px;box-shadow:var(--shadow);margin-bottom:10px}
 details.faq summary{font-weight:700;cursor:pointer}
 details.faq p{color:var(--muted);margin-top:8px}
-.ctaBox{background:linear-gradient(135deg,var(--accent),#1f3fbf);color:#fff;border-radius:24px;padding:44px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.ctaBox{background:linear-gradient(135deg,var(--accent),#1f3fbf,#22b07d,var(--accent));color:#fff;border-radius:24px;padding:44px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
 .ctaBox h2{font-size:30px}.ctaBox p{opacity:.85;margin-top:6px}
 .ctaBox .btn.pri{background:#fff;color:#1f3fbf}
 footer{padding:36px 0 50px;color:var(--muted);font-size:13.5px;border-top:1px solid var(--line)}
 footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
+/* ---------- animasi ---------- */
+.hero{isolation:isolate}
+.hero:before{display:none}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.30;z-index:-2;animation:drift 18s ease-in-out infinite alternate;pointer-events:none}
+.b1{width:540px;height:540px;background:var(--accent);top:-180px;right:-140px}
+.b2{width:420px;height:420px;background:#22b07d;top:140px;right:28%;animation-duration:23s;opacity:.22}
+.b3{width:380px;height:380px;background:#8b5cf6;bottom:-200px;left:-140px;animation-duration:27s;opacity:.22}
+@keyframes drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(-50px,30px) scale(1.08)}100%{transform:translate(30px,-25px) scale(.94)}}
+.candles{position:absolute;left:0;right:0;bottom:0;width:100%;height:70%;z-index:-1;opacity:.20;pointer-events:none}
+.candles g.c{opacity:0;transform-box:fill-box;transform-origin:50% 100%;animation:pop .45s cubic-bezier(.2,.8,.2,1.2) forwards}
+@keyframes pop{from{opacity:0;transform:scaleY(.2)}to{opacity:1;transform:scaleY(1)}}
+.candles .trend{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;animation:draw 2.2s ease-out forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.caret{display:inline-block;width:4px;height:.9em;background:currentColor;margin-left:4px;vertical-align:-.08em;animation:blink 1s steps(1) infinite;color:var(--accent)}
+@keyframes blink{50%{opacity:0}}
+#rot{background:linear-gradient(90deg,var(--accent),#22b07d);-webkit-background-clip:text;background-clip:text;color:transparent}
+.shot{transform:perspective(1100px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .25s ease-out;transform-style:preserve-3d}
+.shot img.desk{animation:floatA 7s ease-in-out infinite}
+.shot img.mob{animation:floatB 6s ease-in-out infinite}
+@keyframes floatA{50%{transform:translateY(-12px)}}
+@keyframes floatB{50%{transform:translateY(-18px)}}
+.tape{overflow:hidden;border-block:1px solid var(--line);background:var(--surface);margin-top:40px;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+.tape-in{display:flex;gap:44px;width:max-content;animation:tape 45s linear infinite;padding:13px 0;font-weight:700;font-size:14px;white-space:nowrap}
+.tape:hover .tape-in{animation-play-state:paused}
+.tape-in span{display:inline-flex;gap:8px;align-items:center}
+.tape-in .up{color:var(--good)}.tape-in .dn{color:var(--bad)}.tape-in .mu{color:var(--muted);font-weight:600}
+@keyframes tape{to{transform:translateX(-50%)}}
+.rv{opacity:0;transform:translateY(26px);transition:opacity .75s ease,transform .75s cubic-bezier(.2,.7,.2,1)}
+.rv.in{opacity:1;transform:none}
+.card{transition:transform .25s,box-shadow .25s}.card:hover{transform:translateY(-5px);box-shadow:0 14px 34px rgba(16,24,40,.12)}
+.card .e{transition:transform .3s}.card:hover .e{transform:rotate(-10deg) scale(1.12)}
+.m{transition:transform .25s}.m:hover{transform:translateY(-4px)}
+.show{position:relative;aspect-ratio:16/10;border-radius:18px;overflow:hidden;box-shadow:0 20px 60px rgba(16,24,40,.16);border:1px solid var(--line);background:var(--surface)}
+.show img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;opacity:0;transform:scale(1.03);transition:opacity .9s ease,transform 6s ease}
+.show img.on{opacity:1;transform:scale(1)}
+.stabs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+.stab{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:8px 16px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;position:relative;overflow:hidden}
+.stab[aria-pressed=true]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.stab .bar{position:absolute;left:0;bottom:0;height:3px;background:var(--accent);width:0}
+.stab[aria-pressed=true] .bar{animation:fill 5s linear forwards}
+@keyframes fill{to{width:100%}}
+.ctaBox{background-size:200% 200%;animation:shine 10s ease infinite}
+@keyframes shine{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+
+/* ---------- warna: Aurora ---------- */
+.hero{background:radial-gradient(1200px 600px at 80% -10%,rgba(59,91,255,.33),transparent),linear-gradient(160deg,#0b1030 0%,#1a1458 45%,#0b3b4a 100%);color:#fff}
+.hero p.lead,.hero .note{color:#c7d2fe}
+.hero .pill{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.19);color:#e0e7ff}
+.blob{opacity:.55!important}.b1{background:#4f7bff}.b2{background:#10e3a1}.b3{background:#c026d3}
+.candles{opacity:.45}
+#rot{background:linear-gradient(90deg,#7dd3fc,#34f5c5,#f0abfc);-webkit-background-clip:text;background-clip:text;color:transparent}
+.caret{color:#34f5c5}
+.hero h1{min-height:3.5em}@media (max-width:520px){.hero h1{min-height:3.5em}}
+.hero .btn.pri{background:linear-gradient(90deg,#4f7bff,#10b9a0);color:#fff;box-shadow:0 8px 24px rgba(79,123,255,.4)}
+.hero .btn.sec{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.25)}
+.stat{background:rgba(255,255,255,.07);color:#fff;border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:none}
+.stat span{color:#c7d2fe}
+.stat b{background:linear-gradient(90deg,#7dd3fc,#34f5c5);-webkit-background-clip:text;background-clip:text;color:transparent}
+.tape{background:#0b1030;color:#e0e7ff;border-color:rgba(255,255,255,.14)}
+.tape-in .mu{color:#a5b4fc}.tape-in .up{color:#34f5c5}.tape-in .dn{color:#fb7185}
+.shot img.desk,.shot img.mob{border-color:rgba(255,255,255,.18)}
+.grid .card{border-top:4px solid transparent}
+.grid .card:nth-child(8n+1){border-top-color:#3b82f6}.grid .card:nth-child(8n+1) .e{background:rgba(59,130,246,.15)}
+.grid .card:nth-child(8n+2){border-top-color:#22c55e}.grid .card:nth-child(8n+2) .e{background:rgba(34,197,94,.15)}
+.grid .card:nth-child(8n+3){border-top-color:#f59e0b}.grid .card:nth-child(8n+3) .e{background:rgba(245,158,11,.17)}
+.grid .card:nth-child(8n+4){border-top-color:#ec4899}.grid .card:nth-child(8n+4) .e{background:rgba(236,72,153,.15)}
+.grid .card:nth-child(8n+5){border-top-color:#6366f1}.grid .card:nth-child(8n+5) .e{background:rgba(99,102,241,.15)}
+.grid .card:nth-child(8n+6){border-top-color:#06b6d4}.grid .card:nth-child(8n+6) .e{background:rgba(6,182,212,.15)}
+.grid .card:nth-child(8n+7){border-top-color:#f97316}.grid .card:nth-child(8n+7) .e{background:rgba(249,115,22,.15)}
+.grid .card:nth-child(8n+8){border-top-color:#8b5cf6}.grid .card:nth-child(8n+8) .e{background:rgba(139,92,246,.15)}
+#fitur{background:linear-gradient(180deg,transparent,rgba(99,102,241,.07),transparent)}
+#metode{background:linear-gradient(180deg,transparent,rgba(34,197,94,.07),transparent)}
+.m{border-top:4px solid #22c55e}.m:nth-child(n+5){border-top-color:#f59e0b}
+.step:nth-child(1){background:linear-gradient(135deg,rgba(59,130,246,.10),var(--surface) 60%)}
+.step:nth-child(2){background:linear-gradient(135deg,rgba(34,197,94,.10),var(--surface) 60%)}
+.step:nth-child(3){background:linear-gradient(135deg,rgba(192,38,211,.10),var(--surface) 60%)}
+.sh .k{background:linear-gradient(90deg,#4f7bff,#10b9a0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ctaBox{background:linear-gradient(135deg,#1a1458,#3b5bff,#0b3b4a,#1a1458)!important;background-size:200% 200%!important}
+.ctaBox .btn.pri{background:#fff;color:#1a1458}
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}.rv{opacity:1;transform:none}.candles g.c{opacity:1}.candles .trend{stroke-dashoffset:0!important}}
 /* modal */
 dialog{border:none;border-radius:22px;padding:0;width:min(440px,calc(100% - 32px));background:var(--surface);color:var(--fg);box-shadow:0 30px 80px rgba(0,0,0,.3)}
 dialog::backdrop{background:rgba(10,15,30,.5);backdrop-filter:blur(3px)}
@@ -117,14 +198,14 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
 <body>
 <nav class="nav"><div class="wrap">
   <a class="brand" href="#"><img src="/img/icon-192.png" alt="">ChartFlow</a>
-  <div class="links"><a href="#fitur">Fitur</a><a href="#metode">Metode</a><a href="#cara">Cara kerja</a><a href="#faq">FAQ</a></div>
+  <div class="links"><a href="#fitur">Fitur</a><a href="#lihat">Tampilan</a><a href="#metode">Metode</a><a href="#cara">Cara kerja</a><a href="#faq">FAQ</a></div>
   <div class="act"><button class="ic" id="theme" aria-label="Ganti tema">🌙</button><button class="btn sec" data-open="req">Minta akses</button><button class="btn pri" data-open="login">Masuk</button></div>
 </div></nav>
 
-<header class="hero"><div class="wrap">
+<header class="hero"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><svg class="candles" id="candles" viewBox="0 0 1200 400" preserveAspectRatio="none" aria-hidden="true"></svg><div class="wrap">
   <div>
     <span class="pill">🟢 Data diperbarui otomatis · <b>2× sehari</b> untuk BEI</span>
-    <h1>Temukan saham terbaik dengan <span>metode para ahli</span></h1>
+    <h1>Temukan saham terbaik dengan metode <span id="rot">para ahli</span><span class="caret" aria-hidden="true"></span></h1>
     <p class="lead">Screener saham Bursa Efek Indonesia dan Wall Street yang menyaring setiap saham dengan 7 metode investor dan trader ternama, lengkap dengan kapan beli, kapan jual, berapa harganya, dan alasannya.</p>
     <div class="cta"><button class="btn pri" data-open="login">Masuk dengan kode →</button><button class="btn sec" data-open="req">Minta kode akses</button></div>
     <p class="note">Akses terbatas. Kode diberikan setelah permintaan Anda disetujui.</p>
@@ -132,11 +213,12 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
   <div class="shot"><img class="desk" src="/img/shot-watch.webp" alt="Tampilan Watchlist area support"><img class="mob" src="/img/shot-mobile.webp" alt="Tampilan di HP"></div>
 </div>
 <div class="wrap stw"><div class="stats">
-  <div class="stat"><b>839</b><span>saham BEI disaring otomatis</span></div>
-  <div class="stat"><b>518</b><span>saham S&amp;P 500 + Nasdaq-100</span></div>
-  <div class="stat"><b>7</b><span>metode dengan aturan aslinya</span></div>
+  <div class="stat"><b data-count="839">839</b><span>saham BEI disaring otomatis</span></div>
+  <div class="stat"><b data-count="518">518</b><span>saham S&amp;P 500 + Nasdaq-100</span></div>
+  <div class="stat"><b data-count="7">7</b><span>metode dengan aturan aslinya</span></div>
   <div class="stat"><b>Telegram</b><span>peringatan otomatis setiap hari</span></div>
-</div></div></header>
+</div></div>
+<div class="tape" aria-label="Ringkasan"><div class="tape-in" id="tape"></div></div></header>
 
 <section id="fitur"><div class="wrap">
   <div class="sh"><span class="k">Fitur</span><h2>Semua yang Anda butuhkan untuk memutuskan</h2><p>Dari mencari saham, menentukan harga beli, sampai menjaga posisi yang sudah dibeli.</p></div>
@@ -149,6 +231,23 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
     <div class="card"><div class="e">🌏</div><h3>Arus uang besar</h3><p>Perubahan kepemilikan asing dan institusi (KSEI) serta pembelian oleh direksi (insider) di AS.</p></div>
     <div class="card"><div class="e">📅</div><h3>Kalender dividen</h3><p>Jadwal ex-dividen, perkiraan dividen dan yield, serta kapan paling lambat membeli.</p></div>
     <div class="card"><div class="e">📲</div><h3>Aplikasi &amp; Telegram</h3><p>Pasang di HP seperti aplikasi. Ringkasan sinyal dan pengingat penting dikirim ke Telegram.</p></div>
+  </div>
+</div></section>
+
+
+<section id="lihat" style="padding-top:20px"><div class="wrap">
+  <div class="sh"><span class="k">Di dalamnya</span><h2>Lihat langsung isinya</h2><p>Tampilan asli dari screener, diperbarui otomatis setiap hari.</p></div>
+  <div class="stabs" id="stabs">
+    <button class="stab" data-i="0" aria-pressed="true">📍 Watchlist<span class="bar"></span></button>
+    <button class="stab" data-i="1" aria-pressed="false">💼 Portofolio<span class="bar"></span></button>
+    <button class="stab" data-i="2" aria-pressed="false">🗺️ Peta sektor<span class="bar"></span></button>
+    <button class="stab" data-i="3" aria-pressed="false">🧮 Kalkulator<span class="bar"></span></button>
+  </div>
+  <div class="show" id="show">
+    <img class="on" src="/img/shot-watch.webp" alt="Watchlist area support S1–S3">
+    <img src="/img/shot-porto.webp" alt="Portofolio dengan untung/rugi dan status" loading="lazy">
+    <img src="/img/shot-sector.webp" alt="Peta sektor" loading="lazy">
+    <img src="/img/shot-calc.webp" alt="Kalkulator lot dan risiko" loading="lazy">
   </div>
 </div></section>
 
@@ -225,6 +324,71 @@ document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",
 fetch("/api/me.php",{credentials:"same-origin"}).then(r=>r.json()).then(j=>{ if(!j.ok) return;
   document.querySelectorAll('[data-open="login"]').forEach(b=>{ const n=b.cloneNode(false); n.textContent="Buka screener →"; n.removeAttribute("data-open"); n.addEventListener("click",goApp); b.replaceWith(n); });
   document.querySelectorAll('[data-open="req"]').forEach(b=>b.style.display="none"); }).catch(()=>{});
+
+/* ---------- animasi ---------- */
+const RM=matchMedia("(prefers-reduced-motion: reduce)").matches;
+// grafik candlestick hidup
+(function(){
+  const svg=$("candles"); if(!svg) return; const NS="http://www.w3.org/2000/svg";
+  function draw(){
+    svg.innerHTML=""; const W=1200,H=400,n=44,w=W/n; let p=100, data=[];
+    for(let i=0;i<n;i++){ const o=p, c=o*(1+(Math.random()-.42)*.05), hi=Math.max(o,c)*(1+Math.random()*.02), lo=Math.min(o,c)*(1-Math.random()*.02); data.push([o,hi,lo,c]); p=c; }
+    const mx=Math.max(...data.map(d=>d[1])), mn=Math.min(...data.map(d=>d[2])), y=v=>H-20-(v-mn)/(mx-mn)*(H-60);
+    data.forEach((d,i)=>{ const g=document.createElementNS(NS,"g"); g.setAttribute("class","c"); g.style.animationDelay=(i*70)+"ms";
+      const up=d[3]>=d[0], col=up?"#16a34a":"#dc2626", x=i*w+w/2;
+      const l=document.createElementNS(NS,"line"); l.setAttribute("x1",x); l.setAttribute("x2",x); l.setAttribute("y1",y(d[1])); l.setAttribute("y2",y(d[2])); l.setAttribute("stroke",col); l.setAttribute("stroke-width","2");
+      const r=document.createElementNS(NS,"rect"); r.setAttribute("x",x-w*.3); r.setAttribute("width",w*.6); r.setAttribute("y",y(Math.max(d[0],d[3]))); r.setAttribute("height",Math.max(2,Math.abs(y(d[0])-y(d[3])))); r.setAttribute("rx","2"); r.setAttribute("fill",col);
+      g.appendChild(l); g.appendChild(r); svg.appendChild(g); });
+    const ma=data.map((d,i)=>{ const s=data.slice(Math.max(0,i-5),i+1); return s.reduce((a,b)=>a+b[3],0)/s.length; });
+    const path=document.createElementNS(NS,"path"); path.setAttribute("class","trend");
+    path.setAttribute("d",ma.map((v,i)=>(i?"L":"M")+(i*w+w/2).toFixed(1)+" "+y(v).toFixed(1)).join(" "));
+    svg.appendChild(path); const len=path.getTotalLength(); path.style.strokeDasharray=len; path.style.strokeDashoffset=len; path.style.animationDelay=(n*70)+"ms";
+  }
+  draw(); if(!RM) setInterval(draw, 44*70+6500);
+})();
+// judul berganti kata (efek ketik)
+(function(){
+  const el=$("rot"); if(!el||RM) return; const W=["Graham","Peter Lynch","Terry Smith","CAN SLIM","Minervini","para ahli"]; let wi=W.length-1, ci=W[wi].length, del=true;
+  setTimeout(function tick(){
+    const w=W[wi];
+    if(del){ ci--; el.textContent=w.slice(0,ci); if(ci===0){ del=false; wi=(wi+1)%W.length; } setTimeout(tick,45); }
+    else { ci++; el.textContent=W[wi].slice(0,ci); if(ci===W[wi].length){ del=true; setTimeout(tick,W[wi]==="para ahli"?3200:1600); } else setTimeout(tick,85); }
+  },2400);
+})();
+// muncul saat digulir + angka menghitung
+(function(){
+  document.querySelectorAll(".card,.m,.step,.split>*,.sh,details.faq,.ctaBox,.stat,.show,.stabs").forEach(e=>e.classList.add("rv"));
+  if(RM||!("IntersectionObserver" in window)){ document.querySelectorAll(".rv").forEach(e=>e.classList.add("in")); return; }
+  const io=new IntersectionObserver(es=>es.forEach(e=>{ if(!e.isIntersecting) return; const t=e.target; io.unobserve(t);
+    const sib=[...t.parentNode.children].filter(x=>x.classList.contains("rv")); t.style.transitionDelay=Math.min(sib.indexOf(t),7)*80+"ms"; t.classList.add("in");
+    t.querySelectorAll("[data-count]").forEach(b=>{ const end=+b.dataset.count, t0=performance.now(); (function f(now){ const k=Math.min(1,(now-t0)/1400), v=Math.round(end*(1-Math.pow(1-k,3))); b.textContent=v.toLocaleString("id-ID"); if(k<1) requestAnimationFrame(f); })(t0); });
+  }),{threshold:.15});
+  document.querySelectorAll(".rv").forEach(e=>io.observe(e));
+})();
+// gambar miring mengikuti mouse
+(function(){
+  const sh=document.querySelector(".shot"); if(!sh||RM||!matchMedia("(pointer:fine)").matches) return;
+  document.querySelector(".hero").addEventListener("mousemove",e=>{ const r=sh.getBoundingClientRect(), x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5; sh.style.setProperty("--ry",(x*8).toFixed(2)+"deg"); sh.style.setProperty("--rx",(-y*6).toFixed(2)+"deg"); });
+  document.querySelector(".hero").addEventListener("mouseleave",()=>{ sh.style.setProperty("--ry","0deg"); sh.style.setProperty("--rx","0deg"); });
+})();
+// pita berjalan: kondisi pasar terbaru + metode
+(function(){
+  const base=["7 metode: Graham · Lynch · Terry Smith · Dividen · CAN SLIM · Momentum · Swing","📍 Area support S1–S3","💼 Portofolio + peringatan jual","🗺️ Peta sektor","🌏 Arus asing (KSEI)","👤 Insider membeli (AS)","📅 Kalender dividen","📲 Telegram otomatis"];
+  const tag={naik:'<b class="up">sehat ▲</b>',campuran:'<b class="mu">campuran</b>',tertekan:'<b class="dn">tertekan ▼</b>'};
+  function render(extra){ const items=extra.concat(base.map(t=>`<span>${t}</span>`)); const html=items.map(x=>x+'<span class="mu">•</span>').join(""); $("tape").innerHTML=html+html; }
+  render([]);
+  Promise.all(["id","us"].map(m=>fetch("/pub/"+m+".json",{cache:"no-cache"}).then(r=>r.ok?r.json():null).catch(()=>null))).then(([a,b])=>{
+    const ex=[]; const one=(d,f,nm)=>{ if(!d) return; ex.push(`<span>${f} ${nm}: ${tag[d.regime]||d.regime} <span class="mu">${d.above200}% saham tren naik</span></span>`); ex.push(`<span>${f} <b>${d.layak}</b> saham layak beli <span class="mu">(${d.date})</span></span>`); };
+    one(a,"🇮🇩","IHSG"); one(b,"🇺🇸","S&amp;P 500"); if(ex.length) render(ex); });
+})();
+// tampilan berganti otomatis
+(function(){
+  const imgs=[...document.querySelectorAll("#show img")], bs=[...document.querySelectorAll("#stabs .stab")]; let i=0, t=null;
+  function go(k){ i=k; imgs.forEach((im,j)=>im.classList.toggle("on",j===k)); bs.forEach((b,j)=>{ b.setAttribute("aria-pressed",j===k); const bar=b.querySelector(".bar"); bar.style.animation="none"; bar.offsetWidth; bar.style.animation=""; }); clearTimeout(t); if(!RM) t=setTimeout(()=>go((i+1)%imgs.length),5000); }
+  bs.forEach(b=>b.addEventListener("click",()=>go(+b.dataset.i)));
+  const box=$("show"); box.addEventListener("mouseenter",()=>clearTimeout(t)); box.addEventListener("mouseleave",()=>go(i));
+  go(0);
+})();
 if(new URLSearchParams(location.search).has("masuk")) setTimeout(()=>$("login").showModal(),200);
 document.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{ document.querySelectorAll("dialog[open]").forEach(d=>d.close()); document.getElementById(b.dataset.open).showModal(); }));
 (function(){ const b=document.getElementById("theme"), cur=()=>document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");

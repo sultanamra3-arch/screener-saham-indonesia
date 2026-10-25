@@ -11,6 +11,8 @@ market, out = sys.argv[1], Path(sys.argv[2])
 GH = "https://sultanamra3-arch.github.io"
 if out.exists():
     shutil.rmtree(out)
+if Path(str(out) + "_pub").exists():
+    shutil.rmtree(Path(str(out) + "_pub"))
 (out / "data").mkdir(parents=True)
 
 s = (ROOT / "index.html").read_text(encoding="utf-8")
@@ -119,4 +121,42 @@ shutil.copytree(ROOT / "icons", out / "icons")
 for f in ("stocks.json", "detail.json", "cycles.json", "series.json"):
     if (ROOT / "data" / f).exists():
         shutil.copy(ROOT / "data" / f, out / "data" / f)
+# ---- ringkasan publik untuk pita berjalan di beranda (tanpa sinyal per saham)
+import json as _json
+_d = _json.loads((ROOT / "data" / "stocks.json").read_text())
+_rows = [o for o in _d.get("stocks", []) if o.get("liq", "L") == "L"]
+_ORDER = ["canslim", "value", "growth", "quality", "dividend", "momentum", "swing"]
+
+
+def _layak(o, mid):
+    st = (o.get("m") or {}).get(mid) or {}
+    s, lv, p = st.get("s"), st.get("lv") or {}, o.get("price")
+    if s == "buy":
+        return True
+    if s != "hold" or not p:
+        return False
+    if mid == "canslim":
+        piv = st.get("bp") or lv.get("buy")
+        return bool(piv) and p <= piv * 1.05
+    if mid == "momentum":
+        return (o.get("momRank") or 0) >= 90
+    if mid == "swing":
+        return bool(st.get("p"))
+    return bool(st.get("p")) and (lv.get("buy") is None or p <= lv["buy"])
+
+
+_sma = [o for o in _rows if isinstance(o.get("sma200"), (int, float))]
+_above = round(sum(1 for o in _sma if o["sma200"] > 0) / len(_sma) * 100) if _sma else 0
+_ok = (_d.get("market") or {}).get("ok")
+_reg = "naik" if _above >= 60 and _ok is not False else "tertekan" if _above < 40 or (_ok is False and _above < 50) else "campuran"
+_b = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+_pd = _d.get("priceDate", "")
+pub = Path(str(out) + "_pub")
+pub.mkdir(parents=True, exist_ok=True)
+(pub / f"{market}.json").write_text(_json.dumps({
+    "m": market, "regime": _reg, "above200": _above,
+    "layak": sum(1 for o in _rows if any(_layak(o, m) for m in _ORDER)),
+    "date": f"{int(_pd[8:10])} {_b[int(_pd[5:7]) - 1]}" if len(_pd) >= 10 else "",
+}))
+
 print(f"Salinan {market} siap di {out}: {sum(1 for _ in out.rglob('*') if _.is_file())} file")

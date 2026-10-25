@@ -26,5 +26,5 @@ jobs:
           sudo apt-get install -y -qq lftp > /dev/null
           LFTP_PASSWORD="$FTP_PASSWORD" lftp -c "set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3; set net:timeout 30; \
             open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\"; \
-            mkdir -p -f ${FTP_DIR:-.}/_appfiles/id; mirror -R --parallel=4 out_app ${FTP_DIR:-.}/_appfiles/id"
+            mkdir -p -f ${FTP_DIR:-.}/_appfiles/id; mirror -R --parallel=4 out_app ${FTP_DIR:-.}/_appfiles/id; mkdir -p -f ${FTP_DIR:-.}/pub; mirror -R out_app_pub ${FTP_DIR:-.}/pub"
           echo "Salinan id terkirim ke chartflow.my.id/app/id/" >> "$GITHUB_STEP_SUMMARY"
