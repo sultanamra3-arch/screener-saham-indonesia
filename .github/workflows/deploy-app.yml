@@ -1,0 +1,30 @@
+name: Kirim screener ke chartflow.my.id
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FTP_SERVER: ${{ secrets.FTP_SERVER }}
+      FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+      FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+      FTP_DIR: ${{ secrets.FTP_DIR }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Kirim lewat FTP
+        run: |
+          python scripts/build_chartflow_app.py id out_app
+          sudo apt-get install -y -qq lftp > /dev/null
+          LFTP_PASSWORD="$FTP_PASSWORD" lftp -c "set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3; set net:timeout 30; \
+            open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\"; \
+            mkdir -p -f ${FTP_DIR:-.}/_appfiles/id; mirror -R --parallel=4 out_app ${FTP_DIR:-.}/_appfiles/id"
+          echo "Salinan id terkirim ke chartflow.my.id/app/id/" >> "$GITHUB_STEP_SUMMARY"
