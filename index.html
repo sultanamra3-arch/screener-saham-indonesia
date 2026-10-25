@@ -7,22 +7,28 @@
 <meta name="description" content="Saring semua saham Bursa Efek Indonesia dengan 7 metode investor dan trader, lengkap dengan harga beli, jual, dan alasannya.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<script>try{const t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
 <style>
 /* Layout: trading-desk worksheet. Status bar, tab strip with live pass counts, criteria rail + results table. */
+/* v2: aplikasi sekuritas modern */
 :root{
-  --bg:#f3f5f7; --surface:#ffffff; --sunk:#e8ecf0; --line:#d5dce3;
-  --fg:#16212c; --muted:#5a6a79; --accent:#1f5f8b; --accent-ink:#ffffff; --accent-soft:#dbe8f2;
-  --good:#1d7a4f; --good-soft:#d9efe3; --warn:#9a6a00; --warn-soft:#f6ecd0; --bad:#b0413e; --bad-soft:#f5dcdb;
-  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
-  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
-  --r:8px; color-scheme:light;
+  --bg:#f3f5fa; --surface:#ffffff; --sunk:#eef1f7; --line:#e3e7ef;
+  --fg:#111827; --muted:#6b7280; --accent:#2f5bea; --accent-ink:#ffffff; --accent-soft:#e6ecfd;
+  --good:#0f9960; --good-soft:#e2f6ec; --warn:#b26b00; --warn-soft:#fdf1dc; --bad:#d9363e; --bad-soft:#fde6e7;
+  --f-display:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
+  --f-body:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
+  --r:14px; --shadow:0 1px 2px rgba(16,24,40,.05),0 2px 8px rgba(16,24,40,.06); color-scheme:light;
 }
-@media (prefers-color-scheme: dark){:root{
-  --bg:#0f151b; --surface:#16202a; --sunk:#1c2834; --line:#2a3846;
-  --fg:#e3eaf0; --muted:#93a4b4; --accent:#6aaedb; --accent-ink:#0b1620; --accent-soft:#1d3447;
-  --good:#5cc993; --good-soft:#163527; --warn:#e2b54d; --warn-soft:#3a2f12; --bad:#ec8580; --bad-soft:#3d1d1c; color-scheme:dark}}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]){
+  --bg:#0b1220; --surface:#121b2d; --sunk:#18233a; --line:#22304a;
+  --fg:#e8edf6; --muted:#94a3b8; --accent:#6d8dff; --accent-ink:#0b1220; --accent-soft:#1b2a4d;
+  --good:#34d399; --good-soft:#0f2e25; --warn:#fbbf24; --warn-soft:#33270b; --bad:#f87171; --bad-soft:#3a1618; --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme=dark]{
+  --bg:#0b1220; --surface:#121b2d; --sunk:#18233a; --line:#22304a;
+  --fg:#e8edf6; --muted:#94a3b8; --accent:#6d8dff; --accent-ink:#0b1220; --accent-soft:#1b2a4d;
+  --good:#34d399; --good-soft:#0f2e25; --warn:#fbbf24; --warn-soft:#33270b; --bad:#f87171; --bad-soft:#3a1618; --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
 *{box-sizing:border-box}
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
@@ -172,14 +178,91 @@ tr.tot td{background:rgba(127,127,127,.08);border-top:2px solid var(--line)}
 .prose ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 footer{font-size:13px;color:var(--muted);max-width:85ch;display:flex;flex-direction:column;gap:6px}
 @media (prefers-reduced-motion:no-preference){.bar i{transition:width .3s ease}}
+
+/* ---------- v2 overrides ---------- */
+body{font-size:14.5px;padding-block:0 40px;-webkit-font-smoothing:antialiased}
+.num,.mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.wrap{gap:14px}
+h1,h2{letter-spacing:-.015em}
+h2{font-size:19px}
+button,select,input[type=number],input[type=search],input[type=text],input[type=date]{border-radius:10px}
+button{transition:background .15s,border-color .15s}
+.topbar{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  margin:0 -16px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand .logo{width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:800;font-size:15px;flex:none}
+.brand b{display:block;font-size:15.5px;font-weight:800;line-height:1.1}
+.brand .sub{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-r{display:flex;align-items:center;gap:8px}
+.mkt{display:inline-flex;background:var(--sunk);border-radius:999px;padding:3px}
+.mkt a{padding:5px 11px;border-radius:999px;text-decoration:none;color:var(--muted);font-size:13px;font-weight:600;white-space:nowrap}
+.mkt a[aria-current=page]{background:var(--surface);color:var(--fg);box-shadow:var(--shadow)}
+.iconbtn{width:36px;height:36px;padding:0;border-radius:999px;display:grid;place-items:center;font-size:16px}
+.mainnav{display:flex;gap:6px;background:var(--surface);border-radius:999px;padding:5px;box-shadow:var(--shadow);width:max-content;max-width:100%;overflow-x:auto}
+.mainnav button{border:none;background:none;border-radius:999px;padding:8px 16px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:7px;white-space:nowrap}
+.mainnav button .ic{font-size:16px}
+.mainnav button[aria-current=true]{background:var(--accent);color:var(--accent-ink)}
+.mainnav button .bd{background:var(--bad);color:#fff;border-radius:999px;font-size:11px;padding:0 6px;line-height:17px}
+.status{border:none;box-shadow:var(--shadow);border-radius:var(--r);font-size:13.5px}
+.tabs{display:flex!important;gap:8px;overflow-x:auto;padding:2px;scrollbar-width:none;grid-template-columns:none!important}
+.tabs::-webkit-scrollbar{display:none}
+.tabs:empty{display:none!important}
+.tab{flex:none;flex-direction:row!important;align-items:center!important;gap:8px!important;border-radius:999px!important;padding:7px 14px!important;background:var(--surface)!important;border:1px solid var(--line)!important;color:var(--fg)!important}
+.tab .k{display:none}
+.tab .n{font-family:var(--f-body)!important;font-size:14px!important;font-weight:700!important}
+.tab .c{font-size:12px;color:var(--muted)!important}
+.tab .c b{color:var(--good)!important}
+.tab[aria-selected=true]{background:var(--fg)!important;border-color:var(--fg)!important;color:var(--bg)!important}
+.tab[aria-selected=true] .c,.tab[aria-selected=true] .c b{color:var(--bg)!important;opacity:.85}
+.rail,.mcard,.tablebox,.etf,.calcwrap>.mcard{border:none!important;box-shadow:var(--shadow);border-radius:var(--r)!important}
+.mcard{padding:14px 16px}
+.tablebox{overflow:auto}
+table th{font-family:var(--f-body)!important;letter-spacing:.04em!important;font-size:11px!important;background:var(--surface)!important;color:var(--muted)!important;border-bottom:1px solid var(--line)!important}
+table td{border-bottom:1px solid var(--line)}
+tr.row:hover td,tr.wrow:hover td{background:var(--sunk)}
+.st{border-radius:999px!important;padding:1px 9px!important;font-weight:600}
+.seg{border:none!important;background:var(--sunk);border-radius:999px!important;padding:3px}
+.seg button{border:none!important;border-radius:999px!important;background:none;padding:6px 12px}
+.seg button[aria-pressed=true]{background:var(--surface)!important;color:var(--fg)!important;box-shadow:var(--shadow);font-weight:700}
+.filters select,.filters input[type=search],#syr{border-radius:999px}
+#syr[aria-pressed=true]{background:var(--good-soft);border-color:var(--good);color:var(--good)}
+.st.buy{background:var(--good-soft)!important;color:var(--good)!important}
+.st.sell{background:var(--bad-soft)!important;color:var(--bad)!important}
+footer{color:var(--muted);font-size:12.5px}
+/* laci detail saham */
+.scrim{position:fixed;inset:0;background:rgba(10,15,30,.35);z-index:40;animation:fade .15s}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--bg);z-index:41;box-shadow:-8px 0 30px rgba(0,0,0,.15);display:flex;flex-direction:column;animation:slide .2s ease-out}
+.drawer .dr-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.drawer .dr-h b{font-size:18px}
+.drawer .dr-b{overflow:auto;padding:14px 16px 40px;display:flex;flex-direction:column;gap:12px}
+.drawer .dgrid{grid-template-columns:1fr!important}
+@keyframes slide{from{transform:translateX(30px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes fade{from{opacity:0}}
+@media (max-width:760px){
+  body{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  .brand .sub{display:none}
+  .brand b{font-size:14.5px}
+  .brand .logo{width:30px;height:30px}
+  .mcard h4{flex-wrap:wrap}
+  .mkt a{padding:5px 9px;font-size:12px}
+  .mainnav{position:fixed;left:0;right:0;bottom:0;z-index:35;width:auto;border-radius:18px 18px 0 0;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));box-shadow:0 -2px 14px rgba(16,24,40,.12);gap:0}
+  .mainnav button{flex-direction:column;gap:1px;padding:5px 6px;font-size:11px;border-radius:12px;min-width:58px;position:relative}
+  .mainnav button .ic{font-size:20px}
+  .mainnav button[aria-current=true]{background:var(--accent-soft);color:var(--accent)}
+  .mainnav button .bd{position:absolute;top:0;right:6px}
+  .drawer{top:auto;height:88vh;width:100%;border-radius:18px 18px 0 0;animation:up .2s ease-out}
+  @keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header style="display:flex;flex-direction:column;gap:6px">
-    <h1>Screener Saham Indonesia</h1>
-    <p class="lede">Semua saham Bursa Efek Indonesia, disaring dengan tujuh metode investor dan trader sesuai aturan aslinya: kapan beli, kapan tahan, kapan jual, berapa harganya, dan alasannya. Mulai dari tab Ringkasan.</p>
+  <header class="topbar">
+    <div class="brand"><span class="logo" aria-hidden="true">S</span><div><b>Screener Saham</b><span class="sub">Bursa Efek Indonesia</span></div></div>
+    <div class="tb-r"><nav class="mkt" aria-label="Pasar"><a href="https://sultanamra3-arch.github.io/screener-saham/">🇺🇸 US</a><a href="https://sultanamra3-arch.github.io/screener-saham-indonesia/" aria-current="page">🇮🇩 ID</a></nav>
+      <button type="button" class="iconbtn" id="theme" aria-label="Ganti tema terang/gelap">🌙</button></div>
   </header>
+  <nav class="mainnav" id="mainnav" aria-label="Menu utama"></nav>
 
   <section class="status" id="status" aria-live="polite"><span><span class="dot none"></span>Memuat data…</span></section>
 
@@ -335,7 +418,8 @@ function renderStatus(){
 }
 function renderTabs(){
   const list=filtered();
-  $("tabs").innerHTML=TABS.map(t=>{
+  renderNav(); const grp=groupOf(tab); store.set(WP+"g."+grp.id,tab);
+  $("tabs").innerHTML=grp.tabs.length<2?"":TABS.filter(t=>grp.tabs.includes(t.id)).map(t=>{
     let c="";
     if(t.id==="summary"){ const n=list.filter(o=>summaryOf(o).by.buy.length).length; c=`<b>${n}</b> saham ada sinyal beli`; }
     else if(t.id==="sector") { const S=sectorStats(), t3=S.L.filter(r=>r.n>=5)[0]; c=t3?`Terkuat: <b>${esc(t3.name)}</b>`:"Sektor"; }
@@ -422,7 +506,6 @@ function renderSummary(box){
       <td><div class="mcells">${M.map(m=>{const st=mget(o,m.id); return `<span class="mc ${st.s}${st.p?" pass":""}" title="${esc(m.name)}: ${ST[st.s]}">${m.abbr}</span>`}).join("")}</div></td>
       <td style="font-size:13px">${act||'<span class="na">–</span>'}</td>
       <td class="num">${x.pass}/7</td><td class="num">${o.adv!=null?"Rp"+nf(o.adv,1)+" M":"–"}</td></tr>`;
-    if(openTicker===o.ticker) tr+=`<tr class="detail"><td colspan="6">${detail(o)}</td></tr>`;
     return tr; }).join("");
 }
 
@@ -449,7 +532,6 @@ function renderMethod(box,m){
       <td class="why">${esc(st.rs||"")}</td>
       <td><div class="pips">${(st.c||[]).filter(c=>c[2]!==2).map(c=>`<span class="pip ${c[2]===1?"y":c[2]==null?"na":""}" title="${esc(c[0])}"></span>`).join("")}</div></td>
       ${m.cols.map(c=>`<td class="num">${fmtCol(c[0],o[c[0]],c[2])}</td>`).join("")}</tr>`;
-    if(openTicker===o.ticker) tr+=`<tr class="detail"><td colspan="${span}">${detail(o,m.id)}</td></tr>`;
     return tr; }).join("");
 }
 
@@ -1326,10 +1408,35 @@ function alertBox(msg){ const b=$("results"); const d=document.createElement("p"
 function addToPorto(st){ store.set(WP+"porto.pre",JSON.stringify({code:st.code,price:st.entry,qty:st.lots||null,stop:st.stop,target:st.target,method:st.pmeth||"lain",date:todayISO()}));
   store.set(WP+"porto.ed",""); tab="porto"; store.set(WP+"tab","porto"); try{history.replaceState(null,"","#porto")}catch(e){} renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0,behavior:"smooth"}); }
 
+
+// ---------- navigasi v2 ----------
+const GROUPS=[{id:"home",ic:"🏠",name:"Beranda",tabs:["summary"]},{id:"saham",ic:"🔍",name:"Saham",tabs:M.map(m=>m.id)},
+  {id:"watch",ic:"📍",name:"Watchlist",tabs:["watch"]},{id:"porto",ic:"💼",name:"Portofolio",tabs:["porto"]},{id:"alat",ic:"🧰",name:"Alat",tabs:["calc","cycles","sector"]}];
+const groupOf=t=>GROUPS.find(g=>g.tabs.includes(t))||GROUPS[0];
+function renderNav(){
+  const g=groupOf(tab), P=porto(), nd=P.open.length?P.open.filter(ps=>posEval(ps).acts.some(a=>a.lv<=1)).length:0;
+  $("mainnav").innerHTML=GROUPS.map(x=>`<button type="button" data-g="${x.id}" aria-current="${x.id===g.id}"><span class="ic" aria-hidden="true">${x.ic}</span><span>${x.name}</span>${x.id==="porto"&&nd?`<span class="bd">${nd}</span>`:""}</button>`).join("");
+}
+function goTab(t){ tab=t; openTicker=null; store.set(WP+"tab",t); store.set(WP+"g."+groupOf(t).id,t); try{history.replaceState(null,"","#"+t)}catch(e){} renderTabs(); renderRail(); renderResults(); }
+function renderDrawer(box){
+  const old=document.getElementById("drawer"); if(old) old.remove(); const os=document.getElementById("scrim"); if(os) os.remove();
+  if(!openTicker) { document.body.style.overflow=""; return; }
+  const o=rows.find(x=>x.ticker===openTicker); if(!o) return;
+  const mid=MID[tab]?tab:undefined;
+  const sc=document.createElement("div"); sc.className="scrim"; sc.id="scrim";
+  const d=document.createElement("div"); d.className="drawer"; d.id="drawer"; d.setAttribute("role","dialog"); d.setAttribute("aria-label","Detail "+o.ticker);
+  d.innerHTML=`<div class="dr-h"><div>${starBtn(o.ticker)} <b>${esc(o.ticker)}</b> <span class="num">${usd(o.price)}</span><br><span class="note">${esc(o.company||"")}</span></div><div style="display:flex;gap:6px">${calcBtn(o.ticker)}<button type="button" class="iconbtn" id="drClose" aria-label="Tutup">✕</button></div></div><div class="dr-b">${detail(o,mid)}</div>`;
+  box.appendChild(sc); box.appendChild(d); document.body.style.overflow="hidden";
+  const close=()=>{ openTicker=null; renderResults(); };
+  sc.addEventListener("click",close); d.querySelector("#drClose").addEventListener("click",close);
+}
+document.addEventListener("keydown",ev=>{ if(ev.key==="Escape"&&openTicker){ openTicker=null; renderResults(); } });
+
 function renderResults(){
   const box=$("results");
   if(!DATA){ box.innerHTML=`<div class="tablebox"><div class="empty">Belum ada data. Setelah workflow selesai, tabel saham muncul di sini.</div></div>`; return; }
   if(tab==="summary") renderSummary(box); else if(tab==="sector") renderSector(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else if(tab==="calc") renderCalc(box); else if(tab==="porto") renderPorto(box); else renderMethod(box,MID[tab]);
+  renderDrawer(box);
 }
 function renderAll(){ renderStatus(); renderTabs(); renderRail(); renderResults(); }
 
@@ -1354,6 +1461,10 @@ document.querySelectorAll(".seg button").forEach(b=>{
 $("syr").setAttribute("aria-pressed",String(syrOnly));
 $("syr").addEventListener("click",()=>{ syrOnly=!syrOnly; store.set("si.syr",syrOnly?"1":"0"); $("syr").setAttribute("aria-pressed",String(syrOnly)); renderTabs(); renderResults(); });
 
+$("mainnav").addEventListener("click",ev=>{ const b=ev.target.closest("[data-g]"); if(!b) return; const g=GROUPS.find(x=>x.id===b.dataset.g); const last=store.get(WP+"g."+g.id); goTab(g.tabs.includes(last)?last:g.tabs[0]); window.scrollTo({top:0}); });
+(function(){ const b=$("theme"); const cur=()=>document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  const paint=()=>{ b.textContent=cur()==="dark"?"☀️":"🌙"; }; paint();
+  b.addEventListener("click",()=>{ const t=cur()==="dark"?"light":"dark"; document.documentElement.dataset.theme=t; try{localStorage.setItem("theme",t)}catch(e){} paint(); if(tab==="cycles") renderResults(); }); })();
 // ---------- boot ----------
 renderAll();
 fetch("data/stocks.json",{cache:"no-cache"}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json() }).then(d=>{
