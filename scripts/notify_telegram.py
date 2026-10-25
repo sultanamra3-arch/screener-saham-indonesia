@@ -113,6 +113,24 @@ def signals(d: dict):
     return buys, sells, holds, first
 
 
+
+def layak(o: dict, mid: str) -> bool:
+    """Layak dibeli hari ini oleh orang yang belum punya (sama dengan status 'Layak beli' di website)."""
+    st = (o.get("m") or {}).get(mid) or {}
+    s, lv, p = st.get("s"), st.get("lv") or {}, o.get("price")
+    if s == "buy":
+        return True
+    if s != "hold" or not p:
+        return False
+    if mid == "canslim":
+        piv = st.get("bp") or lv.get("buy")
+        return bool(piv) and p <= piv * 1.05
+    if mid == "momentum":
+        return (o.get("momRank") or 0) >= 90
+    if mid == "swing":
+        return bool(st.get("p"))
+    return bool(st.get("p")) and (lv.get("buy") is None or p <= lv["buy"])
+
 INV = ["value", "growth", "quality", "dividend"]
 
 
@@ -147,9 +165,8 @@ def support_section(d: dict) -> list[str]:
 
     def sig(o, ms):
         mm = o.get("m") or {}
-        bb = [NAMES[m] for m in ms if (mm.get(m) or {}).get("s") == "buy"]
-        hh = [NAMES[m] for m in ms if (mm.get(m) or {}).get("s") == "hold"]
-        return bb, hh
+        bb = [NAMES[m] for m in ms if layak(o, m)]
+        return bb, []
 
     rng = lambda z: usd(z["lo"]) if z["lo"] == z["hi"] else f"{usd(z['lo'])}–{usd(z['hi'])}"
     stocks = c.get("stocks") or {}
@@ -196,7 +213,7 @@ def support_section(d: dict) -> list[str]:
     if items:
         L += ["", b(f"📍 Masuk area support, ruang naik cukup ({min(len(items), 8)})")]
         for _, _, t, o, z, (bb, hh), r1, rr, low in items[:8]:
-            s = " · ".join(x for x in (f"Beli: {', '.join(bb)}" if bb else "", f"Tahan: {', '.join(hh)}" if hh else "") if x)
+            s = " · ".join(x for x in (f"Layak beli: {', '.join(bb)}" if bb else "", f"Tahan: {', '.join(hh)}" if hh else "") if x)
             tgt = f"R1 {usd(r1['lo'])} (R:R 1:{str(round(rr, 1)).replace('.', ',')})" if r1 else "R1 terbuka (tak ada resistance kuat ≤30%)"
             L.append(f"{b(t)} {usd(o.get('price'))} · support {rng(z)} ({z['strength']}){' · turun ke support berikutnya' if low else ''} · {tgt} · jebol &lt; {usd(z['brk'])}")
             L.append(f"<i>{e(s)}</i>")
@@ -228,12 +245,13 @@ def morning(d: dict) -> str | None:
     day = d["priceDate"]
     buys, sells, holds, first = signals(d)
     L = [f"🇮🇩 {b('Screener Saham Indonesia — ' + hari(day))}",
-         f"🟢 Beli baru: {len(buys)} · 🔴 Jual: {len(sells)} · ⏳ Tahan: {holds}"]
+         f"🟢 Sinyal beli baru: {len(buys)} · 🔴 Sinyal jual (bagi pemegang): {len(sells)}"]
     mk = d.get("market") or {}
     if mk.get("ok") is not None:
         L.append("IHSG: " + ("naik ✅" if mk["ok"] else "tertekan ⚠️ (CAN SLIM tidak membeli)"))
-    if first:
-        L += ["", f"ℹ️ Pencatatan sinyal investor dimulai hari ini: {first} posisi awal (lihat website)."]
+    pool = [o for o in d.get("stocks", []) if o.get("liq", "L") == "L"]
+    nl = sum(1 for o in pool if any(layak(o, m) for m in ORDER))
+    L.append(f"📋 Masih layak beli (sinyal lama + baru): {nl} saham — lihat website")
     if buys:
         L += ["", b(f"Beli ({min(len(buys), TOP)} teratas)")]
         for o, mid, st, _ in buys[:TOP]:
