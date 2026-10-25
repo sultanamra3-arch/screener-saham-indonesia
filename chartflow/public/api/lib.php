@@ -24,6 +24,7 @@ function db_save($fh, array $db): void {
 function db_close($fh): void { flock($fh, LOCK_UN); fclose($fh); }
 
 function now(): int { return time(); }
+function user_file(string $code): string { return __DIR__ . '/../_data/users/' . substr(hash('sha256', $code . CF_SALT), 0, 32) . '.json'; }
 function ip_key(): string { return substr(hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '') . CF_SALT), 0, 16); }
 function rnd(int $n): string { return bin2hex(random_bytes($n)); }
 function new_code(): string {
@@ -55,6 +56,11 @@ function prune(array &$db): void {
     foreach ($db['rate'] as $k => $v) { $v = array_filter($v, function ($x) use ($t) { return $x > $t - 86400; }); if (!$v) unset($db['rate'][$k]); else $db['rate'][$k] = array_values($v); }
     foreach ($db['sessions'] as $tok => $s) { $c = $db['codes'][$s['code']] ?? null; if (!$c || $c['status'] !== 'active' || $c['exp'] < $t) unset($db['sessions'][$tok]); }
     foreach ($db['reqs'] as $id => $r) { if ($r['t'] < $t - 30 * 86400) unset($db['reqs'][$id]); }
+    // kode dicabut/habis lebih dari 90 hari: hapus beserta data akunnya
+    foreach ($db['codes'] as $c => $v) {
+        $end = $v['status'] === 'revoked' ? ($v['revoked'] ?? $v['exp']) : $v['exp'];
+        if ($end < $t - 90 * 86400) { @unlink(user_file($c)); unset($db['codes'][$c]); }
+    }
 }
 
 /** Sesi yang sah dari cookie, atau null. */

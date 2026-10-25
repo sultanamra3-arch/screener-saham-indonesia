@@ -60,15 +60,22 @@ if ($cmd === '/daftar') {
     foreach ($codes as $c => $v) {
         if ($v['status'] !== 'active') continue;
         $dev = count(array_filter($sess, function ($s) use ($c) { return $s['code'] === $c; }));
-        $lines[] = ($v['exp'] < $now ? '⌛ ' : '🟢 ') . "<code>$c</code> " . h($v['name'] ?? '') . " · s.d. " . fmt_date($v['exp']) . " · $dev/" . ($v['devices'] ?? CF_DEVICES) . " perangkat";
+        $seen = isset($v['seen']) ? (($now - $v['seen'] < 86400) ? 'aktif hari ini' : 'aktif ' . fmt_date($v['seen'])) : 'belum pernah masuk';
+        $lines[] = ($v['exp'] < $now ? '⌛ ' : '🟢 ') . "<code>$c</code> <b>" . h($v['name'] ?? '') . "</b>\n    s.d. " . fmt_date($v['exp']) . " · $dev/" . ($v['devices'] ?? CF_DEVICES) . " perangkat · $seen · " . (int)($v['npos'] ?? 0) . " posisi portofolio";
     }
     reply($lines ? "<b>Kode aktif</b>\n" . implode("\n", array_slice($lines, 0, 60)) : 'Belum ada kode aktif.');
-} elseif (in_array($cmd, ['/cabut', '/perpanjang', '/reset'], true)) {
+} elseif (in_array($cmd, ['/cabut', '/perpanjang', '/reset', '/nama'], true)) {
     $code = norm_code($a[1] ?? '');
     [$fh, $db] = db_open();
     if (!$code || !isset($db['codes'][$code])) { db_close($fh); reply('Kode tidak ditemukan. Contoh: <code>' . $cmd . ' CF-ABCD-2345</code>'); exit; }
-    if ($cmd === '/cabut') {
+    if ($cmd === '/nama') {
+        $nm = trim(mb_substr(implode(' ', array_slice($a, 2)), 0, 60));
+        if ($nm === '') { db_close($fh); reply('Contoh: <code>/nama CF-ABCD-2345 Budi Santoso</code>'); exit; }
+        $db['codes'][$code]['name'] = $nm;
+        $msg = "✏️ Nama untuk <code>$code</code> diganti menjadi " . h($nm) . '.';
+    } elseif ($cmd === '/cabut') {
         $db['codes'][$code]['status'] = 'revoked';
+        $db['codes'][$code]['revoked'] = now();
         foreach ($db['sessions'] as $k => $s) if ($s['code'] === $code) unset($db['sessions'][$k]);
         $msg = "🚫 <code>$code</code> dicabut. Semua perangkatnya keluar.";
     } elseif ($cmd === '/reset') {
@@ -91,5 +98,5 @@ if ($cmd === '/daftar') {
     db_save($fh, $db);
     reply("🔑 Kode baru untuk " . h($name) . ":\n<code>$code</code>\nBerlaku sampai " . fmt_date($exp) . ".\n\n<code>" . h(share_text($code, $exp)) . "</code>");
 } else {
-    reply("<b>Perintah ChartFlow</b>\n/daftar: kode aktif dan jumlah perangkat\n/kode 30 Nama: buat kode baru (hari, nama)\n/perpanjang KODE 30: tambah masa berlaku\n/reset KODE: keluarkan semua perangkat kode itu\n/cabut KODE: matikan kode\n\nPermintaan dari website datang otomatis dengan tombol Setujui/Tolak.");
+    reply("<b>Perintah ChartFlow</b>\n/daftar: kode aktif, perangkat, dan aktivitas\n/nama KODE Nama: ganti nama akun\n/kode 30 Nama: buat kode baru (hari, nama)\n/perpanjang KODE 30: tambah masa berlaku\n/reset KODE: keluarkan semua perangkat kode itu\n/cabut KODE: matikan kode\n\nPermintaan dari website datang otomatis dengan tombol Setujui/Tolak.");
 }
