@@ -614,9 +614,13 @@ function renderEtf(box){
 let CYC=null, SER=null, CYC_ERR=false, LWC_P=null, cyCharts=[], cyObs=[];
 function loadCycles(){
   if(CYC||CYC_ERR) return Promise.resolve();
-  return Promise.all([fetch("data/cycles.json",{cache:"no-cache"}).then(r=>{if(!r.ok) throw 0; return r.json()}),
-                      fetch("data/series.json",{cache:"no-cache"}).then(r=>{if(!r.ok) throw 0; return r.json()})])
-    .then(([c,s])=>{CYC=c; SER=s;}).catch(()=>{CYC_ERR=true;});
+  return fetch("data/cycles.json",{cache:"no-cache"}).then(r=>{if(!r.ok) throw 0; return r.json()}).then(c=>{CYC=c;}).catch(()=>{CYC_ERR=true;});
+}
+let SER_P=null;
+function loadSer(){
+  if(SER) return Promise.resolve(); if(SER_P) return SER_P;
+  SER_P=fetch("data/series.json",{cache:"no-cache"}).then(r=>{if(!r.ok) throw 0; return r.json()}).then(s=>{SER=s;}).catch(()=>{SER={dates:[],idx:{},stocks:{}};});
+  return SER_P;
 }
 function loadLWC(){
   if(window.LightweightCharts) return Promise.resolve();
@@ -703,6 +707,7 @@ function drawBreadth(el,b){
 function renderCycles(box){
   if(!CYC&&!CYC_ERR){ box.innerHTML=`<div class="tablebox"><div class="empty">Memuat analisis siklus…</div></div>`; loadCycles().then(()=>{ if(tab==="cycles"){ renderTabs(); renderResults(); } }); return; }
   if(CYC_ERR){ box.innerHTML=`<div class="tablebox"><div class="empty">Analisis Siklus & Fibonacci belum tersedia. Akan terisi setelah pembaruan data berikutnya.</div></div>`; return; }
+  if(!SER){ box.innerHTML=`<div class="tablebox"><div class="empty">Memuat grafik…</div></div>`; loadSer().then(()=>{ if(tab==="cycles") renderResults(); }); return; }
   const names=Object.keys(CYC.indices);
   let sel=store.get(WP+"cy.sel")||names[0];
   if(!CYC.indices[sel]&&!CYC.stocks[sel]) sel=names[0];
@@ -1082,13 +1087,15 @@ function stockPanel(t){
   if(!CYC&&!CYC_ERR) sr=`<p class="note">Memuat support dan resistance…</p>`;
   else if(!a) sr=`<p class="note">Support dan resistance belum tersedia untuk saham ini (hanya dihitung untuk saham yang cukup likuid).</p>`;
   else {
-    const res=(a.res||[]).slice(0,3).reverse(), sup=(a.sup||[]).slice(0,3);
-    const zl=(z,k,i)=>`<div><span><b>${k}${i}</b> ${zr(z)} <span class="st ${strCls(z.strength)}">${z.strength}</span> <span class="note">${pct(z.dist)}</span></span><span>${k==="R"?fillBtn("target",z.lo,"target"):fillBtn("beli di sini",z.hi,"sup")}</span></div>`;
-    sr=`<div class="dl" style="font-size:13.5px">${res.map((z,i)=>zl(z,"R",res.length-i)).join("")}
+    const res=(a.res||[]).slice(0,4).reverse(), sup=(a.sup||[]).slice(0,4), lad=ladder(t,w||null), li=z=>lad?lad.L.findIndex(x=>x.lo===z.lo&&x.hi===z.hi):-1;
+    let rn=(a.res||[]).slice(0,4).filter(z=>li(z)<0).length+1;
+    const lab=(z,k)=>{ const i=li(z); if(i>=0) return k==="R"?`S${i+1}<span class="note" style="font-weight:400"> tembus</span>`:`S${i+1}`; if(k==="R"){ rn--; return "R"+rn; } return `<span class="note" title="Zona lemah, tidak dihitung dalam S1–S3">S·</span>`; };
+    const zl=(z,k)=>`<div><span><b>${lab(z,k)}</b> ${zr(z)} <span class="st ${strCls(z.strength)}">${z.strength}</span> <span class="note">${pct(z.dist)}</span></span><span>${k==="R"?fillBtn("target",z.lo,"target"):fillBtn("beli di sini",z.hi,"sup")}</span></div>`;
+    sr=`<div class="dl" style="font-size:13.5px">${res.map(z=>zl(z,"R")).join("")}
       <div style="border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);padding:3px 0"><span><b>Harga sekarang ${usd(o.price)}</b>${rm&&rm.lad?` · <span class="st buy">Di S${rm.lad.pos}</span> jebol &lt; ${usd(w.brk)}`:""}</span><span>${fillBtn("beli",o.price,"entry")}</span></div>
-      ${sup.map((z,i)=>zl(z,"S",i+1)).join("")}</div>
+      ${sup.map(z=>zl(z,"S")).join("")}</div>
       ${rm?`<p class="note" style="margin:4px 0">Ruang naik ke R1 kuat/sedang: ${rm.up!=null?"+"+nf(rm.up,1)+"%":"terbuka"} · R:R ${rm.rr!=null?"1 : "+nf(rm.rr,1):"terbuka"}${rm.ok?" ✅":" ⏳ ruang sempit"}</p>`:""}
-      <p class="note" style="margin:4px 0">Urutan S dan R di sini dari harga sekarang. "Beli di sini" mengisi harga beli = batas atas zona, dan stop = sedikit di bawah zona.</p>`;
+      <p class="note" style="margin:4px 0">S1, S2, S3 dihitung dari puncak terakhir${lad&&lad.pk.d?` (${usd(lad.pk.v)}, ${tgl(lad.pk.d)})`:""}, sama seperti di Watchlist; "tembus" = support yang sudah dilewati harga dan kini menjadi penghalang. S· = zona lemah, tidak dihitung. "Beli di sini" mengisi harga beli = batas atas zona, dan stop = sedikit di bawah zona.</p>`;
   }
   return `<div class="mcard" style="margin-top:12px"><h4><span>${esc(t)} · ${esc(o.company||"")}</span><span class="num">${usd(o.price)}</span></h4>
     <div class="calcwrap" style="margin-top:0"><div><h3 style="margin:0 0 4px">Sinyal 7 metode</h3>${meth}</div><div><h3 style="margin:0 0 4px">Support &amp; resistance</h3>${sr}</div></div>
@@ -1367,6 +1374,7 @@ function statusOf(e){ if(!e.acts.length) return ['<span class="st buy">✅ tahan
   const a=e.acts[0]; const cls=a.lv===0?"sell":a.lv===1?"sell":a.lv===2?"hold":"wait"; return [`<span class="st ${cls}">${a.ic} ${a.lv<=1?"perlu tindakan":"perhatikan"}</span>`,a.lv]; }
 function renderPorto(box){
   if(!CYC&&!CYC_ERR){ loadCycles().then(()=>{ if(tab==="porto") renderResults(); }); }
+  if(!SER&&porto().open.length){ loadSer().then(()=>{ if(tab==="porto") renderResults(); }); }
   const P=porto(), ed=store.get(WP+"porto.ed")||"", E=P.open.find(x=>x.id===ed)||null, pre=JSON.parse(store.get(WP+"porto.pre")||"null");
   const f=E||pre||{method:"canslim",date:todayISO()};
   const ev=P.open.map(ps=>({ps,e:posEval(ps)}));
