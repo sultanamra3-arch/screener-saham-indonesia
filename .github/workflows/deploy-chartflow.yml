@@ -67,7 +67,7 @@ jobs:
           echo "$r"
           echo "$r" | grep -q '"ok":true' && echo "- Webhook Telegram aktif" >> "$GITHUB_STEP_SUMMARY" || echo "- ⚠ Webhook gagal: $r" >> "$GITHUB_STEP_SUMMARY"
           curl -s "https://api.telegram.org/bot$TG_TOKEN/setMyCommands" -H 'Content-Type: application/json' \
-            -d '{"commands":[{"command":"daftar","description":"Kode akses aktif"},{"command":"kode","description":"Buat kode: /kode 30 Nama"},{"command":"perpanjang","description":"/perpanjang KODE 30"},{"command":"reset","description":"/reset KODE (keluarkan perangkat)"},{"command":"cabut","description":"/cabut KODE"},{"command":"nama","description":"/nama KODE Nama baru"}]}' > /dev/null
+            -d '{"commands":[{"command":"daftar","description":"Kode akses aktif"},{"command":"kode","description":"Buat kode: /kode 30 Nama"},{"command":"perpanjang","description":"/perpanjang KODE 30"},{"command":"reset","description":"/reset KODE (keluarkan perangkat)"},{"command":"cabut","description":"/cabut KODE"},{"command":"nama","description":"/nama KODE Nama baru"},{"command":"hapus","description":"/hapus KODE (hapus permanen + data)"}]}' > /dev/null
 
       - name: Uji halaman
         if: steps.chk.outputs.ready == 'true'

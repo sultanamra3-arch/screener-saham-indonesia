@@ -7,12 +7,13 @@ $name = trim(mb_substr((string)($b['name'] ?? ''), 0, 60));
 $contact = trim(mb_substr((string)($b['contact'] ?? ''), 0, 60));
 $why = trim(mb_substr((string)($b['why'] ?? ''), 0, 200));
 if (!empty($b['website'])) json_out(['ok' => true]); // jebakan bot spam
+if (empty($b['agree'])) json_out(['ok' => false, 'msg' => 'Centang persetujuan Syarat Penggunaan dan Kebijakan Privasi.'], 422);
 if (mb_strlen($name) < 2 || mb_strlen($contact) < 4) json_out(['ok' => false, 'msg' => 'Isi nama dan kontak dengan benar.'], 422);
 
 [$fh, $db] = db_open();
 if (!rate_ok($db, 'req', 3, 3600)) { db_save($fh, $db); json_out(['ok' => false, 'msg' => 'Terlalu banyak permintaan. Coba lagi dalam 1 jam.'], 429); }
 $id = rnd(6);
-$db['reqs'][$id] = ['t' => now(), 'name' => $name, 'contact' => $contact, 'why' => $why, 'status' => 'pending'];
+$db['reqs'][$id] = ['t' => now(), 'name' => $name, 'contact' => $contact, 'why' => $why, 'status' => 'pending', 'agree' => now()];
 prune($db);
 db_save($fh, $db);
 

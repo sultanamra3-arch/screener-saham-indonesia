@@ -6,6 +6,15 @@
 <title>ChartFlow · Screener Saham Metode Para Ahli</title>
 <meta name="description" content="Screener saham BEI dan Wall Street dengan 7 metode investor dan trader ternama: kapan beli, kapan jual, dan alasannya. Diperbarui otomatis setiap hari.">
 <meta name="theme-color" content="#2f5bea">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ChartFlow">
+<meta property="og:url" content="https://chartflow.my.id/">
+<meta property="og:title" content="ChartFlow · Screener Saham Metode Para Ahli">
+<meta property="og:description" content="Saring saham BEI dan Wall Street dengan 7 metode investor dan trader ternama: kapan beli, kapan jual, dan alasannya. Diperbarui otomatis setiap hari.">
+<meta property="og:image" content="https://chartflow.my.id/img/og.jpg">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:locale" content="id_ID">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png"><link rel="apple-touch-icon" href="/img/apple-touch-icon.png"><link rel="manifest" href="/app.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
@@ -290,7 +299,7 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
 
 <section style="padding-top:10px"><div class="wrap"><div class="ctaBox"><div><h2>Siap mencoba?</h2><p>Minta kode akses sekarang. Biasanya disetujui di hari yang sama.</p></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn pri" data-open="req">Minta kode akses</button><button class="btn sec" data-open="login" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.5)">Saya sudah punya kode</button></div></div></div></section>
 
-<footer><div class="wrap"><span>© 2026 ChartFlow · Alat bantu edukasi, bukan saran investasi. Data dapat terlambat atau tidak lengkap.</span></div></footer>
+<footer><div class="wrap"><span>© 2026 ChartFlow · Alat bantu edukasi berupa hitungan mekanis, bukan saran investasi dan bukan penasihat investasi berizin OJK. Data dapat terlambat atau tidak lengkap. Keputusan investasi sepenuhnya tanggung jawab Anda.</span><span><a href="/syarat.html">Syarat Penggunaan</a> · <a href="/privasi.html">Kebijakan Privasi</a></span></div></footer>
 
 <dialog id="login"><form class="dlg" id="fLogin">
   <h3>Masuk</h3><p class="s">Masukkan kode akses yang Anda terima.</p>
@@ -306,6 +315,7 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
   <label class="f" for="ct">Nomor WhatsApp atau username Telegram</label><input class="in" id="ct" name="contact" placeholder="0812… atau @username" required maxlength="60">
   <label class="f" for="rs">Untuk apa? (opsional)</label><textarea class="in" id="rs" name="why" rows="2" maxlength="200" placeholder="mis. belajar investasi saham dividen"></textarea>
   <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+  <label style="display:flex;gap:10px;align-items:flex-start;font-size:13.5px;margin-top:14px;color:var(--muted)"><input type="checkbox" name="agree" required style="margin-top:4px;width:18px;height:18px;flex:none"><span>Saya setuju dengan <a href="/syarat.html" target="_blank" style="color:var(--accent)">Syarat Penggunaan</a> dan <a href="/privasi.html" target="_blank" style="color:var(--accent)">Kebijakan Privasi</a>, dan memahami bahwa ChartFlow adalah alat edukasi, bukan saran investasi.</span></label>
   <p class="msg" id="mReq" role="alert"></p>
   <div class="row"><button type="button" class="btn sec" data-close>Batal</button><button class="btn pri" type="submit">Kirim permintaan</button></div>
 </form></dialog>
@@ -318,7 +328,7 @@ $("fLogin").addEventListener("submit",async ev=>{ ev.preventDefault(); const b=e
   const j=await post("/api/login.php",{code:$("code").value}); b.disabled=false;
   if(j.ok){ m.className="msg ok"; m.textContent="Berhasil. Berlaku sampai "+j.exp+"."; setTimeout(goApp,600); } else { m.className="msg no"; m.textContent=j.msg||"Gagal masuk. Coba lagi."; } });
 $("fReq").addEventListener("submit",async ev=>{ ev.preventDefault(); const f=ev.target, b=ev.submitter, m=$("mReq"); b.disabled=true; m.className="msg"; m.textContent="Mengirim…";
-  const j=await post("/api/request.php",{name:f.name.value,contact:f.contact.value,why:f.why.value,website:f.website.value}); b.disabled=false;
+  const j=await post("/api/request.php",{name:f.name.value,contact:f.contact.value,why:f.why.value,website:f.website.value,agree:f.agree.checked}); b.disabled=false;
   if(j.ok){ m.className="msg ok"; m.textContent=j.msg||"Terkirim."; f.reset(); } else { m.className="msg no"; m.textContent=j.msg||"Gagal mengirim. Coba lagi."; } });
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>b.closest("dialog").close()));
 fetch("/api/me.php",{credentials:"same-origin"}).then(r=>r.json()).then(j=>{ if(!j.ok) return;

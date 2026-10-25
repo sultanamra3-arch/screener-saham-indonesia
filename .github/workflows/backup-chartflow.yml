@@ -1,0 +1,25 @@
+name: Cadangan mingguan ChartFlow ke Telegram
+
+on:
+  schedule:
+    # 13:07 UTC Minggu = 20:07 WIB
+    - cron: "7 13 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+    steps:
+      - name: Minta server mengirim cadangan
+        run: |
+          [ -z "$TG_TOKEN" ] && { echo "Token belum diatur"; exit 0; }
+          HOOK=$(printf '%s' "$TG_TOKEN:chartflow-hook" | sha256sum | cut -c1-48)
+          r=$(curl -s -m 90 -X POST https://chartflow.my.id/api/backup.php --data-urlencode "k=$HOOK")
+          echo "$r"
+          echo "$r" | grep -q '"ok":true' && echo "### Cadangan terkirim ke Telegram" >> "$GITHUB_STEP_SUMMARY" || { echo "### ⚠ Cadangan gagal: $r" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
