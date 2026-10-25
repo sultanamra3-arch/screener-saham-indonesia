@@ -1,0 +1,6 @@
+AddType application/vnd.android.package-archive .apk
+<FilesMatch "\.apk$">
+  Header set Content-Disposition "attachment; filename=ChartFlow.apk"
+  Header set Cache-Control "no-cache"
+</FilesMatch>
+Options -Indexes

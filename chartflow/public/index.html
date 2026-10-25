@@ -55,6 +55,7 @@ p{margin:0}
 .hero p.lead{font-size:18px;color:var(--muted);max-width:52ch}
 .hero .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
 .hero .note{font-size:13px;color:var(--muted);margin-top:14px}
+.apkl a{color:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px}
 .shot{position:relative}
 .shot img.desk{width:100%;border-radius:16px;box-shadow:0 20px 60px rgba(16,24,40,.18);border:1px solid var(--line);display:block}
 .shot img.mob{position:absolute;width:30%;right:-18px;bottom:-34px;border-radius:22px;box-shadow:0 20px 50px rgba(16,24,40,.25);border:4px solid var(--surface)}
@@ -218,6 +219,7 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
     <p class="lead">Screener saham Bursa Efek Indonesia dan Wall Street yang menyaring setiap saham dengan 7 metode investor dan trader ternama, lengkap dengan kapan beli, kapan jual, berapa harganya, dan alasannya.</p>
     <div class="cta"><button class="btn pri" data-open="login">Masuk dengan kode →</button><button class="btn sec" data-open="req">Minta kode akses</button></div>
     <p class="note">Akses terbatas. Kode diberikan setelah permintaan Anda disetujui.</p>
+    <p class="note apkl" hidden><a href="/download/ChartFlow.apk" download id="apkLink">📱 Unduh aplikasi Android (APK)</a></p>
   </div>
   <div class="shot"><img class="desk" src="/img/shot-watch.webp" alt="Tampilan Watchlist area support"><img class="mob" src="/img/shot-mobile.webp" alt="Tampilan di HP"></div>
 </div>
@@ -399,6 +401,8 @@ const RM=matchMedia("(prefers-reduced-motion: reduce)").matches;
   const box=$("show"); box.addEventListener("mouseenter",()=>clearTimeout(t)); box.addEventListener("mouseleave",()=>go(i));
   go(0);
 })();
+(function(){ const inApp=matchMedia("(display-mode: standalone)").matches||(document.referrer||"").indexOf("android-app://")===0;
+  if(!inApp&&!/iphone|ipad|ipod/i.test(navigator.userAgent)) document.querySelector(".apkl").hidden=false; })();
 if(new URLSearchParams(location.search).has("masuk")) setTimeout(()=>$("login").showModal(),200);
 document.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{ document.querySelectorAll("dialog[open]").forEach(d=>d.close()); document.getElementById(b.dataset.open).showModal(); }));
 (function(){ const b=document.getElementById("theme"), cur=()=>document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");

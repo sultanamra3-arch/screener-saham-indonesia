@@ -61,9 +61,9 @@ HEAD_JS = r'''<script>
 CSS = '''
 .cfuser{display:inline-flex;align-items:center;gap:6px;max-width:170px;border-radius:999px;padding:6px 12px;font-weight:700;font-size:13px;background:var(--surface);border:1px solid var(--line);color:var(--fg);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cfwarn{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 14px;font-size:13.5px;font-weight:600}
-#cfDlg{border:none;border-radius:20px;padding:0;width:min(380px,calc(100% - 32px));background:var(--surface);color:var(--fg);box-shadow:0 30px 80px rgba(0,0,0,.3)}
-#cfDlg::backdrop{background:rgba(10,15,30,.45)}
-#cfDlg .b{padding:22px;display:flex;flex-direction:column;gap:10px}
+#cfDlg,#cfApk{border:none;border-radius:20px;padding:0;width:min(380px,calc(100% - 32px));background:var(--surface);color:var(--fg);box-shadow:0 30px 80px rgba(0,0,0,.3)}
+#cfDlg::backdrop,#cfApk::backdrop{background:rgba(10,15,30,.45)}
+#cfDlg .b,#cfApk .b{padding:22px;display:flex;flex-direction:column;gap:10px}
 #cfDlg .r{display:flex;justify-content:space-between;gap:10px;font-size:14px}#cfDlg .r span:first-child{color:var(--muted)}
 #cfSync{font-size:12px;color:var(--muted)}
 @media (max-width:760px){.cfuser{max-width:92px;padding:6px 9px;font-size:12px}}
@@ -113,8 +113,26 @@ BODY_JS = r'''<dialog id="cfDlg"><div class="b"><b style="font-size:18px" id="cf
 </script>
 '''
 s = s.replace("<style>", HEAD_JS + "<style>", 1).replace("</style>", CSS + "</style>", 1)
+# ---- tombol "Pasang aplikasi": di Android langsung unduh APK
+APK_JS = r"""<dialog id="cfApk"><div class="b"><b style="font-size:17px">📲 Mengunduh ChartFlow.apk…</b>
+<ol style="margin:10px 0 0;padding-left:20px;line-height:1.6;font-size:14px"><li>Tunggu unduhan selesai, lalu ketuk <b>ChartFlow.apk</b> di notifikasi atau folder <b>Download</b>.</li>
+<li>Bila diminta, izinkan <b>“Instal dari sumber tidak dikenal”</b> untuk browser ini.</li><li>Ketuk <b>Instal</b>, lalu buka ChartFlow dan masuk dengan kode Anda.</li></ol>
+<p style="font-size:13px;opacity:.75;margin:10px 0 0">Unduhan tidak mulai? <a href="/download/ChartFlow.apk" download>Ketuk di sini</a>.</p>
+<div style="text-align:right;margin-top:12px"><button type="button" class="btn" onclick="this.closest('dialog').close()">Tutup</button></div></div></dialog>
+<script>(function(){
+  var btn=document.getElementById("install"); if(!btn) return;
+  var inApp=matchMedia("(display-mode: standalone)").matches||(document.referrer||"").indexOf("android-app://")===0;
+  try{ if(inApp) sessionStorage.setItem("cf.inapp","1"); if(sessionStorage.getItem("cf.inapp")) inApp=true; }catch(e){}
+  if(inApp){ btn.hidden=true; new MutationObserver(function(){ if(!btn.hidden) btn.hidden=true; }).observe(btn,{attributes:true}); return; }
+  if(!/android/i.test(navigator.userAgent)) return;
+  btn.hidden=false;
+  btn.addEventListener("click",function(e){ e.stopImmediatePropagation(); e.preventDefault();
+    var a=document.createElement("a"); a.href="/download/ChartFlow.apk"; a.download="ChartFlow.apk"; document.body.appendChild(a); a.click(); a.remove();
+    var d=document.getElementById("cfApk"); if(d&&d.showModal) d.showModal(); },true);
+})();</script>
+"""
 i = s.rindex("</body>")
-s = s[:i] + BODY_JS + s[i:]
+s = s[:i] + BODY_JS + APK_JS + s[i:]
 (out / "index.html").write_text(s, encoding="utf-8")
 shutil.copy(ROOT / "sw.js", out / "sw.js")
 shutil.copytree(ROOT / "icons", out / "icons")
