@@ -149,7 +149,7 @@ def market_regime(d: dict, c: dict) -> str:
 RR_MIN, UP_MIN = 2, 4.0
 
 
-def support_section(d: dict) -> list[str]:
+def support_section(d: dict, show_waits: bool = True) -> list[str]:
     f = ROOT / "data" / "cycles.json"
     if not f.exists():
         return []
@@ -219,7 +219,7 @@ def support_section(d: dict) -> list[str]:
             L.append(f"<i>{e(s)}</i>")
         if len(items) > 8:
             L.append(f"…dan {len(items) - 8} lainnya di tab Watchlist pribadi")
-    if waits:
+    if waits and show_waits:
         L += ["", b(f"🎯 Antre beli di support berikutnya ({len(waits)})"),
               "<i>Sudah di area support tapi R1 terlalu dekat; tunggu harga turun ke support berikutnya.</i>"]
         L.append(" · ".join(f"{b(t)} {usd(s2['hi'])}" for _, t, o, s2, rr2 in waits[:6])
@@ -266,13 +266,6 @@ def extras_section(d: dict) -> list[str]:
             L += ["", b(f"🌏 Kepemilikan asing bulan {m} (KSEI)")]
             L.append("Masuk: " + ", ".join(f"{o['ticker']} +{o['ks']['df']:.1f} poin".replace(".", ",") for o in up if o["ks"]["df"] > 0))
             L.append("Keluar: " + ", ".join(f"{o['ticker']} {o['ks']['df']:.1f} poin".replace(".", ",") for o in dn if o["ks"]["df"] < 0))
-            try:  # tandai bulan ini sudah dikabarkan
-                kf = ROOT / "data" / "ksei.json"
-                kc = json.loads(kf.read_text())
-                kc["announced"] = ks[0]["ks"]["m"]
-                kf.write_text(json.dumps(kc, separators=(",", ":")))
-            except Exception:
-                pass
     # 📅 ex-dividen ≤ 5 hari (hanya tanggal pasti)
     soon = []
     for o in rows:
@@ -452,12 +445,26 @@ def send(msg: str):
     print(f"Terkirim ke Telegram ({len(split(msg))} pesan)")
 
 
+
+def midday(d: dict) -> str | None:
+    """Pesan siang: hanya bila ada saham layak beli yang baru masuk area support, atau support jebol."""
+    it = d.get("intraday") or {}
+    if not it or it.get("date") != datetime.now(WIB).date().isoformat():
+        return None
+    L = support_section(d, show_waits=False)
+    if not L:
+        print("Update siang: tidak ada hal penting, pesan tidak dikirim.")
+        return None
+    head = [f"⏱️ {b('Update siang — harga sementara sesi 1 (' + it.get('wib', '') + ' WIB)')}",
+            "Untuk dipertimbangkan di sesi 2. Sinyal metode tetap final setelah bursa tutup."]
+    return "\n".join(head + L + ["", f"🔗 <a href=\"{SITE}\">Buka website</a>"])
+
 def main():
     if "--failed" in sys.argv:
         msg = failed_message()
     else:
         d = json.loads(DATA_FILE.read_text())
-        msg = weekly() if "--weekly" in sys.argv else reminder(d) if "--reminder" in sys.argv else morning(d)
+        msg = weekly() if "--weekly" in sys.argv else reminder(d) if "--reminder" in sys.argv else midday(d) if os.environ.get("INTRADAY") == "1" else morning(d)
     if not msg:
         return
     if "--dry-run" in sys.argv:

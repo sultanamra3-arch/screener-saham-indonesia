@@ -4,7 +4,16 @@ on:
   schedule:
     # 10:43 UTC Senin–Jumat = 17:43 WIB, setelah BEI tutup pukul 16.00.
     - cron: "43 10 * * 1-5"
+    # Update siang (harga sementara, istirahat sesi 1): 05:15 UTC Senin–Kamis = 12:15 WIB,
+    # 04:45 UTC Jumat = 11:45 WIB.
+    - cron: "15 5 * * 1-4"
+    - cron: "45 4 * * 5"
   workflow_dispatch:
+    inputs:
+      siang:
+        description: "Update siang saja (harga sementara)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -16,6 +25,8 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    env:
+      INTRADAY: ${{ (github.event.schedule == '15 5 * * 1-4' || github.event.schedule == '45 4 * * 5' || inputs.siang) && '1' || '0' }}
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v5
@@ -39,7 +50,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "Tidak ada perubahan data"
           else
-            git commit -m "Update data $(date -u +%Y-%m-%d)"
+            git commit -m "Update data $(date -u +%Y-%m-%d)$([ "$INTRADAY" = 1 ] && echo ' (siang)')"
             git pull --rebase -q origin main || true
             git push
           fi

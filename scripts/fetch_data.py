@@ -367,7 +367,7 @@ SERIES_FILE = DATA / "series.json"
 CYC_STATE = DATA / "cycles_state.json"
 
 
-def run_cycles(close, indices: dict, cfg: dict, stock_cols: list, breadth_cols: list, tick=None, vix=None):
+def run_cycles(close, indices: dict, cfg: dict, stock_cols: list, breadth_cols: list, tick=None, vix=None, persist=True):
     """Tidak boleh menggagalkan pembaruan utama: kesalahan hanya dicatat."""
     try:
         import cycles
@@ -386,7 +386,8 @@ def run_cycles(close, indices: dict, cfg: dict, stock_cols: list, breadth_cols: 
         out, series = cycles.run(close, indices, long, stock_cols, breadth_cols, cfg, state, tick=tick, vix=vix)
         CYC_FILE.write_text(json.dumps(out, separators=(",", ":")))
         SERIES_FILE.write_text(cycles.dump_series(series))
-        CYC_STATE.write_text(json.dumps(state, separators=(",", ":")))
+        if persist:  # update siang tidak menyimpan status area support (dasar perbandingan tetap penutupan kemarin)
+            CYC_STATE.write_text(json.dumps(state, separators=(",", ":")))
         lines = ["### Siklus & Fibonacci"]
         for name, t in out.get("tests", {}).items():
             if not t or "time" not in t:
@@ -540,6 +541,9 @@ def main():
     try:
         kc, _ = ksei.update(DATA / "ksei.json", log)
         ks_new = bool(kc.get("months")) and kc["months"][-1] != kc.get("announced")
+        if ks_new and prev_day != day:  # pesan pagi akan terkirim: tandai bulan ini sudah dikabarkan
+            kc["announced"] = kc["months"][-1]
+            (DATA / "ksei.json").write_text(json.dumps(kc, separators=(",", ":")))
         ksei.apply(rows, kc)
     except Exception as e:
         log(f"  KSEI gagal: {str(e)[:120]}")
@@ -586,9 +590,54 @@ def main():
         summary(f"- Peringatan: {w}")
 
 
+
+def intraday():
+    """Update siang (istirahat sesi 1): harga sementara saja. Sinyal metode, posisi simulasi,
+    dan status area support tidak disimpan; semuanya final pada pembaruan setelah bursa tutup."""
+    from zoneinfo import ZoneInfo
+    t0 = time.time()
+    if not OUT_FILE.exists():
+        log("Belum ada data penutupan; update siang dilewati")
+        return
+    prev = json.loads(OUT_FILE.read_text())
+    rows = prev["stocks"]
+    codes = [r["ticker"] for r in rows]
+    log(f"Update siang: harga {len(codes)} saham ...")
+    close, volume = fetch_prices(codes)
+    if close is None:
+        raise RuntimeError("Harga dari Yahoo gagal diambil")
+    last = close.index[-1].strftime("%Y-%m-%d")
+    now = datetime.now(ZoneInfo("Asia/Jakarta"))
+    if last != now.date().isoformat():
+        log(f"Belum ada harga hari ini (data terakhir {last}); kemungkinan bursa libur")
+        summary(f"### Update siang dilewati\nHarga terakhir {last}, belum ada perdagangan hari ini.")
+        return
+    n = 0
+    for r in rows:
+        c = r["ticker"]
+        if c not in close or not close[c].notna().any():
+            continue
+        t = technicals(close[c])
+        r.update({k: v for k, v in t.items() if v is not None})
+        if r.get("price") and r.get("dpsTTM") is not None:
+            r["div"] = r["dpsTTM"] / r["price"] * 100
+        if r.get("dv") and r.get("price"):
+            r["dv"]["y"] = round(r["dv"]["amt"] / r["price"] * 100, 2)
+        n += 1
+    prev["stocks"] = [clean(r) for r in rows]
+    prev["intraday"] = {"at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "date": last, "wib": now.strftime("%H.%M")}
+    OUT_FILE.write_text(json.dumps(prev, separators=(",", ":")))
+    import notify_telegram
+
+    liquid = [r["ticker"] for r in rows if r.get("liq") == "L"]
+    eligible = [r["ticker"] for r in rows if r.get("liq") in ("L", "K")]
+    run_cycles(close, {"IHSG": INDEX}, {"ramadan": True, "holidays": set(notify_telegram.HOLIDAYS)},
+               liquid, eligible, tick=strategies.tick, persist=False)
+    summary(f"### Update siang berhasil\n- {n} saham, harga sementara {last} pukul {prev['intraday']['wib']} WIB\n- Lama proses: {(time.time() - t0) / 60:.1f} menit")
+
 if __name__ == "__main__":
     try:
-        main()
+        intraday() if os.environ.get("INTRADAY") == "1" else main()
     except Exception as e:
         traceback.print_exc()
         summary(f"### Gagal\n**{type(e).__name__}**: {e}")

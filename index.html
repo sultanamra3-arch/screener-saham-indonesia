@@ -460,7 +460,9 @@ function renderStatus(){
   const d=new Date(DATA.updatedAt), ageH=(Date.now()-d)/36e5;
   const wib=d.toLocaleString("id-ID",{timeZone:"Asia/Jakarta",weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"});
   const mk=DATA.market||{};
-  el.innerHTML=`<span><span class="dot ${ageH>80?"old":""}"></span>Diperbarui <b>${esc(wib)} WIB</b> · harga penutupan ${tgl(DATA.priceDate,1)}</span>
+  const it=DATA.intraday;
+  el.innerHTML=(it?`<span><span class="dot old"></span><b>Harga sementara sesi 1</b> · ${tgl(it.date,1)} pukul ${esc(it.wib)} WIB · <span class="note">sinyal metode dari penutupan ${tgl(DATA.priceDate,1)}; final setelah bursa tutup</span></span>`
+    :`<span><span class="dot ${ageH>80?"old":""}"></span>Diperbarui <b>${esc(wib)} WIB</b> · harga penutupan ${tgl(DATA.priceDate,1)}</span>`)+`
     <span class="num">${rows.length} saham · ${(DATA.liqCount||{}).L||0} likuid</span>
     <span>IHSG: <b class="${mk.ok?"ok":mk.ok===false?"no":""}">${mk.ok?"naik":mk.ok===false?"tertekan":"–"}</b></span>
     ${DATA.started?`<span class="note">Sinyal investor dicatat sejak ${tgl(DATA.started,1)}</span>`:""}
