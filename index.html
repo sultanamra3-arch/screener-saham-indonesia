@@ -144,6 +144,10 @@ details.mcard summary{cursor:pointer}
 .stile[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:1px}
 .stile .sn{font-weight:600;font-size:14px}.stile .sv{font-size:18px;font-weight:600}.stile .sc{font-size:12px;opacity:.8}
 .secrow{cursor:pointer}.secrow:hover{background:rgba(127,127,127,.08)}
+.bar{display:inline-block;width:90px;height:6px;background:var(--line);border-radius:3px;vertical-align:middle;margin-left:8px;overflow:hidden}
+.bar i{display:block;height:100%}
+.btnlike{font:inherit;font-size:14px;cursor:pointer;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:7px 12px;display:inline-block}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .mcard{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .mcard h4{margin:0;font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .trades{display:flex;flex-direction:column;gap:3px}
@@ -256,7 +260,7 @@ const M = [
   cols:[["rsi2","RSI(2)"],["sma200","vs SMA200",1],["perf1m","1 bln",1]]},
 ];
 const MID = Object.fromEntries(M.map(m=>[m.id,m]));
-const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"calc",name:"Kalkulator",k:"Return & risiko"},{id:"sector",name:"Peta sektor",k:"Arus uang"}]);
+const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"},{id:"porto",name:"Portofolio",k:"Posisi Anda"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"calc",name:"Kalkulator",k:"Return & risiko"},{id:"sector",name:"Peta sektor",k:"Arus uang"}]);
 const ST = {buy:"Beli",hold:"Tahan",sell:"Jual",wait:"Tunggu",na:"Tidak dinilai"};
 const PRI = {buy:0,sell:1,hold:2,wait:3,na:4};
 const REASON = {stop:"stop loss −7%",be:"kembali ke harga beli",target:"target +20%","8w":"8 minggu selesai",sma5:"di atas SMA5",rank:"keluar 20% teratas"};
@@ -333,6 +337,7 @@ function renderTabs(){
     if(t.id==="summary"){ const n=list.filter(o=>summaryOf(o).by.buy.length).length; c=`<b>${n}</b> saham ada sinyal beli`; }
     else if(t.id==="sector") { const S=sectorStats(), t3=S.L.filter(r=>r.n>=5)[0]; c=t3?`Terkuat: <b>${esc(t3.name)}</b>`:"Sektor"; }
     else if(t.id==="calc") c="Lot, untung, rugi";
+    else if(t.id==="porto") { const P=porto(); if(!P.open.length) c="Catat & pantau"; else { const nd=P.open.filter(ps=>posEval(ps).acts.some(a=>a.lv<=1)).length; c=`<b>${P.open.length}</b> posisi${nd?` · ⚠ ${nd} perlu tindakan`:""}`; } }
     else if(t.id==="watch") { if(CYC&&CYC.watch){ const al=allowedMethods(), byT=Object.fromEntries(list.map(o=>[o.ticker,o])); const n=Object.entries(CYC.watch.in).filter(([tk,w])=>byT[tk]&&(w.strength!=="lemah")&&watchStrict(tk,w,sigOf(byT[tk],al))).length; c=`<b>${n}</b> layak beli di support`; } else c="★ dan area support"; }
     else if(t.id==="cycles") { const f=CYC&&Object.values(CYC.indices)[0]; c=f?`<b>${(f.rawan||[]).length}</b> tanggal rawan`:"Analisis"; }
     else { const b=list.filter(o=>mget(o,t.id).s==="buy").length, h=list.filter(o=>mget(o,t.id).s==="hold").length; c=`<b>${b}</b> beli · ${h} tahan`; }
@@ -912,6 +917,7 @@ function calcPlan(st){
     <div><span>Jika kena stop ${usd(sp)}</span><span class="num no">${money(loss)} (${nf(loss/cost*100,1)}%)</span></div>
     <div><span>Jika capai target ${usd(tg)}</span><span class="num ok">${isFinite(win)?money(win)+` (${nf(win/cost*100,1)}%)`:"–"}</span></div>
     <div><span><b>Rasio untung : rugi</b></span><span><span class="num">1 : ${isFinite(rr)?nf(rr,2):"–"}</span> <span class="st ${jc}">${jl}</span></span></div></div>
+    <p style="margin:8px 0"><button type="button" id="c_toporto" data-lots="${sh/UNIT}">➕ Sudah beli? Catat di Portofolio</button></p>
     <p class="note">${rr<1.5?"Target terlalu dekat dibanding stop. Tunggu harga lebih dekat ke support, atau lewati saham ini. ":""}Rugi maksimal dijaga sekitar ${nf(st.risk,1)}% modal. Sudah termasuk biaya beli ${nf(st.fb,2)}% dan jual ${nf(st.fs,2)}%.${IS_ID?" Saat saham terkena ARB, stop bisa tidak tereksekusi sehingga rugi bisa lebih besar.":""}</p>`;
 }
 function calcResult(st){
@@ -1132,10 +1138,144 @@ function renderSector(box){
   const c=$("secClose"); if(c) c.addEventListener("click",()=>{ store.set(WP+"sec.sel",""); renderResults(); });
 }
 
+// ---------- Portofolio saya ----------
+const PKEY=WP+"porto";
+function porto(){ try{ const p=JSON.parse(store.get(PKEY)||"{}"); return {open:p.open||[],closed:p.closed||[]}; }catch(e){ return {open:[],closed:[]}; } }
+function savePorto(p){ store.set(PKEY,JSON.stringify(p)); }
+const PMETH=()=>[...M.map(m=>[m.id,m.name]),["lain","Tanpa metode / campuran"]];
+const todayISO=()=>new Date().toISOString().slice(0,10);
+function feeRates(){ const c=calcState(); return [(+c.fb||0)/100,(+c.fs||0)/100,(+c.tax||0)/100]; }
+function serSince(t,date){
+  if(!SER||!SER.stocks||!SER.stocks[t]) return null;
+  const v=SER.stocks[t], d=SER.dates, out=[];
+  for(let i=0;i<d.length;i++) if(d[i]>=date&&v[i]!=null) out.push(v[i]);
+  return {since:out,all:v};
+}
+function posEval(ps){
+  const o=rows.find(x=>x.ticker===ps.code), [fb,fs,tax]=feeRates();
+  const sh=ps.qty*UNIT, cost=sh*ps.price*(1+fb);
+  if(!o||!o.price) return {o:null,sh,cost,val:null,pl:null,acts:[{lv:1,ic:"❔",t:"data harga tidak ditemukan (cek kode)"}]};
+  const p=o.price, div=sh*(ps.dps||0)*(1-tax), val=sh*p*(1-fs), pl=val+div-cost, plp=pl/cost*100;
+  const acts=[], add=(lv,ic,t)=>acts.push({lv,ic,t});
+  const days=ps.date?Math.floor((Date.now()-new Date(ps.date))/864e5):null;
+  const S=ps.date?serSince(ps.code,ps.date):null, mx=S&&S.since.length?Math.max(...S.since,p):p;
+  let stop=ps.stop||null, target=ps.target||null;
+  const st=ps.method!=="lain"?mget(o,ps.method):null;
+  switch(ps.method){
+    case "canslim": { stop=stop||ps.price*0.93; if(mx>=ps.price*1.10&&stop<ps.price){ stop=ps.price; add(3,"🔒","sudah pernah naik +10%: stop dinaikkan ke harga beli "+usd(ps.price)); } target=target||ps.price*1.20; break; }
+    case "value": { target=target||ps.price*1.5; if(days!=null&&days>=730) add(1,"⏰","sudah 2 tahun: aturan Graham menyuruh jual walau target belum tercapai"); break; }
+    case "growth": { const lv=st&&st.lv||{}; if(!target&&lv.target) target=lv.target; break; }
+    case "quality": { const lv=st&&st.lv||{}; if(lv.sell&&p>=lv.sell) add(1,"🔴","harga sudah sangat mahal (FCF yield < 1,5%): aturan Terry Smith menyuruh jual"); break; }
+    case "dividend": { if(o.payout!=null&&o.payout>100) add(1,"🔴","payout di atas 100%: dividen berisiko dipotong"); break; }
+    case "momentum": { if(o.momRank!=null&&o.momRank<80) add(1,"🔴",`peringkat momentum ${nf(o.momRank,0)} (< 80): jual pada pengecekan awal bulan`); break; }
+    case "swing": { const a=S&&S.all.filter(v=>v!=null); if(a&&a.length>=5){ const s5=a.slice(-5).reduce((x,y)=>x+y,0)/5; if(p>s5) add(1,"🔴",`harga ${usd(p)} sudah di atas SMA5 ${usd(s5)}: aturan Connors menyuruh jual`); } if(days!=null&&days>10) add(2,"⏰","sudah lebih dari 10 hari; swing biasanya selesai 3–6 hari"); break; }
+  }
+  if(st&&st.s==="sell") add(1,"🔴",`sinyal Jual ${MID[ps.method].name}: ${st.rs||st.r||""}`);
+  if(stop&&p<=stop) add(0,"🛑",`kena stop loss ${usd(stop)}: jual`);
+  if(target&&p>=target) add(1,"🎯",`target ${usd(target)} tercapai${ps.method==="canslim"?": jual untung (O'Neil)":": pertimbangkan jual"}`);
+  const w=CYC&&CYC.watch;
+  if(w&&(w.broken||[]).some(b=>b.t===ps.code)) add(1,"⚠️","support jebol hari ini: evaluasi ulang");
+  const by={buy:[],sell:[]}; M.forEach(m=>{ const s=mget(o,m.id).s; if(by[s]) by[s].push(m.name); });
+  if(ps.method==="lain"&&by.sell.length) add(2,"🔴","sinyal Jual dari "+by.sell.join(", "));
+  const z=nearZones(ps.code);
+  if(z&&z.r&&p>=z.r.lo*0.99) add(3,"🧱",`sudah di resistance R1 ${usd(z.r.lo)}: kenaikan bisa tertahan`);
+  acts.sort((a,b)=>a.lv-b.lv);
+  return {o,p,sh,cost,val,div,pl,plp,days,stop,target,acts,z,mx};
+}
+function statusOf(e){ if(!e.acts.length) return ['<span class="st buy">✅ tahan</span>',9];
+  const a=e.acts[0]; const cls=a.lv===0?"sell":a.lv===1?"sell":a.lv===2?"hold":"wait"; return [`<span class="st ${cls}">${a.ic} ${a.lv<=1?"perlu tindakan":"perhatikan"}</span>`,a.lv]; }
+function renderPorto(box){
+  if(!CYC&&!CYC_ERR){ loadCycles().then(()=>{ if(tab==="porto") renderResults(); }); }
+  const P=porto(), ed=store.get(WP+"porto.ed")||"", E=P.open.find(x=>x.id===ed)||null, pre=JSON.parse(store.get(WP+"porto.pre")||"null");
+  const f=E||pre||{method:"canslim",date:todayISO()};
+  const ev=P.open.map(ps=>({ps,e:posEval(ps)}));
+  const tot=ev.reduce((s,x)=>{ s.cost+=x.e.cost; if(x.e.val!=null){ s.val+=x.e.val+(x.e.div||0); } return s; },{cost:0,val:0});
+  const pl=tot.val-tot.cost, fx=DATA&&DATA.fx;
+  const need=ev.filter(x=>x.e.acts.some(a=>a.lv<=1));
+  const rz=P.closed.reduce((s,c)=>s+c.pl,0), wins=P.closed.filter(c=>c.pl>0).length;
+  // komposisi
+  const bySec={}; ev.forEach(x=>{ if(x.e.val==null) return; const k=secName(x.e.o.sector); bySec[k]=(bySec[k]||0)+x.e.val; });
+  const big=ev.filter(x=>x.e.val!=null&&tot.val>0&&x.e.val/tot.val>0.2);
+  const methOpts=PMETH().map(([k,l])=>`<option value="${k}" ${f.method===k?"selected":""}>${esc(l)}</option>`).join("");
+  const form=`<div class="mcard"><h4><span>${E?"Ubah posisi "+esc(E.code):"Catat pembelian"}</span></h4>
+    <div class="cgrid">
+      <label class="cf" for="p_code"><span>Kode saham</span><input type="search" id="p_code" list="p_list" value="${esc(f.code||"")}" placeholder="mis. ${IS_ID?"BBCA":"AAPL"}"></label>
+      <datalist id="p_list">${rows.filter(o=>!IS_ID||o.liq!=="T").map(o=>`<option value="${esc(o.ticker)}">`).join("")}</datalist>
+      ${fld("p_price","Harga beli",f.price)}${fld("p_qty","Jumlah ("+UNAME+")",f.qty)}
+      <label class="cf" for="p_date"><span>Tanggal beli</span><input type="date" id="p_date" value="${esc(f.date||"")}"></label>
+      <label class="cf" for="p_meth"><span>Dibeli dengan metode</span><select id="p_meth">${methOpts}</select></label>
+      ${fld("p_stop","Stop loss (opsional)",f.stop)}${fld("p_target","Target (opsional)",f.target)}${fld("p_dps","Dividen diterima per lembar",f.dps)}
+    </div>
+    <p style="margin:8px 0 0;display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="p_save" class="primary">${E?"Simpan perubahan":"➕ Tambah ke portofolio"}</button>${E||pre?`<button type="button" id="p_cancel">Batal</button>`:""}</p>
+    <p class="note">Stop dan target boleh dikosongkan: website memakai aturan asli metodenya (misalnya CAN SLIM −7% / +20%, Graham +50%). Biaya transaksi dan pajak dividen mengikuti pengaturan di Kalkulator.</p></div>`;
+  const row=({ps,e})=>{ const [stH]=statusOf(e);
+    return `<tr><td><span class="tk">${esc(ps.code)}</span>${e.o?`<span class="nm">${esc(e.o.company||"")}</span>`:""}</td>
+      <td class="num">${nf(ps.qty,0)} ${UNAME}<br><span class="note">${esc((MID[ps.method]||{}).name||"campuran")}${e.days!=null?` · ${e.days} hari`:""}</span></td>
+      <td class="num">${usd(ps.price)}<br><span class="note">${e.p!=null?"kini "+usd(e.p):""}</span></td>
+      <td class="num">${money(e.cost)}<br><span class="note">${e.val!=null?"nilai "+money(e.val+(e.div||0)):""}</span></td>
+      <td class="num ${e.pl>=0?"ok":"no"}"><b>${e.pl==null?"–":money(e.pl)}</b><br>${e.plp==null?"":(e.plp>=0?"+":"")+nf(e.plp,2)+"%"}</td>
+      <td class="num">${e.stop?usd(e.stop):"–"}<br><span class="note">${e.target?"target "+usd(e.target):""}</span></td>
+      <td>${stH}${e.acts.length?`<div class="note" style="margin-top:4px">${e.acts.map(a=>`${a.ic} ${esc(a.t)}`).join("<br>")}</div>`:""}</td>
+      <td style="white-space:nowrap"><button type="button" data-pe="${ps.id}">Ubah</button> <button type="button" data-ps="${ps.id}">Jual</button> <button type="button" data-pd="${ps.id}" aria-label="Hapus">✕</button></td></tr>`; };
+  const sold=store.get(WP+"porto.sell")||"", SP=P.open.find(x=>x.id===sold);
+  box.innerHTML=saranBox(need.length?`<p><b>${need.length} posisi perlu tindakan:</b> ${need.map(x=>`<b>${esc(x.ps.code)}</b> (${x.e.acts.filter(a=>a.lv<=1).map(a=>a.ic+" "+esc(a.t)).join("; ")})`).join(" · ")}</p>`
+      :P.open.length?`<p>Semua posisi masih sesuai aturan metodenya. Tidak ada yang perlu dilakukan hari ini.</p>`:`<p>Catat saham yang Anda beli di bawah. Setiap hari website memeriksa aturan jual metodenya (stop, target, sinyal jual, support jebol) dan memberi tahu bila perlu bertindak.</p>`)+`
+    <div class="statgrid" style="margin:12px 0">
+      <div>Modal terpakai<b>${money(tot.cost)}</b></div><div>Nilai sekarang<b>${money(tot.val)}</b></div>
+      <div>Untung/rugi berjalan<b class="${pl>=0?"ok":"no"}">${money(pl)} (${tot.cost?(pl>=0?"+":"")+nf(pl/tot.cost*100,2):"0"}%)</b></div>
+      <div>Untung/rugi terealisasi<b class="${rz>=0?"ok":"no"}">${money(rz)}${P.closed.length?` · ${wins}/${P.closed.length} untung`:""}</b></div></div>
+    ${!IS_ID&&fx&&tot.cost?`<p class="note">≈ Rp${nf(tot.val*fx,0)} dengan kurs ${nf(fx,0)}.</p>`:""}
+    ${SP?`<div class="mcard" style="border-left:4px solid var(--accent)"><h4><span>Jual ${esc(SP.code)}</span></h4><div class="cgrid">${fld("s_price","Harga jual",(rows.find(o=>o.ticker===SP.code)||{}).price)}
+      <label class="cf" for="s_date"><span>Tanggal jual</span><input type="date" id="s_date" value="${todayISO()}"></label></div>
+      <p style="margin:8px 0 0;display:flex;gap:8px"><button type="button" id="s_ok" class="primary">Catat penjualan</button><button type="button" id="s_no">Batal</button></p></div><div style="height:10px"></div>`:""}
+    ${form}
+    <div class="rhead" style="margin-top:16px"><div class="l"><h2>Posisi terbuka (${P.open.length})</h2><p class="note">Diperiksa setiap kali data diperbarui. Urutan: yang perlu tindakan di atas.</p></div></div>
+    <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Jumlah · metode</th><th class="num">Harga beli</th><th class="num">Modal · nilai</th><th class="num">Untung/rugi</th><th class="num">Stop</th><th>Status</th><th></th></tr></thead><tbody>
+    ${ev.length?[...ev].sort((a,b)=>statusOf(a.e)[1]-statusOf(b.e)[1]).map(row).join(""):`<tr><td colspan="8" class="empty">Belum ada posisi.</td></tr>`}</tbody></table></div>
+    ${ev.length?`<div class="dgrid" style="margin-top:12px"><div class="mcard"><h4><span>Porsi per saham</span></h4><div class="dl">${ev.filter(x=>x.e.val!=null).sort((a,b)=>b.e.val-a.e.val).map(x=>{ const w=x.e.val/tot.val*100; return `<div><span>${esc(x.ps.code)} <span class="bar"><i style="width:${Math.min(100,w)}%;background:${w>20?"var(--bad)":"var(--accent)"}"></i></span></span><span class="num ${w>20?"no":""}">${nf(w,1)}%</span></div>`; }).join("")}</div>
+      ${big.length?`<p class="note no">⚠ ${big.map(x=>esc(x.ps.code)).join(", ")} melebihi 20% portofolio. Risiko terlalu terpusat.</p>`:`<p class="note">Tidak ada saham di atas 20% portofolio.</p>`}</div>
+      <div class="mcard"><h4><span>Porsi per sektor</span></h4><div class="dl">${Object.entries(bySec).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div><span>${esc(k)}</span><span class="num">${nf(v/tot.val*100,1)}%</span></div>`).join("")}</div></div></div>`:""}
+    ${P.closed.length?`<div class="rhead" style="margin-top:16px"><div class="l"><h2>Riwayat penjualan (${P.closed.length})</h2></div></div>
+      <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Beli</th><th class="num">Jual</th><th class="num">Lama</th><th class="num">Untung/rugi</th><th></th></tr></thead><tbody>
+      ${[...P.closed].reverse().map(c=>`<tr><td><span class="tk">${esc(c.code)}</span><span class="nm">${esc((MID[c.method]||{}).name||"campuran")}</span></td><td class="num">${usd(c.price)}<br><span class="note">${esc(c.date||"")}</span></td><td class="num">${usd(c.sp)}<br><span class="note">${esc(c.sd||"")}</span></td><td class="num">${c.days!=null?c.days+" hari":"–"}</td><td class="num ${c.pl>=0?"ok":"no"}">${money(c.pl)} (${c.plp>=0?"+":""}${nf(c.plp,2)}%)</td><td><button type="button" data-cd="${c.id}" aria-label="Hapus">✕</button></td></tr>`).join("")}</tbody></table></div>`:""}
+    <div class="mcard" style="margin-top:16px"><h4><span>Cadangan data</span></h4><p class="note">Portofolio tersimpan di browser ini saja. Unduh cadangan secara berkala, lalu pulihkan di HP atau laptop lain bila perlu.</p>
+      <p style="display:flex;gap:8px;flex-wrap:wrap;margin:0"><button type="button" id="p_exp">⬇ Unduh cadangan</button><label class="btnlike"><input type="file" id="p_imp" accept=".json,application/json" hidden>⬆ Pulihkan dari file</label></p></div>`;
+  // events
+  box.querySelectorAll("input.numin").forEach(el=>el.addEventListener("input",()=>liveFmt(el)));
+  const val=id=>parseIn(($(id)||{}).value);
+  $("p_code").addEventListener("change",ev=>{ const t=ev.target.value.trim().toUpperCase(); ev.target.value=t; const o=rows.find(x=>x.ticker===t); if(o&&!$("p_price").value){ $("p_price").value=fmtIn(o.price); } });
+  $("p_save").addEventListener("click",()=>{
+    const code=$("p_code").value.trim().toUpperCase(), price=val("p_price"), qty=val("p_qty");
+    if(!code||!(price>0)||!(qty>0)){ alertBox("Isi kode, harga beli, dan jumlah."); return; }
+    const P2=porto(), rec={id:E?E.id:Date.now().toString(36),code,price,qty,date:$("p_date").value,method:$("p_meth").value,stop:val("p_stop"),target:val("p_target"),dps:val("p_dps")};
+    if(E){ const i=P2.open.findIndex(x=>x.id===E.id); P2.open[i]=rec; } else P2.open.push(rec);
+    savePorto(P2); store.set(WP+"porto.ed",""); store.set(WP+"porto.pre","null"); renderTabs(); renderResults(); });
+  const c=$("p_cancel"); if(c) c.addEventListener("click",()=>{ store.set(WP+"porto.ed",""); store.set(WP+"porto.pre","null"); renderResults(); });
+  box.querySelectorAll("[data-pe]").forEach(b=>b.addEventListener("click",()=>{ store.set(WP+"porto.ed",b.dataset.pe); renderResults(); window.scrollTo({top:0,behavior:"smooth"}); }));
+  box.querySelectorAll("[data-ps]").forEach(b=>b.addEventListener("click",()=>{ store.set(WP+"porto.sell",b.dataset.ps); renderResults(); window.scrollTo({top:0,behavior:"smooth"}); }));
+  box.querySelectorAll("[data-pd]").forEach(b=>b.addEventListener("click",()=>{ const P2=porto(), x=P2.open.find(y=>y.id===b.dataset.pd); if(!x) return;
+    if(b.dataset.sure!=="1"){ b.dataset.sure="1"; b.textContent="Yakin hapus?"; return; }
+    P2.open=P2.open.filter(y=>y.id!==x.id); savePorto(P2); renderTabs(); renderResults(); }));
+  box.querySelectorAll("[data-cd]").forEach(b=>b.addEventListener("click",()=>{ if(b.dataset.sure!=="1"){ b.dataset.sure="1"; b.textContent="Yakin?"; return; } const P2=porto(); P2.closed=P2.closed.filter(y=>y.id!==b.dataset.cd); savePorto(P2); renderResults(); }));
+  const sok=$("s_ok"); if(sok) sok.addEventListener("click",()=>{ const P2=porto(), x=P2.open.find(y=>y.id===sold), sp=val("s_price"); if(!x||!(sp>0)) return;
+    const [fb,fs,tax]=feeRates(), sh=x.qty*UNIT, cost=sh*x.price*(1+fb), pl=sh*sp*(1-fs)+sh*(x.dps||0)*(1-tax)-cost, sd=$("s_date").value;
+    P2.closed.push({...x,sp,sd,pl,plp:pl/cost*100,days:x.date&&sd?Math.round((new Date(sd)-new Date(x.date))/864e5):null});
+    P2.open=P2.open.filter(y=>y.id!==sold); savePorto(P2); store.set(WP+"porto.sell",""); renderTabs(); renderResults(); });
+  const sno=$("s_no"); if(sno) sno.addEventListener("click",()=>{ store.set(WP+"porto.sell",""); renderResults(); });
+  $("p_exp").addEventListener("click",()=>{ const b=new Blob([JSON.stringify({site:IS_ID?"id":"us",saved:new Date().toISOString(),...porto()},null,1)],{type:"application/json"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=`portofolio-${IS_ID?"indonesia":"us"}-${todayISO()}.json`; document.body.appendChild(a); a.click(); a.remove(); });
+  $("p_imp").addEventListener("change",ev=>{ const fl=ev.target.files[0]; if(!fl) return; fl.text().then(t=>{ try{ const j=JSON.parse(t); if(!Array.isArray(j.open)) throw 0;
+      if(j.site&&j.site!==(IS_ID?"id":"us")){ alertBox("File ini cadangan dari website "+(j.site==="id"?"Indonesia":"AS")+"."); return; }
+      savePorto({open:j.open,closed:j.closed||[]}); renderTabs(); renderResults(); }catch(e){ alertBox("File cadangan tidak bisa dibaca."); } }); });
+}
+function alertBox(msg){ const b=$("results"); const d=document.createElement("p"); d.className="no"; d.textContent=msg; d.style.fontWeight="600"; b.prepend(d); setTimeout(()=>d.remove(),4000); }
+function addToPorto(st){ store.set(WP+"porto.pre",JSON.stringify({code:st.code,price:st.entry,qty:st.lots||null,stop:st.stop,target:st.target,method:st.pmeth||"lain",date:todayISO()}));
+  store.set(WP+"porto.ed",""); tab="porto"; store.set(WP+"tab","porto"); try{history.replaceState(null,"","#porto")}catch(e){} renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0,behavior:"smooth"}); }
+
 function renderResults(){
   const box=$("results");
   if(!DATA){ box.innerHTML=`<div class="tablebox"><div class="empty">Belum ada data. Setelah workflow selesai, tabel saham muncul di sini.</div></div>`; return; }
-  if(tab==="summary") renderSummary(box); else if(tab==="sector") renderSector(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else if(tab==="calc") renderCalc(box); else renderMethod(box,MID[tab]);
+  if(tab==="summary") renderSummary(box); else if(tab==="sector") renderSector(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else if(tab==="calc") renderCalc(box); else if(tab==="porto") renderPorto(box); else renderMethod(box,MID[tab]);
 }
 function renderAll(){ renderStatus(); renderTabs(); renderRail(); renderResults(); }
 
@@ -1143,6 +1283,7 @@ function renderAll(){ renderStatus(); renderTabs(); renderRail(); renderResults(
 $("tabs").addEventListener("click",ev=>{ const b=ev.target.closest(".tab"); if(!b) return; tab=b.dataset.id; openTicker=null; store.set("si.tab",tab); try{history.replaceState(null,"","#"+tab)}catch(e){} renderTabs(); renderRail(); renderResults(); });
 function toggleRow(tr){ openTicker=openTicker===tr.dataset.t?null:tr.dataset.t; renderResults(); const again=document.querySelector(`tr.row[data-t="${CSS.escape(tr.dataset.t)}"]`); if(again) again.focus({preventScroll:true}); }
 $("results").addEventListener("click",ev=>{
+  const tp=ev.target.closest("#c_toporto"); if(tp){ const s=calcState(); s.lots=+tp.dataset.lots; s.pmeth=/CAN SLIM/.test(s.sSrc||"")?"canslim":"lain"; addToPorto(s); return; }
   const cb=ev.target.closest(".calcbtn"); if(cb){ ev.stopPropagation(); openCalc(cb.dataset.calc); return; }
   const sb=ev.target.closest(".star"); if(sb){ ev.stopPropagation(); toggleStar(sb.dataset.star); renderTabs(); renderResults(); return; }
   const wr=ev.target.closest("tr.wrow"); if(wr){ store.set(WP+"cy.sel",wr.dataset.go); tab="cycles"; store.set(WP+"tab","cycles"); try{history.replaceState(null,"","#cycles")}catch(e){} renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0,behavior:"smooth"}); return; }
