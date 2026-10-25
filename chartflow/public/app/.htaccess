@@ -1,0 +1,4 @@
+# Semua isi /app/ dilayani lewat penjaga login.
+Options -Indexes
+RewriteEngine On
+RewriteRule ^(.*)$ /api/gate.php?p=$1 [L,QSA]

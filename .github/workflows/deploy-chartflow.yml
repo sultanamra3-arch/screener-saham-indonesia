@@ -1,0 +1,77 @@
+name: Pasang beranda & login chartflow.my.id
+
+on:
+  push:
+    branches: [main]
+    paths: ["chartflow/**", ".github/workflows/deploy-chartflow.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-chartflow
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FTP_SERVER: ${{ secrets.FTP_SERVER }}
+      FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+      FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+      FTP_DIR: ${{ secrets.FTP_DIR }}
+      TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+      SITE: https://chartflow.my.id
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cek pengaturan
+        id: chk
+        run: |
+          miss=""
+          for v in FTP_SERVER FTP_USERNAME FTP_PASSWORD TG_TOKEN TG_CHAT; do [ -z "${!v}" ] && miss="$miss $v"; done
+          if [ -n "$miss" ]; then echo "### Belum dipasang: secret$miss belum diisi" >> "$GITHUB_STEP_SUMMARY"; echo "ready=false" >> "$GITHUB_OUTPUT"; else echo "ready=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Buat file pengaturan server (tidak disimpan di repo)
+        if: steps.chk.outputs.ready == 'true'
+        run: |
+          HOOK=$(printf '%s' "$TG_TOKEN:chartflow-hook" | sha256sum | cut -c1-48)
+          SALT=$(printf '%s' "$TG_TOKEN:chartflow-salt" | sha256sum | cut -c1-48)
+          echo "HOOK=$HOOK" >> "$GITHUB_ENV"
+          cat > chartflow/public/_data/config.php <<PHP
+          <?php
+          const CF_BOT_TOKEN = '$TG_TOKEN';
+          const CF_CHAT_ID = '$TG_CHAT';
+          const CF_HOOK_SECRET = '$HOOK';
+          const CF_SALT = '$SALT';
+          PHP
+          sed -i 's/^          //' chartflow/public/_data/config.php
+
+      - name: Kirim ke hosting lewat FTP
+        if: steps.chk.outputs.ready == 'true'
+        run: |
+          sudo apt-get install -y -qq lftp > /dev/null
+          LFTP_PASSWORD="$FTP_PASSWORD" lftp -c "set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3; set net:timeout 30; \
+            open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\"; \
+            mirror -R --parallel=4 --exclude-glob db.json chartflow/public ${FTP_DIR:-.}"
+          echo "### Beranda dan login terpasang di $SITE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Sambungkan bot Telegram ke website (webhook)
+        if: steps.chk.outputs.ready == 'true'
+        run: |
+          r=$(curl -s "https://api.telegram.org/bot$TG_TOKEN/setWebhook" \
+            -d "url=$SITE/api/tg.php" -d "secret_token=$HOOK" -d 'allowed_updates=["message","callback_query"]' -d "drop_pending_updates=true")
+          echo "$r"
+          echo "$r" | grep -q '"ok":true' && echo "- Webhook Telegram aktif" >> "$GITHUB_STEP_SUMMARY" || echo "- ⚠ Webhook gagal: $r" >> "$GITHUB_STEP_SUMMARY"
+          curl -s "https://api.telegram.org/bot$TG_TOKEN/setMyCommands" -H 'Content-Type: application/json' \
+            -d '{"commands":[{"command":"daftar","description":"Kode akses aktif"},{"command":"kode","description":"Buat kode: /kode 30 Nama"},{"command":"perpanjang","description":"/perpanjang KODE 30"},{"command":"reset","description":"/reset KODE (keluarkan perangkat)"},{"command":"cabut","description":"/cabut KODE"}]}' > /dev/null
+
+      - name: Uji halaman
+        if: steps.chk.outputs.ready == 'true'
+        run: |
+          for u in / /api/me.php /app/id/ /_data/config.php; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$SITE$u"); echo "- $u → $code" >> "$GITHUB_STEP_SUMMARY"
+          done

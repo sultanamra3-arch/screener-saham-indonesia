@@ -1,1 +1,3 @@
 __pycache__/
+chartflow/public/_data/config.php
+chartflow/public/_data/db.json

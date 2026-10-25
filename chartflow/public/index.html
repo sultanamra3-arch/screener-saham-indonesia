@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ChartFlow · Screener Saham Metode Para Ahli</title>
+<meta name="description" content="Screener saham BEI dan Wall Street dengan 7 metode investor dan trader ternama: kapan beli, kapan jual, dan alasannya. Diperbarui otomatis setiap hari.">
+<meta name="theme-color" content="#2f5bea">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png"><link rel="apple-touch-icon" href="/img/apple-touch-icon.png"><link rel="manifest" href="/app.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<script>try{const t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+<style>
+:root{--bg:#f6f8fc;--surface:#fff;--sunk:#eef1f7;--line:#e3e7ef;--fg:#0f172a;--muted:#5b6474;--accent:#2f5bea;--accent2:#6d8dff;--ink:#fff;--good:#0f9960;--bad:#d9363e;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.06);--r:18px;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0b1220;--surface:#121b2d;--sunk:#18233a;--line:#22304a;--fg:#e8edf6;--muted:#9aa7bb;--accent:#6d8dff;--accent2:#9fb4ff;--ink:#0b1220;--good:#34d399;--bad:#f87171;--shadow:0 1px 2px rgba(0,0,0,.4);color-scheme:dark}}
+:root[data-theme=dark]{--bg:#0b1220;--surface:#121b2d;--sunk:#18233a;--line:#22304a;--fg:#e8edf6;--muted:#9aa7bb;--accent:#6d8dff;--accent2:#9fb4ff;--ink:#0b1220;--good:#34d399;--bad:#f87171;--shadow:0 1px 2px rgba(0,0,0,.4);color-scheme:dark}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Plus Jakarta Sans",system-ui,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:1160px;margin:0 auto;padding:0 20px}
+h1,h2,h3{line-height:1.15;letter-spacing:-.02em;margin:0}
+p{margin:0}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:12px 22px;font-weight:700;font-size:15px;text-decoration:none;border:1px solid transparent;cursor:pointer;font-family:inherit}
+.btn.pri{background:var(--accent);color:var(--ink)}
+.btn.sec{background:var(--surface);border-color:var(--line);color:var(--fg)}
+.btn:hover{filter:brightness(1.05)}
+/* nav */
+.nav{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;text-decoration:none}
+.brand img{width:34px;height:34px;border-radius:10px}
+.links{display:flex;gap:22px;font-size:14.5px;font-weight:600;color:var(--muted)}
+.links a{text-decoration:none}.links a:hover{color:var(--fg)}
+.nav .act{display:flex;gap:8px;align-items:center}
+.nav .btn{padding:9px 16px;font-size:14px}
+.ic{width:38px;height:38px;border-radius:999px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;cursor:pointer;font-size:16px}
+/* hero */
+.hero{padding:72px 0 40px;position:relative;overflow:hidden}
+.hero:before{content:"";position:absolute;inset:-200px -100px auto auto;width:700px;height:700px;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 22%,transparent),transparent);z-index:-1}
+.hero .wrap:not(.stw){display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:center}
+.pill{display:inline-flex;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--muted);box-shadow:var(--shadow)}
+.pill b{color:var(--good)}
+.hero h1{font-size:clamp(34px,5vw,56px);font-weight:800;margin:18px 0 16px}
+.hero h1 span{background:linear-gradient(90deg,var(--accent),#22b07d);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.lead{font-size:18px;color:var(--muted);max-width:52ch}
+.hero .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+.hero .note{font-size:13px;color:var(--muted);margin-top:14px}
+.shot{position:relative}
+.shot img.desk{width:100%;border-radius:16px;box-shadow:0 20px 60px rgba(16,24,40,.18);border:1px solid var(--line);display:block}
+.shot img.mob{position:absolute;width:30%;right:-18px;bottom:-34px;border-radius:22px;box-shadow:0 20px 50px rgba(16,24,40,.25);border:4px solid var(--surface)}
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:56px}
+.stat{background:var(--surface);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow)}
+.stat b{display:block;font-size:28px;font-weight:800;letter-spacing:-.02em}
+.stat span{color:var(--muted);font-size:14px}
+section{padding:72px 0}
+.sh{text-align:center;max-width:680px;margin:0 auto 40px}
+.sh .k{color:var(--accent);font-weight:700;font-size:13px;letter-spacing:.12em;text-transform:uppercase}
+.sh h2{font-size:clamp(28px,3.4vw,40px);font-weight:800;margin:10px 0 12px}
+.sh p{color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.card{background:var(--surface);border-radius:var(--r);padding:22px;box-shadow:var(--shadow)}
+.card .e{width:44px;height:44px;border-radius:12px;background:color-mix(in srgb,var(--accent) 12%,transparent);display:grid;place-items:center;font-size:22px;margin-bottom:14px}
+.card h3{font-size:17px;font-weight:700;margin-bottom:6px}
+.card p{color:var(--muted);font-size:14.5px}
+.meth{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
+.m{background:var(--surface);border-radius:14px;padding:16px 12px;text-align:center;box-shadow:var(--shadow)}
+.m b{display:block;font-size:15px}.m span{font-size:12.5px;color:var(--muted)}
+.m i{font-style:normal;display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;margin-bottom:8px}
+.m i.inv{background:#e2f6ec;color:#0f7a4d}.m i.tr{background:#fdf1dc;color:#9a5c00}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:s}
+.step{background:var(--surface);border-radius:var(--r);padding:26px;box-shadow:var(--shadow);position:relative}
+.step:before{counter-increment:s;content:counter(s);position:absolute;top:22px;right:22px;font-size:44px;font-weight:800;color:var(--sunk);line-height:1}
+.step h3{font-size:18px;margin-bottom:8px}.step p{color:var(--muted);font-size:15px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
+.split img{width:100%;border-radius:16px;box-shadow:var(--shadow);border:1px solid var(--line)}
+.ticks{list-style:none;padding:0;margin:18px 0 0;display:grid;gap:10px}
+.ticks li{padding-left:30px;position:relative;color:var(--muted)}
+.ticks li:before{content:"✓";position:absolute;left:0;top:0;width:20px;height:20px;border-radius:999px;background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good);display:grid;place-items:center;font-size:12px;font-weight:800}
+.ticks b{color:var(--fg)}
+details.faq{background:var(--surface);border-radius:14px;padding:16px 20px;box-shadow:var(--shadow);margin-bottom:10px}
+details.faq summary{font-weight:700;cursor:pointer}
+details.faq p{color:var(--muted);margin-top:8px}
+.ctaBox{background:linear-gradient(135deg,var(--accent),#1f3fbf);color:#fff;border-radius:24px;padding:44px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.ctaBox h2{font-size:30px}.ctaBox p{opacity:.85;margin-top:6px}
+.ctaBox .btn.pri{background:#fff;color:#1f3fbf}
+footer{padding:36px 0 50px;color:var(--muted);font-size:13.5px;border-top:1px solid var(--line)}
+footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+/* modal */
+dialog{border:none;border-radius:22px;padding:0;width:min(440px,calc(100% - 32px));background:var(--surface);color:var(--fg);box-shadow:0 30px 80px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(10,15,30,.5);backdrop-filter:blur(3px)}
+.dlg{padding:26px}
+.dlg h3{font-size:22px;margin-bottom:6px}.dlg p.s{color:var(--muted);font-size:14.5px;margin-bottom:18px}
+label.f{display:block;font-size:13.5px;font-weight:600;margin:12px 0 6px}
+input.in,textarea.in{width:100%;font:inherit;font-size:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:uppercase;font-weight:700}
+.dlg .row{display:flex;gap:10px;margin-top:20px}.dlg .row .btn{flex:1;justify-content:center}
+.msg{font-size:14px;margin-top:10px;min-height:0}.msg.ok{color:var(--good)}.msg.no{color:var(--bad)}
+.dlg .alt{font-size:14px;color:var(--muted);text-align:center;margin-top:14px}
+.dlg .alt a{color:var(--accent);font-weight:700;cursor:pointer}
+@media (max-width:900px){
+  .links{display:none}
+  .hero .wrap:not(.stw),.split{grid-template-columns:1fr}
+  .hero{padding-top:40px}
+  .shot img.mob{right:6px;bottom:-24px;width:34%}
+  .stats{grid-template-columns:repeat(2,1fr);margin-top:48px}
+  .grid{grid-template-columns:repeat(2,1fr)}
+  .meth{grid-template-columns:repeat(2,1fr)}
+  .steps{grid-template-columns:1fr}
+  section{padding:52px 0}
+  .ctaBox{padding:28px}
+}
+@media (max-width:520px){.grid{grid-template-columns:1fr}.nav .btn.sec{display:none}}
+</style>
+</head>
+<body>
+<nav class="nav"><div class="wrap">
+  <a class="brand" href="#"><img src="/img/icon-192.png" alt="">ChartFlow</a>
+  <div class="links"><a href="#fitur">Fitur</a><a href="#metode">Metode</a><a href="#cara">Cara kerja</a><a href="#faq">FAQ</a></div>
+  <div class="act"><button class="ic" id="theme" aria-label="Ganti tema">🌙</button><button class="btn sec" data-open="req">Minta akses</button><button class="btn pri" data-open="login">Masuk</button></div>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div>
+    <span class="pill">🟢 Data diperbarui otomatis · <b>2× sehari</b> untuk BEI</span>
+    <h1>Temukan saham terbaik dengan <span>metode para ahli</span></h1>
+    <p class="lead">Screener saham Bursa Efek Indonesia dan Wall Street yang menyaring setiap saham dengan 7 metode investor dan trader ternama, lengkap dengan kapan beli, kapan jual, berapa harganya, dan alasannya.</p>
+    <div class="cta"><button class="btn pri" data-open="login">Masuk dengan kode →</button><button class="btn sec" data-open="req">Minta kode akses</button></div>
+    <p class="note">Akses terbatas. Kode diberikan setelah permintaan Anda disetujui.</p>
+  </div>
+  <div class="shot"><img class="desk" src="/img/shot-watch.webp" alt="Tampilan Watchlist area support"><img class="mob" src="/img/shot-mobile.webp" alt="Tampilan di HP"></div>
+</div>
+<div class="wrap stw"><div class="stats">
+  <div class="stat"><b>839</b><span>saham BEI disaring otomatis</span></div>
+  <div class="stat"><b>518</b><span>saham S&amp;P 500 + Nasdaq-100</span></div>
+  <div class="stat"><b>7</b><span>metode dengan aturan aslinya</span></div>
+  <div class="stat"><b>Telegram</b><span>peringatan otomatis setiap hari</span></div>
+</div></div></header>
+
+<section id="fitur"><div class="wrap">
+  <div class="sh"><span class="k">Fitur</span><h2>Semua yang Anda butuhkan untuk memutuskan</h2><p>Dari mencari saham, menentukan harga beli, sampai menjaga posisi yang sudah dibeli.</p></div>
+  <div class="grid">
+    <div class="card"><div class="e">🎯</div><h3>Sinyal jelas</h3><p>Layak beli, terlambat, atau hindari, dari sudut pandang Anda, dengan harga batas beli dan alasannya.</p></div>
+    <div class="card"><div class="e">📍</div><h3>Area support S1–S3</h3><p>Saham yang sedang di area support dengan ruang naik cukup (R:R ≥ 1:2), plus antrean di support berikutnya.</p></div>
+    <div class="card"><div class="e">💼</div><h3>Portofolio</h3><p>Catat pembelian, untung/rugi setelah biaya, dan peringatan saat kena stop, capai target, atau sinyal jual.</p></div>
+    <div class="card"><div class="e">🧮</div><h3>Kalkulator lot</h3><p>Berapa lot yang aman dibeli, rugi jika kena stop, untung di target, dan harga impas.</p></div>
+    <div class="card"><div class="e">🗺️</div><h3>Peta sektor</h3><p>Sektor yang sedang diburu atau ditinggalkan investor, dan sektor yang mulai bangkit.</p></div>
+    <div class="card"><div class="e">🌏</div><h3>Arus uang besar</h3><p>Perubahan kepemilikan asing dan institusi (KSEI) serta pembelian oleh direksi (insider) di AS.</p></div>
+    <div class="card"><div class="e">📅</div><h3>Kalender dividen</h3><p>Jadwal ex-dividen, perkiraan dividen dan yield, serta kapan paling lambat membeli.</p></div>
+    <div class="card"><div class="e">📲</div><h3>Aplikasi &amp; Telegram</h3><p>Pasang di HP seperti aplikasi. Ringkasan sinyal dan pengingat penting dikirim ke Telegram.</p></div>
+  </div>
+</div></section>
+
+<section id="metode" style="padding-top:20px"><div class="wrap">
+  <div class="sh"><span class="k">Metode</span><h2>7 metode, aturan aslinya</h2><p>Bukan indikator buatan sendiri. Setiap metode mengikuti aturan yang ditulis tokohnya, dan diuji ulang dengan data masa lalu.</p></div>
+  <div class="meth">
+    <div class="m"><i class="inv">Investor</i><b>Value</b><span>Benjamin Graham</span></div>
+    <div class="m"><i class="inv">Investor</i><b>Growth</b><span>Peter Lynch</span></div>
+    <div class="m"><i class="inv">Investor</i><b>Quality</b><span>Terry Smith</span></div>
+    <div class="m"><i class="inv">Investor</i><b>Dividen</b><span>Dividend growth</span></div>
+    <div class="m"><i class="tr">Trader</i><b>CAN SLIM</b><span>O'Neil · Minervini</span></div>
+    <div class="m"><i class="tr">Trader</i><b>Momentum</b><span>Jegadeesh–Titman</span></div>
+    <div class="m"><i class="tr">Trader</i><b>Swing</b><span>Larry Connors</span></div>
+  </div>
+</div></section>
+
+<section><div class="wrap split">
+  <div><span class="pill">📈 Siklus &amp; Fibonacci</span><h2 style="font-size:34px;margin:14px 0 10px">Zona harga yang terukur, bukan tebakan</h2>
+    <p style="color:var(--muted)">Support dan resistance dari Fibonacci, titik balik, rata-rata bergerak, dan angka bulat. Setiap unsur diuji: mana yang terbukti lebih baik dari acak, mana yang tidak.</p>
+    <ul class="ticks"><li><b>Jujur soal bukti</b>: unsur yang tidak terbukti ditandai “tidak berbeda dari acak”.</li><li><b>Rentang minggu depan</b> dan kesehatan pasar (breadth) untuk IHSG dan S&amp;P 500.</li><li><b>Klik saham</b> untuk melihat grafik, zona, dan saran singkatnya.</li></ul></div>
+  <img src="/img/shot-chart.webp" alt="Grafik zona support dan resistance">
+</div></section>
+
+<section id="cara"><div class="wrap">
+  <div class="sh"><span class="k">Cara kerja</span><h2>Tiga langkah untuk mulai</h2></div>
+  <div class="steps">
+    <div class="step"><h3>Minta akses</h3><p>Isi nama dan kontak Anda. Permintaan langsung masuk ke pengelola.</p></div>
+    <div class="step"><h3>Terima kode</h3><p>Setelah disetujui, Anda menerima kode akses pribadi lewat WhatsApp atau Telegram.</p></div>
+    <div class="step"><h3>Masuk &amp; pakai</h3><p>Masukkan kode, lalu pakai screener BEI dan Wall Street di HP maupun laptop.</p></div>
+  </div>
+</div></section>
+
+<section id="faq" style="padding-top:20px"><div class="wrap" style="max-width:820px">
+  <div class="sh"><span class="k">FAQ</span><h2>Pertanyaan umum</h2></div>
+  <details class="faq"><summary>Dari mana datanya?</summary><p>Harga dan laporan keuangan dari Yahoo Finance dan Finnhub, kepemilikan efek dari KSEI, daftar syariah dari OJK. Data BEI diperbarui saat istirahat siang dan setelah bursa tutup; data AS setiap pagi.</p></details>
+  <details class="faq"><summary>Apakah ini saran investasi?</summary><p>Bukan. Semua sinyal adalah hitungan mekanis dari aturan tiap metode. Keputusan dan risiko tetap di tangan Anda.</p></details>
+  <details class="faq"><summary>Berapa lama kode berlaku?</summary><p>30 hari dan bisa diperpanjang. Satu kode dapat dipakai di maksimal 2 perangkat.</p></details>
+  <details class="faq"><summary>Bisa dipakai di HP?</summary><p>Bisa. Tampilan dibuat untuk HP dan bisa dipasang di layar utama seperti aplikasi.</p></details>
+</div></section>
+
+<section style="padding-top:10px"><div class="wrap"><div class="ctaBox"><div><h2>Siap mencoba?</h2><p>Minta kode akses sekarang. Biasanya disetujui di hari yang sama.</p></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn pri" data-open="req">Minta kode akses</button><button class="btn sec" data-open="login" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.5)">Saya sudah punya kode</button></div></div></div></section>
+
+<footer><div class="wrap"><span>© 2026 ChartFlow · Alat bantu edukasi, bukan saran investasi. Data dapat terlambat atau tidak lengkap.</span><span><a href="/lama/">Screener versi lama</a></span></div></footer>
+
+<dialog id="login"><form class="dlg" id="fLogin">
+  <h3>Masuk</h3><p class="s">Masukkan kode akses yang Anda terima.</p>
+  <label class="f" for="code">Kode akses</label><input class="in code" id="code" name="code" placeholder="CF-XXXX-XXXX" autocomplete="one-time-code" required maxlength="14">
+  <p class="msg" id="mLogin" role="alert"></p>
+  <div class="row"><button type="button" class="btn sec" data-close>Batal</button><button class="btn pri" type="submit">Masuk</button></div>
+  <p class="alt">Belum punya kode? <a data-open="req">Minta akses</a></p>
+</form></dialog>
+
+<dialog id="req"><form class="dlg" id="fReq">
+  <h3>Minta kode akses</h3><p class="s">Permintaan Anda dikirim ke pengelola. Kode akan dikirim ke kontak Anda setelah disetujui.</p>
+  <label class="f" for="nm">Nama</label><input class="in" id="nm" name="name" placeholder="Nama lengkap" required maxlength="60">
+  <label class="f" for="ct">Nomor WhatsApp atau username Telegram</label><input class="in" id="ct" name="contact" placeholder="0812… atau @username" required maxlength="60">
+  <label class="f" for="rs">Untuk apa? (opsional)</label><textarea class="in" id="rs" name="why" rows="2" maxlength="200" placeholder="mis. belajar investasi saham dividen"></textarea>
+  <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+  <p class="msg" id="mReq" role="alert"></p>
+  <div class="row"><button type="button" class="btn sec" data-close>Batal</button><button class="btn pri" type="submit">Kirim permintaan</button></div>
+</form></dialog>
+
+<script>
+const $=id=>document.getElementById(id);
+async function post(url,data){ const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data),credentials:"same-origin"}); let j={}; try{ j=await r.json(); }catch(e){} return j; }
+function goApp(){ const q=new URLSearchParams(location.search), n=q.get("next"); let m="id"; try{ m=localStorage.getItem("lastMarket")==="us"?"us":"id"; }catch(e){} location.href=(n&&/^\/app\//.test(n))?n:"/app/"+m+"/"; }
+$("fLogin").addEventListener("submit",async ev=>{ ev.preventDefault(); const b=ev.submitter, m=$("mLogin"); b.disabled=true; m.className="msg"; m.textContent="Memeriksa…";
+  const j=await post("/api/login.php",{code:$("code").value}); b.disabled=false;
+  if(j.ok){ m.className="msg ok"; m.textContent="Berhasil. Berlaku sampai "+j.exp+"."; setTimeout(goApp,600); } else { m.className="msg no"; m.textContent=j.msg||"Gagal masuk. Coba lagi."; } });
+$("fReq").addEventListener("submit",async ev=>{ ev.preventDefault(); const f=ev.target, b=ev.submitter, m=$("mReq"); b.disabled=true; m.className="msg"; m.textContent="Mengirim…";
+  const j=await post("/api/request.php",{name:f.name.value,contact:f.contact.value,why:f.why.value,website:f.website.value}); b.disabled=false;
+  if(j.ok){ m.className="msg ok"; m.textContent=j.msg||"Terkirim."; f.reset(); } else { m.className="msg no"; m.textContent=j.msg||"Gagal mengirim. Coba lagi."; } });
+document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>b.closest("dialog").close()));
+fetch("/api/me.php",{credentials:"same-origin"}).then(r=>r.json()).then(j=>{ if(!j.ok) return;
+  document.querySelectorAll('[data-open="login"]').forEach(b=>{ const n=b.cloneNode(false); n.textContent="Buka screener →"; n.removeAttribute("data-open"); n.addEventListener("click",goApp); b.replaceWith(n); });
+  document.querySelectorAll('[data-open="req"]').forEach(b=>b.style.display="none"); }).catch(()=>{});
+if(new URLSearchParams(location.search).has("masuk")) setTimeout(()=>$("login").showModal(),200);
+document.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{ document.querySelectorAll("dialog[open]").forEach(d=>d.close()); document.getElementById(b.dataset.open).showModal(); }));
+(function(){ const b=document.getElementById("theme"), cur=()=>document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  const paint=()=>b.textContent=cur()==="dark"?"☀️":"🌙"; paint();
+  b.addEventListener("click",()=>{ const t=cur()==="dark"?"light":"dark"; document.documentElement.dataset.theme=t; try{localStorage.setItem("theme",t)}catch(e){} paint(); }); })();
+</script>
+</body>
+</html>
