@@ -148,6 +148,8 @@ details.mcard summary{cursor:pointer}
 .bar i{display:block;height:100%}
 .btnlike{font:inherit;font-size:14px;cursor:pointer;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:7px 12px;display:inline-block}
 button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pm{border-bottom:1px solid var(--line);padding:4px 0}.pm>summary{cursor:pointer;list-style-position:outside}.pmh{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fillb{font-size:12.5px;padding:2px 8px}
 .mcard{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .mcard h4{margin:0;font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .trades{display:flex;flex-direction:column;gap:3px}
@@ -854,8 +856,8 @@ function renderWatch(box){
 // ---------- Kalkulator ----------
 const UNIT = IS_ID ? 100 : 1, UNAME = IS_ID ? "lot" : "lembar";
 const CALC_DEF = IS_ID
-  ? {fb:0.15, fs:0.25, tax:10, risk:1, alloc:20, modal:100000000, p0:100000000, monthly:1000000, yld:6, grow:5, years:10}
-  : {fb:0, fs:0, tax:15, risk:1, alloc:20, modal:10000, p0:10000, monthly:100, yld:3, grow:7, years:10};
+  ? {fb:0.15, fs:0.25, tax:10, risk:null, alloc:null, modal:null, lots:10, p0:100000000, monthly:1000000, yld:6, grow:5, years:10}
+  : {fb:0, fs:0, tax:15, risk:null, alloc:null, modal:null, lots:10, p0:10000, monthly:100, yld:3, grow:7, years:10};
 function calcState(){ try{ return Object.assign({mode:"plan"}, CALC_DEF, JSON.parse(store.get(WP+"calc")||"{}")); }catch(e){ return Object.assign({mode:"plan"}, CALC_DEF); } }
 function saveCalc(st){ store.set(WP+"calc", JSON.stringify(st)); }
 function stockLevels(t){
@@ -900,25 +902,63 @@ function liveFmt(el){
 const fld = (id,label,val,extra="") => `<label class="cf" for="${id}"><span>${label}</span><input type="text" inputmode="decimal" autocomplete="off" class="numin" id="${id}" value="${fmtIn(val)}" ${extra}>${HINT_IDS.includes(id)?`<small class="hint" id="h_${id}">${sebut(val)}</small>`:""}</label>`;
 function rrJudge(rr){ return rr>=2.5?["bagus","buy"]:rr>=1.5?["cukup","hold"]:["kurang layak","sell"]; }
 function calcPlan(st){
-  const fb=st.fb/100, fs=st.fs/100, e=+st.entry, sp=+st.stop, tg=+st.target, modal=+st.modal;
-  if(!(e>0)||!(modal>0)) return `<p class="note">Isi harga beli dan modal.</p>`;
-  if(!(sp>0)||sp>=e) return `<p class="no">Stop loss harus di bawah harga beli.</p>`;
-  const buyC=e*(1+fb), rps=buyC-sp*(1-fs), maxRisk=modal*st.risk/100;
-  const byRisk=Math.floor(maxRisk/rps/UNIT)*UNIT, byAlloc=Math.floor(modal*st.alloc/100/buyC/UNIT)*UNIT;
-  const sh=Math.max(0,Math.min(byRisk,byAlloc)), cost=sh*buyC;
-  const win=tg>0?sh*(tg*(1-fs)-buyC):NaN, loss=sh*(sp*(1-fs)-buyC), rr=isFinite(win)&&loss<0?win/-loss:NaN;
-  const [jl,jc]=rrJudge(rr), fx=+st.fx;
-  if(sh<=0) return `<p class="no">Modal terlalu kecil untuk membeli 1 ${UNAME} dengan batas risiko ini. Naikkan modal atau batas risiko, atau pilih stop yang lebih dekat.</p>`;
+  const fb=st.fb/100, fs=st.fs/100, e=+st.entry, sp=+st.stop, tg=+st.target, lots=+st.lots, modal=+st.modal||0, risk=+st.risk||0, alloc=+st.alloc||0;
+  if(!(e>0)||!(lots>0)) return `<p class="note">Isi harga beli dan jumlah ${UNAME}.</p>`;
+  if(sp>0&&sp>=e) return `<p class="no">Stop loss harus di bawah harga beli.</p>`;
+  const sh=lots*UNIT, buyC=e*(1+fb), cost=sh*buyC, fx=+st.fx;
+  const win=tg>0?sh*(tg*(1-fs)-buyC):NaN, loss=sp>0?sh*(sp*(1-fs)-buyC):NaN, rr=isFinite(win)&&loss<0?win/-loss:NaN;
+  const [jl,jc]=rrJudge(rr), bep=e*(1+fb)/(1-fs);
+  let sug="", warn=[];
+  if(modal>0){
+    if(risk>0&&isFinite(loss)&&-loss/modal*100>risk) warn.push(`Rugi jika kena stop ${nf(-loss/modal*100,2)}% modal, melebihi batas risiko ${nf(risk,1)}%.`);
+    if(alloc>0&&cost/modal*100>alloc) warn.push(`Saham ini memakai ${nf(cost/modal*100,1)}% modal, melebihi batas ${nf(alloc,0)}% per saham.`);
+    if(cost>modal) warn.push("Biaya melebihi total modal yang Anda isi.");
+    const rps=sp>0?buyC-sp*(1-fs):0, lim=[];
+    if(risk>0&&rps>0) lim.push(Math.floor(modal*risk/100/rps/UNIT));
+    if(alloc>0) lim.push(Math.floor(modal*alloc/100/buyC/UNIT));
+    lim.push(Math.floor(modal/buyC/UNIT));
+    const best=Math.max(0,Math.min(...lim));
+    if((risk>0||alloc>0)&&best!==lots) sug=`<p style="margin:6px 0">Lot maksimal sesuai batas Anda: <b>${nf(best,0)} ${UNAME}</b> <button type="button" id="c_sug" data-lots="${best}">Pakai ${nf(best,0)} ${UNAME}</button></p>`;
+  }
   return `<div class="dl">
-    <div><span><b>Beli</b></span><span class="num big">${nf(sh/UNIT,0)} ${UNAME}${IS_ID?` (${nf(sh,0)} lembar)`:""}</span></div>
-    <div><span>Biaya total</span><span class="num">${money(cost)} (${nf(cost/modal*100,1)}% modal)${!IS_ID&&fx>0?` ≈ Rp${nf(cost*fx,0)}`:""}</span></div>
-    <div><span>Sisa modal</span><span class="num">${money(modal-cost)}</span></div>
-    <div><span>Dibatasi oleh</span><span>${byRisk<=byAlloc?`risiko ${nf(st.risk,1)}% modal`:`alokasi maksimal ${nf(st.alloc,0)}% per saham`}</span></div>
-    <div><span>Jika kena stop ${usd(sp)}</span><span class="num no">${money(loss)} (${nf(loss/cost*100,1)}%)</span></div>
-    <div><span>Jika capai target ${usd(tg)}</span><span class="num ok">${isFinite(win)?money(win)+` (${nf(win/cost*100,1)}%)`:"–"}</span></div>
-    <div><span><b>Rasio untung : rugi</b></span><span><span class="num">1 : ${isFinite(rr)?nf(rr,2):"–"}</span> <span class="st ${jc}">${jl}</span></span></div></div>
-    <p style="margin:8px 0"><button type="button" id="c_toporto" data-lots="${sh/UNIT}">➕ Sudah beli? Catat di Portofolio</button></p>
-    <p class="note">${rr<1.5?"Target terlalu dekat dibanding stop. Tunggu harga lebih dekat ke support, atau lewati saham ini. ":""}Rugi maksimal dijaga sekitar ${nf(st.risk,1)}% modal. Sudah termasuk biaya beli ${nf(st.fb,2)}% dan jual ${nf(st.fs,2)}%.${IS_ID?" Saat saham terkena ARB, stop bisa tidak tereksekusi sehingga rugi bisa lebih besar.":""}</p>`;
+    <div><span><b>Beli</b></span><span class="num big">${nf(lots,0)} ${UNAME}${IS_ID?` (${nf(sh,0)} lembar)`:""}</span></div>
+    <div><span>Biaya total</span><span class="num">${money(cost)}${modal>0?` (${nf(cost/modal*100,1)}% modal)`:""}${!IS_ID&&fx>0?` ≈ Rp${nf(cost*fx,0)}`:""}</span></div>
+    ${modal>0?`<div><span>Sisa modal</span><span class="num">${money(modal-cost)}</span></div>`:""}
+    <div><span>Harga impas (setelah biaya)</span><span class="num">${usd(bep)}</span></div>
+    <div><span>Jika kena stop ${sp>0?usd(sp):""}</span><span class="num no">${isFinite(loss)?money(loss)+` (${nf(loss/cost*100,1)}%${modal>0?` · ${nf(loss/modal*100,2)}% modal`:""})`:"isi stop loss"}</span></div>
+    <div><span>Jika capai target ${tg>0?usd(tg):""}</span><span class="num ok">${isFinite(win)?money(win)+` (${nf(win/cost*100,1)}%)`:"isi target"}</span></div>
+    <div><span><b>Rasio untung : rugi</b></span><span><span class="num">1 : ${isFinite(rr)?nf(rr,2):"–"}</span>${isFinite(rr)?` <span class="st ${jc}">${jl}</span>`:""}</span></div></div>
+    ${warn.length?`<p class="no" style="margin:6px 0">⚠ ${warn.join(" ")}</p>`:""}${sug}
+    <p style="margin:8px 0"><button type="button" id="c_toporto" data-lots="${lots}">➕ Sudah beli? Catat di Portofolio</button></p>
+    <p class="note">${isFinite(rr)&&rr<1.5?"Target terlalu dekat dibanding stop. Tunggu harga lebih dekat ke support, atau lewati saham ini. ":""}Sudah termasuk biaya beli ${nf(st.fb,2)}% dan jual ${nf(st.fs,2)}%.${modal>0?"":" Isi total modal (opsional) untuk melihat persen modal dan saran lot."}${IS_ID?" Saat saham terkena ARB, stop bisa tidak tereksekusi sehingga rugi bisa lebih besar.":""}</p>`;
+}
+function fillBtn(label,price,kind){ if(price==null||!isFinite(price)) return ""; return `<button type="button" class="fillb" data-fill="${kind}" data-v="${price}" title="${kind==="sup"?"Pakai sebagai harga beli; stop = batas jebolnya":kind==="entry"?"Pakai sebagai harga beli":kind==="stop"?"Pakai sebagai stop":"Pakai sebagai target"}">${label} ${usd(price)}</button>`; }
+const MKEY={value:o=>`P/E ${o.pe!=null?nf(o.pe,1):"–"} · P/B ${o.pb!=null?nf(o.pb,2):"–"}`,growth:o=>`P/E ${o.pe!=null?nf(o.pe,1):"–"}`,
+  quality:o=>[o.roic!=null?`ROIC ${nf(o.roic,1)}%`:o.roe!=null?`ROE ${nf(o.roe,1)}%`:"",o.gm?`margin kotor ${nf(o.gm,1)}%`:""].filter(Boolean).join(" · ")||"–",dividend:o=>`yield ${o.div!=null?nf(o.div,2)+"%":"–"} · payout ${o.payout!=null?nf(o.payout,0)+"%":"–"}`,
+  canslim:o=>`RS ${o.rs!=null?nf(o.rs,0):"–"}`,momentum:o=>`peringkat ${o.momRank!=null?nf(o.momRank,0):"–"}`,swing:o=>`RSI(2) ${o.rsi2!=null?nf(o.rsi2,1):"–"}`};
+function stockPanel(t){
+  const o=rows.find(x=>x.ticker===t); if(!o) return t?`<p class="note">Kode ${esc(t)} tidak ditemukan.</p>`:"";
+  const meth=M.map(m=>{ const st=mget(o,m.id), lv=st.lv||{}, crit=(st.c||[]);
+    const fills=[lv.buy!=null?fillBtn("beli",lv.buy,"entry"):"", lv.stop!=null?fillBtn("stop",lv.stop,"stop"):"", lv.target!=null?fillBtn("target",lv.target,"target"):"", lv.sell!=null?fillBtn("mahal",lv.sell,"target"):""].join("");
+    return `<details class="pm"><summary><span class="pmh"><b>${esc(m.name)}</b> ${chip(st.s)} <span class="note">${esc((MKEY[m.id]||(()=>""))(o))}${st.n?` · ${st.k}/${st.n} syarat`:""}</span></span></summary>
+      ${st.r?`<p class="note" style="margin:4px 0">${esc(st.r)}</p>`:""}${fills?`<p style="margin:4px 0;display:flex;gap:6px;flex-wrap:wrap">${fills}</p>`:""}
+      ${crit.length?`<div class="dl" style="font-size:13px">${crit.map(([l,v,s])=>`<div><span>${s===1?'<span class="ok">✓</span>':s===0?'<span class="no">✗</span>':'<span class="na">–</span>'} ${esc(l)}</span><span class="num">${esc(v)}</span></div>`).join("")}</div>`:""}</details>`; }).join("");
+  const a=CYC&&CYC.stocks&&CYC.stocks[t], w=CYC&&CYC.watch&&CYC.watch.in[t], rm=w?roomOf(t,w):null;
+  let sr;
+  if(!CYC&&!CYC_ERR) sr=`<p class="note">Memuat support dan resistance…</p>`;
+  else if(!a) sr=`<p class="note">Support dan resistance belum tersedia untuk saham ini (hanya dihitung untuk saham yang cukup likuid).</p>`;
+  else {
+    const res=(a.res||[]).slice(0,3).reverse(), sup=(a.sup||[]).slice(0,3);
+    const zl=(z,k,i)=>`<div><span><b>${k}${i}</b> ${zr(z)} <span class="st ${strCls(z.strength)}">${z.strength}</span> <span class="note">${pct(z.dist)}</span></span><span>${k==="R"?fillBtn("target",z.lo,"target"):fillBtn("beli di sini",z.hi,"sup")}</span></div>`;
+    sr=`<div class="dl" style="font-size:13.5px">${res.map((z,i)=>zl(z,"R",res.length-i)).join("")}
+      <div style="border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);padding:3px 0"><span><b>Harga sekarang ${usd(o.price)}</b>${rm&&rm.lad?` · <span class="st buy">Di S${rm.lad.pos}</span> jebol &lt; ${usd(w.brk)}`:""}</span><span>${fillBtn("beli",o.price,"entry")}</span></div>
+      ${sup.map((z,i)=>zl(z,"S",i+1)).join("")}</div>
+      ${rm?`<p class="note" style="margin:4px 0">Ruang naik ke R1 kuat/sedang: ${rm.up!=null?"+"+nf(rm.up,1)+"%":"terbuka"} · R:R ${rm.rr!=null?"1 : "+nf(rm.rr,1):"terbuka"}${rm.ok?" ✅":" ⏳ ruang sempit"}</p>`:""}
+      <p class="note" style="margin:4px 0">Urutan S dan R di sini dari harga sekarang. "Beli di sini" mengisi harga beli = batas atas zona, dan stop = sedikit di bawah zona.</p>`;
+  }
+  return `<div class="mcard" style="margin-top:12px"><h4><span>${esc(t)} · ${esc(o.company||"")}</span><span class="num">${usd(o.price)}</span></h4>
+    <div class="calcwrap" style="margin-top:0"><div><h3 style="margin:0 0 4px">Sinyal 7 metode</h3>${meth}</div><div><h3 style="margin:0 0 4px">Support &amp; resistance</h3>${sr}</div></div>
+    <p class="note">Klik tombol harga untuk mengisi kalkulator. Klik nama metode untuk melihat syarat dan angkanya.</p></div>`;
 }
 function calcResult(st){
   const fb=st.fb/100, fs=st.fs/100, b=+st.buy, c=+st.cur, q=(+st.qty||0)*UNIT, dps=+st.dps||0, tax=st.tax/100;
@@ -971,7 +1011,9 @@ function renderCalc(box){
   let form="", out="";
   if(st.mode==="plan"){
     form=`<div class="cgrid">${code}${fld("c_entry","Harga beli",st.entry)}${fld("c_stop","Stop loss",st.stop)}${fld("c_target","Target",st.target)}
-      ${fld("c_modal","Modal ("+(IS_ID?"Rp":"$")+")",st.modal??(IS_ID?100000000:10000))}${fld("c_risk","Risiko per transaksi (% modal)",st.risk)}${fld("c_alloc","Maksimal per saham (% modal)",st.alloc)}</div>
+      ${fld("c_lots","Jumlah ("+UNAME+")",st.lots)}</div>
+      <p class="note" style="margin:8px 0 4px">Opsional, untuk menghitung persen modal dan saran ${UNAME}:</p>
+      <div class="cgrid">${fld("c_modal","Total modal Anda ("+(IS_ID?"Rp":"$")+")",st.modal)}${fld("c_risk","Risiko per transaksi (% modal)",st.risk)}${fld("c_alloc","Maksimal per saham (% modal)",st.alloc)}</div>
       ${(()=>{ const w=st.code&&CYC&&CYC.watch&&CYC.watch.in[st.code], rm=w?roomOf(st.code,w):null; return rm&&rm.s2?`<p style="margin:6px 0"><button type="button" id="c_s2">Pakai harga beli di S${rm.nextN} ${usd(rm.s2buy)} (stop ${usd(rm.s2brk)})</button> <button type="button" id="c_s1">Kembali ke harga sekarang</button></p>`:""; })()}
       ${L&&st.sSrc?`<p class="note">Isian otomatis untuk ${esc(st.code)}: stop dari ${esc(st.sSrc)}, target dari ${esc(st.tSrc)}. Bisa Anda ubah.</p>`:""}`;
     out=calcPlan(st);
@@ -991,17 +1033,22 @@ function renderCalc(box){
   box.innerHTML=`<div class="rhead"><div class="l"><h2>Kalkulator</h2><p class="note">Semua hitungan berjalan di browser Anda. Isian terakhir diingat di perangkat ini.</p></div>
       <div class="seg" role="group" aria-label="Mode kalkulator">${modeBtn("plan","Rencana beli")}${modeBtn("result","Hasil posisi")}${modeBtn("sim","Simulasi jangka panjang")}</div></div>
     <div class="calcwrap"><div class="mcard">${form}<details style="margin-top:6px"><summary class="note">Biaya, pajak${IS_ID?"":", dan kurs"}</summary>${fees}</details></div>
-    <div class="mcard" id="c_out">${out}</div></div>`;
+    <div class="mcard" id="c_out">${out}</div></div>${st.mode==="plan"&&st.code?stockPanel(st.code):""}`;
   box.querySelectorAll("[data-cm]").forEach(b=>b.addEventListener("click",()=>{ const s=calcState(); s.mode=b.dataset.cm; saveCalc(s); renderResults(); }));
-  const map={c_entry:"entry",c_stop:"stop",c_target:"target",c_modal:"modal",c_risk:"risk",c_alloc:"alloc",c_buy:"buy",c_qty:"qty",c_cur:"cur",c_dps:"dps",c_fb:"fb",c_fs:"fs",c_tax:"tax",c_fx:"fx",c_fxb:"fxb",c_p0:"p0",c_monthly:"monthly",c_yld:"yld",c_grow:"grow",c_years:"years"};
+  const map={c_lots:"lots",c_entry:"entry",c_stop:"stop",c_target:"target",c_modal:"modal",c_risk:"risk",c_alloc:"alloc",c_buy:"buy",c_qty:"qty",c_cur:"cur",c_dps:"dps",c_fb:"fb",c_fs:"fs",c_tax:"tax",c_fx:"fx",c_fxb:"fxb",c_p0:"p0",c_monthly:"monthly",c_yld:"yld",c_grow:"grow",c_years:"years"};
   const upd=()=>{ const s=calcState(); Object.entries(map).forEach(([id,k])=>{ const el=$(id); if(el){ s[k]=parseIn(el.value); const h=$("h_"+id); if(h) h.textContent=sebut(s[k]); } });
     if($("c_date")) s.date=$("c_date").value; if($("c_reinv")) s.reinv=$("c_reinv").value==="1"; saveCalc(s);
     const s2=calcState(); $("c_out").innerHTML = s2.mode==="plan"?calcPlan(s2):s2.mode==="result"?calcResult(s2):calcSim(s2); };
   box.querySelectorAll("input.numin").forEach(el=>el.addEventListener("input",()=>liveFmt(el)));
   box.querySelectorAll("input:not(#c_code),select").forEach(el=>el.addEventListener("input",upd));
-  $("c_code").addEventListener("change",ev=>{ const t=ev.target.value.trim().toUpperCase(); const s=calcState(); s.code=t;
+  const codeSet=ev=>{ const t=ev.target.value.trim().toUpperCase(); if(ev.type==="input"&&(!rows.some(o=>o.ticker===t)||t===calcState().code)) return; const s=calcState(); s.code=t;
     const L2=stockLevels(t); if(L2){ Object.assign(s,{entry:L2.p,stop:L2.stop,target:L2.target,sSrc:L2.sSrc,tSrc:L2.tSrc,buy:s.mode==="result"?(s.buy||L2.p):L2.p,cur:L2.p}); }
-    saveCalc(s); renderResults(); });
+    saveCalc(s); renderResults(); const ci=$("c_code"); if(ci){ ci.focus(); ci.setSelectionRange(ci.value.length,ci.value.length); } };
+  $("c_code").addEventListener("change",codeSet); $("c_code").addEventListener("input",codeSet);
+  box.querySelectorAll(".fillb").forEach(b=>b.addEventListener("click",()=>{ const s=calcState(), v=+b.dataset.v, k=b.dataset.fill, r2=x=>+(+x).toFixed(IS_ID?0:2);
+    if(k==="sup"){ s.entry=r2(v); const z=(((CYC.stocks[s.code]||{}).sup)||[]).find(z=>z.hi===v); s.stop=r2(floorTick((z?z.lo:v)*0.99)); s.sSrc="di bawah zona support yang dipilih"; }
+    else if(k==="entry") s.entry=r2(v); else if(k==="stop"){ s.stop=r2(v); s.sSrc="metode"; } else { s.target=r2(v); s.tSrc="pilihan Anda"; }
+    saveCalc(s); renderResults(); }));
   const s2b=$("c_s2"); if(s2b) s2b.addEventListener("click",()=>{ const s=calcState(), w=CYC.watch.in[s.code], rm=roomOf(s.code,w); if(!rm||!rm.s2) return; s.entry=+rm.s2buy.toFixed(IS_ID?0:2); s.stop=+rm.s2brk.toFixed(IS_ID?0:2); s.sSrc="batas jebol S"+rm.nextN; if(rm.r1){ s.target=rm.r1.lo; s.tSrc="resistance R1"; } saveCalc(s); renderResults(); });
   const s1b=$("c_s1"); if(s1b) s1b.addEventListener("click",()=>{ const s=calcState(), L2=stockLevels(s.code); if(L2){ Object.assign(s,{entry:L2.p,stop:L2.stop,target:L2.target,sSrc:L2.sSrc,tSrc:L2.tSrc}); saveCalc(s); renderResults(); } });
   const fill=$("c_fill"); if(fill) fill.addEventListener("click",()=>{ const s=calcState(), o=rows.find(x=>x.ticker===s.code); if(!o) return; s.yld=+(o.div||0).toFixed(2); s.grow=+Math.max(0,Math.min(15,o.divGrowth5y||0)).toFixed(1); saveCalc(s); renderResults(); });
@@ -1283,6 +1330,7 @@ function renderAll(){ renderStatus(); renderTabs(); renderRail(); renderResults(
 $("tabs").addEventListener("click",ev=>{ const b=ev.target.closest(".tab"); if(!b) return; tab=b.dataset.id; openTicker=null; store.set("si.tab",tab); try{history.replaceState(null,"","#"+tab)}catch(e){} renderTabs(); renderRail(); renderResults(); });
 function toggleRow(tr){ openTicker=openTicker===tr.dataset.t?null:tr.dataset.t; renderResults(); const again=document.querySelector(`tr.row[data-t="${CSS.escape(tr.dataset.t)}"]`); if(again) again.focus({preventScroll:true}); }
 $("results").addEventListener("click",ev=>{
+  const sg=ev.target.closest("#c_sug"); if(sg){ const s=calcState(); s.lots=+sg.dataset.lots; saveCalc(s); renderResults(); return; }
   const tp=ev.target.closest("#c_toporto"); if(tp){ const s=calcState(); s.lots=+tp.dataset.lots; s.pmeth=/CAN SLIM/.test(s.sSrc||"")?"canslim":"lain"; addToPorto(s); return; }
   const cb=ev.target.closest(".calcbtn"); if(cb){ ev.stopPropagation(); openCalc(cb.dataset.calc); return; }
   const sb=ev.target.closest(".star"); if(sb){ ev.stopPropagation(); toggleStar(sb.dataset.star); renderTabs(); renderResults(); return; }
