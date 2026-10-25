@@ -170,6 +170,8 @@ tr.tot td{background:rgba(127,127,127,.08);border-top:2px solid var(--line)}
 .st.new{background:var(--accent)!important;color:var(--accent-ink)!important;font-size:11px}
 .st.own{background:transparent!important;padding:0 2px!important}
 .mc.late{background:var(--warn-soft);color:var(--warn)}
+.fb{font-size:11.5px;margin-left:4px;padding:0 4px;border-radius:6px;background:var(--sunk);white-space:nowrap;cursor:help}
+.fb.up{background:var(--good-soft)}.fb.dn{background:var(--bad-soft)}.fb.ins{background:var(--accent-soft)}
 .mcard{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .mcard h4{margin:0;font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .trades{display:flex;flex-direction:column;gap:3px}
@@ -364,7 +366,7 @@ const M = [
   cols:[["rsi2","RSI(2)"],["sma200","vs SMA200",1],["perf1m","1 bln",1]]},
 ];
 const MID = Object.fromEntries(M.map(m=>[m.id,m]));
-const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"},{id:"porto",name:"Portofolio",k:"Posisi Anda"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"calc",name:"Kalkulator",k:"Return & risiko"},{id:"sector",name:"Peta sektor",k:"Arus uang"}]);
+const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"},{id:"porto",name:"Portofolio",k:"Posisi Anda"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"calc",name:"Kalkulator",k:"Return & risiko"},{id:"divcal",name:"Kalender dividen",k:"Ex-dividen"},{id:"sector",name:"Peta sektor",k:"Arus uang"}]);
 const ST = {buy:"Layak beli",hold:"Tahan",sell:"Jual",late:"Terlambat",wait:"Tunggu",na:"Tidak dinilai"};
 const PRI = {buy:0,sell:1,hold:2,late:3,wait:4,na:5};
 const REASON = {stop:"stop loss −7%",be:"kembali ke harga beli",target:"target +20%","8w":"8 minggu selesai",sma5:"di atas SMA5",rank:"keluar 20% teratas"};
@@ -375,7 +377,7 @@ const detNeed=()=>!!(DATA&&DATA.hasDetail&&!DET);
 function loadDetail(){
   if(!detNeed()) return Promise.resolve(); if(DET_P) return DET_P;
   DET_P=fetch("data/detail.json",{cache:"no-cache"}).then(r=>r.ok?r.json():{}).then(j=>{ DET=j||{};
-    rows.forEach(o=>{ const d=DET[o.ticker]; if(!d) return; Object.entries(d).forEach(([k,v])=>{ if(k==="_tt") o.tt=v; else if(o.m&&o.m[k]) Object.assign(o.m[k],v); }); }); }).catch(()=>{ DET={}; });
+    rows.forEach(o=>{ const d=DET[o.ticker]; if(!d) return; Object.entries(d).forEach(([k,v])=>{ if(k[0]==="_") o[k.slice(1)]=v; else if(o.m&&o.m[k]) Object.assign(o.m[k],v); }); }); }).catch(()=>{ DET={}; });
   return DET_P;
 }
 function critStates(st,mid){ if(st.c) return st.c; const L=((DATA&&DATA.clabels)||{})[mid]||[]; return (st.cs||"").split("").map((ch,i)=>[L[i]||("syarat "+(i+1)),"",ch==="1"?1:ch==="0"?0:ch==="2"?2:null]); }
@@ -401,7 +403,7 @@ function fmtCol(k,v,isPct){
 }
 const LIQ={L:"",K:"kurang likuid",T:"tidak likuid"};
 const ixBadges = o => (o.syariah?`<span class="ix" title="Daftar Efek Syariah OJK">syariah</span>`:"")+(o.liq&&o.liq!=="L"?`<span class="ix" style="background:var(--warn-soft);color:var(--warn)">${LIQ[o.liq]}</span>`:"")+(o.ipo||((o.days||999)<200)?`<span class="ix" style="background:var(--sunk);color:var(--muted)">baru</span>`:"");
-const stockCell = o => `<td>${starBtn(o.ticker)}<span class="tk">${esc(o.ticker)}</span>${ixBadges(o)}<span class="nm">${esc(o.company||"")}${o.sector?" · "+esc(o.sector):""}</span></td>`;
+const stockCell = o => `<td>${starBtn(o.ticker)}<span class="tk">${esc(o.ticker)}</span>${ixBadges(o)}${flowBadges(o)}<span class="nm">${esc(o.company||"")}${o.sector?" · "+esc(o.sector):""}</span></td>`;
 const chip = s => `<span class="st ${s}">${ST[s]||s}</span>`;
 function levels(mid, st){
   const lv=st.lv||{}, p=[];
@@ -473,6 +475,7 @@ function renderTabs(){
     if(t.id==="summary"){ const n=list.filter(o=>summaryOf(o).by.buy.length).length; c=`<b>${n}</b> saham layak beli`; }
     else if(t.id==="sector") { const S=sectorStats(), t3=S.L.filter(r=>r.n>=5)[0]; c=t3?`Terkuat: <b>${esc(t3.name)}</b>`:"Sektor"; }
     else if(t.id==="calc") c="Lot, untung, rugi";
+    else if(t.id==="divcal") { const td=(DATA&&DATA.priceDate)||""; const n=list.filter(o=>o.dv&&o.dv.ex>=td&&o.dv.ex<=new Date(new Date(td).getTime()+14*864e5).toISOString().slice(0,10)).length; c=`<b>${n}</b> dalam 2 minggu`; }
     else if(t.id==="porto") { const P=porto(); if(!P.open.length) c="Catat & pantau"; else { const nd=P.open.filter(ps=>posEval(ps).acts.some(a=>a.lv<=1)).length; c=`<b>${P.open.length}</b> posisi${nd?` · ⚠ ${nd} perlu tindakan`:""}`; } }
     else if(t.id==="watch") { if(CYC&&CYC.watch){ const al=allowedMethods(), byT=Object.fromEntries(list.map(o=>[o.ticker,o])); const n=Object.entries(CYC.watch.in).filter(([tk,w])=>byT[tk]&&(w.strength!=="lemah")&&watchStrict(tk,w,sigOf(byT[tk],al))).length; c=`<b>${n}</b> layak beli di support`; } else c="★ dan area support"; }
     else if(t.id==="cycles") { const f=CYC&&Object.values(CYC.indices)[0]; c=f?`<b>${(f.rawan||[]).length}</b> tanggal rawan`:"Analisis"; }
@@ -520,7 +523,7 @@ function methodCard(o,mid){
 function detail(o, only){
   const ids = only ? [only].concat(M.map(m=>m.id).filter(x=>x!==only)) : M.map(m=>m.id);
   const tt=(o.tt||[]);
-  return `${saranBox(`<p>${saranStock(o)}</p><p>${calcBtn(o.ticker,"🧮 Hitung lot, untung & rugi")}</p>`)}<div style="height:10px"></div><div class="dgrid">${ids.map(id=>methodCard(o,id)).join("")}
+  return `${saranBox(`<p>${saranStock(o)}</p><p>${calcBtn(o.ticker,"🧮 Hitung lot, untung & rugi")}</p>`)}<div style="height:10px"></div><div class="dgrid">${flowCards(o)}${ids.map(id=>methodCard(o,id)).join("")}
     ${tt.length?`<div class="mcard"><h4><span>Trend template Minervini</span><span class="na" style="font-weight:400">${tt.filter(x=>x[1]).length}/8</span></h4><div class="cl">${tt.map(x=>`<div>${x[1]?'<span class="ok">✓</span>':'<span class="no">✗</span>'}<span>${esc(x[0])}</span><span></span></div>`).join("")}</div></div>`:""}</div>`;
 }
 
@@ -1296,10 +1299,10 @@ function renderSector(box){
     return `<button type="button" class="stile" data-sec="${esc(r.k)}" aria-pressed="${sel===r.k}" style="background:${heat(v,hsc)};flex-grow:${w}">
       <span class="sn">${esc(r.name)}</span><span class="sv num">${v==null?"–":pct(v)}</span><span class="sc">${r.n} saham · #${r.rank}</span></button>`; }).join("");
   const seg=`<div class="seg" role="group" aria-label="Periode">${SEC_H.filter(([f])=>f!=="perf1w"&&f!=="perf3m"||S.has3).map(([f,l])=>`<button type="button" data-sh="${f}" aria-pressed="${f===H}">${l}</button>`).join("")}</div>`;
-  const tbl=`<div class="tablebox"><table><thead><tr><th class="num">#</th><th>Sektor</th><th class="num">Saham</th>${SEC_H.filter(([f])=>f!=="perf1w"&&f!=="perf3m"||S.has3).map(([f,l])=>`<th class="num">${l}</th>`).join("")}<th class="num">Tren naik<br><span class="na">di atas SMA200</span></th><th class="num">Arah peringkat<br><span class="na">vs 5 hari lalu</span></th><th class="num">Layak beli</th><th class="num">Di area support</th></tr></thead><tbody>
+  const tbl=`<div class="tablebox"><table><thead><tr><th class="num">#</th><th>Sektor</th><th class="num">Saham</th>${SEC_H.filter(([f])=>f!=="perf1w"&&f!=="perf3m"||S.has3).map(([f,l])=>`<th class="num">${l}</th>`).join("")}<th class="num">Tren naik<br><span class="na">di atas SMA200</span></th><th class="num">Arah peringkat<br><span class="na">vs 5 hari lalu</span></th><th class="num">Layak beli</th><th class="num">${IS_ID?"🌏 Asing ▲ / ▼":"👤 Insider beli"}</th><th class="num">Di area support</th></tr></thead><tbody>
     ${S.L.map(r=>`<tr class="secrow" data-sec="${esc(r.k)}" tabindex="0"${sel===r.k?' style="background:var(--hl,rgba(0,0,0,.04))"':""}><td class="num">${r.rank}</td><td><b>${esc(r.name)}</b>${IS_ID||r.name===r.k?"":`<br><span class="note">${esc(r.k)}</span>`}</td><td class="num">${r.n}${r.n<5?' <span class="na" title="Sedikit saham: hasil mudah digeser 1–2 saham">⚠</span>':""}</td>
       ${SEC_H.filter(([f])=>f!=="perf1w"&&f!=="perf3m"||S.has3).map(([f])=>`<td class="num ${r[f]>=0?"ok":"no"}">${pct(r[f])}</td>`).join("")}
-      <td class="num ${r.a200>=50?"ok":"no"}">${r.a200==null?"–":nf(r.a200,0)+"%"}</td><td class="num">${mv(r)}</td><td class="num">${r.buy}</td><td class="num">${r.sup==null?"–":r.sup}</td></tr>`).join("")}</tbody></table></div>`;
+      <td class="num ${r.a200>=50?"ok":"no"}">${r.a200==null?"–":nf(r.a200,0)+"%"}</td><td class="num">${mv(r)}</td><td class="num">${r.buy}</td><td class="num">${IS_ID?`${r.list.filter(o=>o.ks&&o.ks.df>=KS_TH).length} / ${r.list.filter(o=>o.ks&&o.ks.df<=-KS_TH).length}`:r.list.filter(o=>o.ins).length}</td><td class="num">${r.sup==null?"–":r.sup}</td></tr>`).join("")}</tbody></table></div>`;
   let det="";
   const R=S.L.find(r=>r.k===sel);
   if(R){
@@ -1470,7 +1473,7 @@ function addToPorto(st){ store.set(WP+"porto.pre",JSON.stringify({code:st.code,p
 
 // ---------- navigasi v2 ----------
 const GROUPS=[{id:"home",ic:"🏠",name:"Beranda",tabs:["summary"]},{id:"saham",ic:"🔍",name:"Saham",tabs:M.map(m=>m.id)},
-  {id:"watch",ic:"📍",name:"Watchlist",tabs:["watch"]},{id:"porto",ic:"💼",name:"Portofolio",tabs:["porto"]},{id:"alat",ic:"🧰",name:"Alat",tabs:["calc","cycles","sector"]}];
+  {id:"watch",ic:"📍",name:"Watchlist",tabs:["watch"]},{id:"porto",ic:"💼",name:"Portofolio",tabs:["porto"]},{id:"alat",ic:"🧰",name:"Alat",tabs:["calc","cycles","sector","divcal"]}];
 const groupOf=t=>GROUPS.find(g=>g.tabs.includes(t))||GROUPS[0];
 function renderNav(){
   const g=groupOf(tab), P=porto(), nd=P.open.length?P.open.filter(ps=>posEval(ps).acts.some(a=>a.lv<=1)).length:0;
@@ -1492,10 +1495,61 @@ function renderDrawer(box){
 }
 document.addEventListener("keydown",ev=>{ if(ev.key==="Escape"&&openTicker){ openTicker=null; renderResults(); } });
 
+// ---------- insider, arus asing, dividen ----------
+const KS_TH=0.5;
+function flowBadges(o){
+  const b=[];
+  if(o.ins) b.push(`<span class="fb ins" title="Insider membeli ${o.ins.p} orang dalam 90 hari, total ${usd(o.ins.v)}${o.ins.cl?"; beberapa orang dalam 30 hari":""}">👤${o.ins.cl?"⭐":""}</span>`);
+  const k=o.ks; if(k&&k.df!=null){ if(k.df>=KS_TH) b.push(`<span class="fb up" title="Kepemilikan asing naik ${nf(k.df,2)} poin (${esc(k.m)})">🌏▲</span>`); else if(k.df<=-KS_TH) b.push(`<span class="fb dn" title="Kepemilikan asing turun ${nf(-k.df,2)} poin (${esc(k.m)})">🌏▼</span>`); }
+  if(k&&k.di!=null){ if(k.di>=KS_TH) b.push(`<span class="fb up" title="Reksa dana, dana pensiun, dan asuransi menambah ${nf(k.di,2)} poin (${esc(k.m)})">🏦▲</span>`); else if(k.di<=-KS_TH) b.push(`<span class="fb dn" title="Reksa dana, dana pensiun, dan asuransi mengurangi ${nf(-k.di,2)} poin (${esc(k.m)})">🏦▼</span>`); }
+  if(o.dv&&o.dv.ex){ const dd=Math.round((new Date(o.dv.ex)-new Date((DATA&&DATA.priceDate)||Date.now()))/864e5); if(dd>=0&&dd<=21) b.push(`<span class="fb dv" title="Ex-dividen ${tgl(o.dv.ex)} (${o.dv.sure?"pasti":"perkiraan"}), ±${usd(o.dv.amt)}/lembar">📅</span>`); }
+  return b.join("");
+}
+const BLN_L=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+const ym=m=>m?BLN_L[+m.slice(5,7)-1]+" "+m.slice(0,4):"–";
+function flowCards(o){
+  const out=[];
+  if(o.ins){ const L=o.insL||[];
+    out.push(`<div class="mcard"><h4><span>👤 Insider membeli (90 hari)</span>${o.ins.cl?'<span class="st buy">⭐ beberapa orang</span>':""}</h4>
+      <p style="font-size:13px">${o.ins.p} orang direksi/komisaris membeli dengan uang sendiri di pasar, total <b>${usd(o.ins.v)}</b>. Terakhir ${tgl(o.ins.d,1)}.</p>
+      ${L.length?`<div class="dl" style="font-size:13px">${L.slice(0,10).map(x=>`<div><span><b>${esc(x.n)}</b>${x.role?` <span class="note">· ${esc(x.role)}</span>`:""}<br><span class="note">${tgl(x.d,1)} · ${nf(x.sh,0)} lembar @ ${usd(x.px)}</span></span><span class="num">${usd(x.v)}</span></div>`).join("")}</div>`:detNeed()?'<p class="note">Memuat rincian…</p>':""}
+      <p class="note">Sumber: laporan Form 4 ke SEC. Penjualan, saham bonus, dan hadiah tidak dihitung. Pembelian insider adalah penguat, bukan alasan tunggal membeli.</p></div>`); }
+  if(o.ks){ const k=o.ks, L=o.ksL||[];
+    const ch=v=>v==null?"–":`<span class="${v>=KS_TH?"ok":v<=-KS_TH?"no":""}">${v>0?"+":""}${nf(v,2)}</span>`;
+    out.push(`<div class="mcard"><h4><span>🌏 Kepemilikan asing &amp; institusi</span><span class="note">KSEI · ${ym(k.m)}</span></h4>
+      <div class="dl" style="font-size:13.5px"><div><span>Asing</span><span class="num">${nf(k.f,2)}% (${ch(k.df)} poin)</span></div>
+      <div><span>Reksa dana + dana pensiun + asuransi</span><span class="num">${nf(k.i,2)}% (${ch(k.di)} poin)</span></div></div>
+      ${L.length>1?`<table style="margin-top:6px;font-size:12.5px;min-width:0"><thead><tr><th>Bulan</th><th class="num">Asing</th><th class="num">Institusi</th></tr></thead><tbody>${L.slice().reverse().map(x=>`<tr><td>${ym(x[0])}</td><td class="num">${nf(x[1],2)}%</td><td class="num">${nf(x[2],2)}%</td></tr>`).join("")}</tbody></table>`:detNeed()?'<p class="note">Memuat riwayat…</p>':""}
+      <p class="note">Perubahan ≥ 0,5 poin dalam sebulan ditandai 🌏/🏦 ▲▼. Data bulanan KSEI, terbit awal bulan berikutnya.</p></div>`); }
+  if(o.dv){ const d=o.dv, ex=new Date(d.ex), cum=new Date(ex); do{ cum.setDate(cum.getDate()-1); }while(cum.getDay()===0||cum.getDay()===6);
+    out.push(`<div class="mcard"><h4><span>📅 Dividen berikutnya</span><span class="st ${d.sure?"buy":"wait"}">${d.sure?"pasti":"perkiraan"}</span></h4>
+      <div class="dl" style="font-size:13.5px"><div><span>Ex-dividen</span><span class="num">${tgl(d.ex,1)}</span></div><div><span>Beli paling lambat (cum)</span><span class="num">${tgl(cum.toISOString().slice(0,10),1)}</span></div>
+      <div><span>Dividen per lembar</span><span class="num">±${usd(d.amt)}${d.y!=null?` (${nf(d.y,2)}%)`:""}</span></div></div>
+      <p class="note">${d.sure?"Tanggal sudah diumumkan.":"Perkiraan dari pola pembayaran sebelumnya; tunggu pengumuman resmi."} Pada tanggal ex, harga biasanya turun kira-kira sebesar dividen.</p></div>`); }
+  return out.join("");
+}
+function renderDivcal(box){
+  const today=(DATA&&DATA.priceDate)||new Date().toISOString().slice(0,10), f=store.get(WP+"dc.f")||"all";
+  let L=filtered().filter(o=>o.dv&&o.dv.ex>=today).map(o=>({o,d:o.dv,u:uv(o,"dividend"),own:!!owned(o.ticker)}));
+  const cnt={all:L.length,div:L.filter(x=>x.u.s==="buy").length,own:L.filter(x=>x.own).length,sure:L.filter(x=>x.d.sure).length};
+  if(f==="div") L=L.filter(x=>x.u.s==="buy"); else if(f==="own") L=L.filter(x=>x.own); else if(f==="sure") L=L.filter(x=>x.d.sure);
+  L.sort((a,b)=>(b.own-a.own)||a.d.ex.localeCompare(b.d.ex)||((b.d.y||0)-(a.d.y||0)));
+  const cumOf=s=>{ const c=new Date(s); do{ c.setDate(c.getDate()-1); }while(c.getDay()===0||c.getDay()===6); return c.toISOString().slice(0,10); };
+  const seg=`<div class="seg" role="group" aria-label="Saring">${[["all","Semua",cnt.all],["div","Layak beli (Dividen)",cnt.div],["own","Portofolio saya",cnt.own],["sure","Tanggal pasti",cnt.sure]].map(([k,l,n])=>`<button type="button" data-dc="${k}" aria-pressed="${f===k}">${l} (${n})</button>`).join("")}</div>`;
+  box.innerHTML=saranBox(`<p><b>Cara memakai:</b> supaya berhak menerima dividen, saham harus sudah Anda miliki <b>paling lambat pada tanggal cum</b> (satu hari bursa sebelum ex-dividen). Pada tanggal ex, harga biasanya turun kira-kira sebesar dividennya, jadi membeli hanya demi dividen jarang menguntungkan. Yang paling cocok: saham yang memang <b>layak beli menurut metode Dividen</b> dan kebetulan dekat tanggal ex.</p>
+      <p class="note">${IS_ID?"Untuk saham Indonesia, tanggal resmi baru tersedia setelah diumumkan; sebagian besar di sini adalah <b>perkiraan</b> dari pola tahun-tahun sebelumnya.":"Sebagian besar tanggal sudah diumumkan (pasti); sisanya perkiraan dari pola pembayaran kuartalan."} Rentang: ${75} hari ke depan.</p>`)+`
+    <div class="rhead" style="margin-top:12px"><div class="l"><h2>Kalender ex-dividen</h2><p class="note">Mengikuti filter di atas. 💼 = ada di Portofolio Anda (ditampilkan paling atas).</p></div>${seg}</div>
+    <div class="tablebox"><table><thead><tr><th class="num">Ex-dividen</th><th class="num">Beli paling lambat</th><th>Saham</th><th class="num">Harga</th><th class="num">Dividen/lembar</th><th class="num">Yield</th><th>Status</th><th>Metode Dividen</th><th></th></tr></thead><tbody>
+    ${L.length?L.map(x=>`<tr class="row" data-t="${esc(x.o.ticker)}" tabindex="0"><td class="num"><b>${tgl(x.d.ex)}</b></td><td class="num">${tgl(cumOf(x.d.ex))}</td>${stockCell(x.o)}<td class="num">${usd(x.o.price)}</td>
+      <td class="num">±${usd(x.d.amt)}</td><td class="num">${x.d.y!=null?nf(x.d.y,2)+"%":"–"}</td><td><span class="st ${x.d.sure?"buy":"wait"}">${x.d.sure?"pasti":"perkiraan"}</span>${x.own?' <span class="st own">💼</span>':""}</td>
+      <td>${uchip(x.u)}</td><td>${calcBtn(x.o.ticker)}</td></tr>`).join(""):`<tr><td colspan="9" class="empty">${(DATA&&rows.some(o=>o.dv))?"Tidak ada ex-dividen yang cocok dengan pilihan ini.":"Kalender dividen akan terisi setelah pembaruan data berikutnya."}</td></tr>`}</tbody></table></div>`;
+  box.querySelectorAll("[data-dc]").forEach(b=>b.addEventListener("click",()=>{ store.set(WP+"dc.f",b.dataset.dc); renderResults(); }));
+}
+
 function renderResults(){
   const box=$("results");
   if(!DATA){ box.innerHTML=`<div class="tablebox"><div class="empty">Belum ada data. Setelah workflow selesai, tabel saham muncul di sini.</div></div>`; return; }
-  if(tab==="summary") renderSummary(box); else if(tab==="sector") renderSector(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else if(tab==="calc") renderCalc(box); else if(tab==="porto") renderPorto(box); else renderMethod(box,MID[tab]);
+  if(tab==="summary") renderSummary(box); else if(tab==="sector") renderSector(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else if(tab==="calc") renderCalc(box); else if(tab==="divcal") renderDivcal(box); else if(tab==="porto") renderPorto(box); else renderMethod(box,MID[tab]);
   renderDrawer(box);
 }
 function renderAll(){ renderStatus(); renderTabs(); renderRail(); renderResults(); }

@@ -235,6 +235,11 @@ def fundamentals(code: str) -> dict | None:
     f["eps"] = fnum(info.get("trailingEps"))
     f["bvps"] = fnum(info.get("bookValue"))
     f["beta"] = fnum(info.get("beta"))
+    exd = info.get("exDividendDate")
+    try:
+        f["exInfo"] = datetime.fromtimestamp(int(exd), timezone.utc).strftime("%Y-%m-%d") if exd else None
+    except Exception:
+        f["exInfo"] = None
     fcf = fnum(info.get("freeCashflow"))
     f["pfcf"] = mc / fcf if mc and fcf and fcf > 0 else None
 
@@ -281,6 +286,7 @@ def fundamentals(code: str) -> dict | None:
                 f["divGrowth5y"] = ((by[last_full] / by[last_full - 5]) ** (1 / 5) - 1) * 100
             ttm = dv[dv.index >= dv.index[-1] - pd.Timedelta(days=365)].sum() if (pd.Timestamp.now(tz=dv.index.tz) - dv.index[-1]).days < 400 else 0.0
             f["dpsTTM"] = float(ttm)
+            f["dvh"] = [[str(i.date()), round(float(v), 4)] for i, v in dv[dv.index >= dv.index[-1] - pd.Timedelta(days=800)].items()]
         else:
             f["divYears"], f["dpsY"], f["dpsTTM"] = 0, 0.0, 0.0
     except Exception as e:
@@ -426,9 +432,10 @@ def slim_rows(rows):
             dd = {k: v for k, v in (("c", c), ("h", h)) if v}
             if dd:
                 d[mid] = dd
-        tt = o.pop("tt", None)
-        if tt:
-            d["_tt"] = tt
+        for k in ("tt", "insL", "ksL"):
+            v = o.pop(k, None)
+            if v:
+                d["_" + k] = v
         if d:
             d_key = o["ticker"]
             det[d_key] = d
@@ -518,10 +525,28 @@ def main():
     state = load_state()
     log("Menghitung 7 metode ...")
     res = strategies.run(rows, close, volume, day, state, eligible)
+    import divcal
+    import ksei
+    today = date.fromisoformat(day)
+    for r in rows:
+        nd = divcal.next_div(r.pop("dvh", None), r.pop("exInfo", None), today)
+        if nd and r.get("price"):
+            nd["y"] = round(nd["amt"] / r["price"] * 100, 2)
+        if nd:
+            r["dv"] = nd
+    log(f"  kalender dividen: {sum(1 for r in rows if r.get('dv'))} saham dengan ex-date ≤ {divcal.HORIZON} hari")
+    log("Kepemilikan efek bulanan (KSEI) ...")
+    ks_new = False
+    try:
+        kc, ks_new = ksei.update(DATA / "ksei.json", log)
+        ksei.apply(rows, kc)
+    except Exception as e:
+        log(f"  KSEI gagal: {str(e)[:120]}")
     SIG_FILE.write_text(json.dumps(state, separators=(",", ":")))
     out = {
         "updatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "priceDate": day, "prevPriceDate": prev_day, "newSession": prev_day != day,
+        "ksNew": ks_new,
         "count": len(rows), "liqCount": {k: sum(1 for r in rows if r["liq"] == k) for k in "LKT"},
         "syariahSource": syr.get("kep"), "missingFundamentals": missing,
         "thresholds": {"liqHi": LIQ_HI, "liqLo": LIQ_LO, "divMin": strategies.DIV_MIN, "fees": [strategies.FEE_BUY, strategies.FEE_SELL]},

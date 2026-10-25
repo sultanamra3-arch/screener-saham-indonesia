@@ -238,6 +238,54 @@ def support_section(d: dict) -> list[str]:
     return L
 
 
+
+def extras_section(d: dict) -> list[str]:
+    """Insider membeli (AS), arus asing KSEI (ID), dan pengingat ex-dividen."""
+    from datetime import date as _date, timedelta as _td
+    L = []
+    rows = [o for o in d.get("stocks", []) if o.get("liq", "L") == "L"]
+    today = _date.fromisoformat(d["priceDate"])
+    prev = d.get("prevPriceDate") or (today - _td(days=3)).isoformat()
+    # 👤 insider (hanya ada di data AS)
+    new_ins = sorted([o for o in rows if o.get("ins") and o["ins"].get("f", "") > prev], key=lambda o: -o["ins"]["v"])
+    if new_ins:
+        L += ["", b(f"👤 Insider membeli — laporan baru ({len(new_ins)})")]
+        for o in new_ins[:6]:
+            i = o["ins"]
+            lay = [NAMES[m] for m in ORDER if layak(o, m)]
+            L.append(f"{b(o['ticker'])} {usd(o.get('price'))} · {i['p']} orang, total {usd(i['v'])}{' ⭐ beberapa orang sekaligus' if i.get('cl') else ''}"
+                     + (f" · <i>Layak beli: {e(', '.join(lay))}</i>" if lay else ""))
+    # 🌏 KSEI bulanan (hanya ada di data Indonesia)
+    if d.get("ksNew"):
+        ks = [o for o in rows if (o.get("ks") or {}).get("df") is not None]
+        if ks:
+            m = ks[0]["ks"]["m"]
+            m = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"][int(m[5:7]) - 1] + " " + m[:4]
+            up = sorted(ks, key=lambda o: -o["ks"]["df"])[:5]
+            dn = sorted(ks, key=lambda o: o["ks"]["df"])[:5]
+            L += ["", b(f"🌏 Kepemilikan asing bulan {m} (KSEI)")]
+            L.append("Masuk: " + ", ".join(f"{o['ticker']} +{o['ks']['df']:.1f} poin".replace(".", ",") for o in up if o["ks"]["df"] > 0))
+            L.append("Keluar: " + ", ".join(f"{o['ticker']} {o['ks']['df']:.1f} poin".replace(".", ",") for o in dn if o["ks"]["df"] < 0))
+    # 📅 ex-dividen ≤ 5 hari (hanya tanggal pasti)
+    soon = []
+    for o in rows:
+        dv = o.get("dv") or {}
+        if not dv.get("sure"):
+            continue
+        dd = (_date.fromisoformat(dv["ex"]) - today).days
+        st = (o.get("m") or {}).get("dividend") or {}
+        if 1 <= dd <= 5 and (layak(o, "dividend") or st.get("s") in ("buy", "hold")):
+            soon.append((dd, o, dv))
+    if soon:
+        L += ["", b("📅 Ex-dividen sebentar lagi (metode Dividen)")]
+        for dd, o, dv in sorted(soon, key=lambda x: x[0])[:6]:
+            ex = _date.fromisoformat(dv["ex"])
+            cum = ex - _td(days=1)
+            while cum.weekday() >= 5:
+                cum -= _td(days=1)
+            L.append(f"{b(o['ticker'])} ex {hari(dv['ex'])} · ±{usd(dv['amt'])}/lembar ({str(dv.get('y', 0)).replace('.', ',')}%) · beli paling lambat {hari(cum.isoformat())}")
+    return L
+
 def morning(d: dict) -> str | None:
     if d.get("newSession") is False:
         print("Tidak ada sesi bursa baru sejak pembaruan sebelumnya (libur BEI); pesan tidak dikirim.")
@@ -269,6 +317,7 @@ def morning(d: dict) -> str | None:
         L += ["", "Tidak ada sinyal beli atau jual baru hari ini."]
     try:
         L += support_section(d)
+        L += extras_section(d)
     except Exception as ex:
         print(f"Bagian area support dilewati: {ex}")
     L += ["", "Hanya saham likuid (transaksi ≥ Rp5 miliar/hari). Harga sudah dibulatkan ke fraksi BEI.",
