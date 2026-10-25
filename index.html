@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Screener Saham Indonesia</title>
 <meta name="description" content="Saring semua saham Bursa Efek Indonesia dengan 7 metode investor dan trader, lengkap dengan harga beli, jual, dan alasannya.">
+<link rel="manifest" href="/screener-saham/manifest.webmanifest">
+<meta name="theme-color" content="#2f5bea">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Screener">
+<script>try{const q=new URLSearchParams(location.search);if(q.has("app")&&localStorage.getItem("lastMarket")==="id"&&!/indonesia/.test(location.pathname)){location.replace("/screener-saham-indonesia/"+location.hash);}localStorage.setItem("lastMarket","id");}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
@@ -190,7 +199,8 @@ button{transition:background .15s,border-color .15s}
 .topbar{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   margin:0 -16px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
-.brand .logo{width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:800;font-size:15px;flex:none}
+.brand .logo{width:34px;height:34px;border-radius:10px;flex:none}
+#install{border-radius:999px;background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700;padding:7px 12px;white-space:nowrap}
 .brand b{display:block;font-size:15.5px;font-weight:800;line-height:1.1}
 .brand .sub{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tb-r{display:flex;align-items:center;gap:8px}
@@ -243,6 +253,9 @@ footer{color:var(--muted);font-size:12.5px}
   .brand .sub{display:none}
   .brand b{font-size:14.5px}
   .brand .logo{width:30px;height:30px}
+  #install{padding:6px 10px;font-size:12px}
+  #install .lg{display:none}
+  .topbar:has(#install:not([hidden])) .brand b{display:none}
   .mcard h4{flex-wrap:wrap}
   .mkt a{padding:5px 9px;font-size:12px}
   .mainnav{position:fixed;left:0;right:0;bottom:0;z-index:35;width:auto;border-radius:18px 18px 0 0;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));box-shadow:0 -2px 14px rgba(16,24,40,.12);gap:0}
@@ -258,8 +271,9 @@ footer{color:var(--muted);font-size:12.5px}
 <body>
 <div class="wrap">
   <header class="topbar">
-    <div class="brand"><span class="logo" aria-hidden="true">S</span><div><b>Screener Saham</b><span class="sub">Bursa Efek Indonesia</span></div></div>
+    <div class="brand"><img class="logo" src="icons/icon-192.png" alt="" width="34" height="34"><div><b>Screener Saham</b><span class="sub">Bursa Efek Indonesia</span></div></div>
     <div class="tb-r"><nav class="mkt" aria-label="Pasar"><a href="https://sultanamra3-arch.github.io/screener-saham/">🇺🇸 US</a><a href="https://sultanamra3-arch.github.io/screener-saham-indonesia/" aria-current="page">🇮🇩 ID</a></nav>
+      <button type="button" id="install" hidden>📲 Pasang<span class="lg"> aplikasi</span></button>
       <button type="button" class="iconbtn" id="theme" aria-label="Ganti tema terang/gelap">🌙</button></div>
   </header>
   <nav class="mainnav" id="mainnav" aria-label="Menu utama"></nav>
@@ -1476,6 +1490,23 @@ $("mainnav").addEventListener("click",ev=>{ const b=ev.target.closest("[data-g]"
 (function(){ const b=$("theme"); const cur=()=>document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
   const paint=()=>{ b.textContent=cur()==="dark"?"☀️":"🌙"; }; paint();
   b.addEventListener("click",()=>{ const t=cur()==="dark"?"light":"dark"; document.documentElement.dataset.theme=t; try{localStorage.setItem("theme",t)}catch(e){} paint(); if(tab==="cycles") renderResults(); }); })();
+// ---------- aplikasi (PWA) ----------
+(function(){
+  const btn=$("install"); let ev=null;
+  const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+  if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+  if(standalone) return;
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); ev=e; btn.hidden=false; });
+  if(ios) btn.hidden=false;
+  window.addEventListener("appinstalled",()=>{ btn.hidden=true; });
+  btn.addEventListener("click",()=>{
+    if(ev){ ev.prompt(); ev.userChoice.finally(()=>{ ev=null; btn.hidden=true; }); return; }
+    const box=$("results"), d=document.createElement("div"); d.className="mcard"; d.style.borderLeft="4px solid var(--accent)";
+    d.innerHTML=`<h4><span>📲 Pasang di iPhone/iPad</span></h4><p>Buka halaman ini di <b>Safari</b> → ketuk tombol <b>Bagikan</b> (kotak dengan panah ke atas) → pilih <b>Tambahkan ke Layar Utama</b> → <b>Tambah</b>.</p>`;
+    box.prepend(d); window.scrollTo({top:0,behavior:"smooth"});
+  });
+})();
 // ---------- boot ----------
 renderAll();
 fetch("data/stocks.json",{cache:"no-cache"}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json() }).then(d=>{

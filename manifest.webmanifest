@@ -1,0 +1,23 @@
+{
+  "id": "/screener-saham/",
+  "name": "Screener Saham",
+  "short_name": "Screener",
+  "description": "Saring saham S&P 500, Nasdaq-100, dan Bursa Efek Indonesia dengan 7 metode investor dan trader.",
+  "lang": "id",
+  "start_url": "/screener-saham/?app=1",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f5fa",
+  "theme_color": "#2f5bea",
+  "icons": [
+    {"src": "/screener-saham/icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/screener-saham/icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "/screener-saham/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {"name": "Watchlist", "url": "/screener-saham/?app=1#watch", "icons": [{"src": "/screener-saham/icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "Portofolio", "url": "/screener-saham/?app=1#porto", "icons": [{"src": "/screener-saham/icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "Kalkulator", "url": "/screener-saham/?app=1#calc", "icons": [{"src": "/screener-saham/icons/icon-192.png", "sizes": "192x192"}]}
+  ]
+}
