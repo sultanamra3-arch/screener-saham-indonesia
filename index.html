@@ -352,6 +352,15 @@ const PRI = {buy:0,sell:1,hold:2,wait:3,na:4};
 const REASON = {stop:"stop loss −7%",be:"kembali ke harga beli",target:"target +20%","8w":"8 minggu selesai",sma5:"di atas SMA5",rank:"keluar 20% teratas"};
 
 let DATA=null, rows=[];
+let DET=null, DET_P=null;
+const detNeed=()=>!!(DATA&&DATA.hasDetail&&!DET);
+function loadDetail(){
+  if(!detNeed()) return Promise.resolve(); if(DET_P) return DET_P;
+  DET_P=fetch("data/detail.json",{cache:"no-cache"}).then(r=>r.ok?r.json():{}).then(j=>{ DET=j||{};
+    rows.forEach(o=>{ const d=DET[o.ticker]; if(!d) return; Object.entries(d).forEach(([k,v])=>{ if(k==="_tt") o.tt=v; else if(o.m&&o.m[k]) Object.assign(o.m[k],v); }); }); }).catch(()=>{ DET={}; });
+  return DET_P;
+}
+function critStates(st,mid){ if(st.c) return st.c; const L=((DATA&&DATA.clabels)||{})[mid]||[]; return (st.cs||"").split("").map((ch,i)=>[L[i]||("syarat "+(i+1)),"",ch==="1"?1:ch==="0"?0:ch==="2"?2:null]); }
 let tab=(location.hash||"").slice(1); if(tab==="etf") tab="sector";
 if(!TABS.some(t=>t.id===tab)) tab=store.get("si.tab")||"summary";
 if(!TABS.some(t=>t.id===tab)) tab="summary";
@@ -530,7 +539,7 @@ function renderMethod(box,m){
       <td class="num">${usd(o.price)}</td>
       <td>${chip(st.s)}${lv?`<span class="lvl">${lv}</span>`:""}${st.first?`<span class="lvl">tercatat sejak awal</span>`:""}</td>
       <td class="why">${esc(st.rs||"")}</td>
-      <td><div class="pips">${(st.c||[]).filter(c=>c[2]!==2).map(c=>`<span class="pip ${c[2]===1?"y":c[2]==null?"na":""}" title="${esc(c[0])}"></span>`).join("")}</div></td>
+      <td><div class="pips">${critStates(st,m.id).filter(c=>c[2]!==2).map(c=>`<span class="pip ${c[2]===1?"y":c[2]==null?"na":""}" title="${esc(c[0])}"></span>`).join("")}</div></td>
       ${m.cols.map(c=>`<td class="num">${fmtCol(c[0],o[c[0]],c[2])}</td>`).join("")}</tr>`;
     return tr; }).join("");
 }
@@ -1020,6 +1029,7 @@ const MKEY={value:o=>`P/E ${o.pe!=null?nf(o.pe,1):"–"} · P/B ${o.pb!=null?nf(
   quality:o=>[o.roic!=null?`ROIC ${nf(o.roic,1)}%`:o.roe!=null?`ROE ${nf(o.roe,1)}%`:"",o.gm?`margin kotor ${nf(o.gm,1)}%`:""].filter(Boolean).join(" · ")||"–",dividend:o=>`yield ${o.div!=null?nf(o.div,2)+"%":"–"} · payout ${o.payout!=null?nf(o.payout,0)+"%":"–"}`,
   canslim:o=>`RS ${o.rs!=null?nf(o.rs,0):"–"}`,momentum:o=>`peringkat ${o.momRank!=null?nf(o.momRank,0):"–"}`,swing:o=>`RSI(2) ${o.rsi2!=null?nf(o.rsi2,1):"–"}`};
 function stockPanel(t){
+  if(detNeed()){ loadDetail().then(()=>{ if(tab==="calc") renderResults(); }); }
   const o=rows.find(x=>x.ticker===t); if(!o) return t?`<p class="note">Kode ${esc(t)} tidak ditemukan.</p>`:"";
   const meth=M.map(m=>{ const st=mget(o,m.id), lv=st.lv||{}, crit=(st.c||[]);
     const fills=[lv.buy!=null?fillBtn("beli",lv.buy,"entry"):"", lv.stop!=null?fillBtn("stop",lv.stop,"stop"):"", lv.target!=null?fillBtn("target",lv.target,"target"):"", lv.sell!=null?fillBtn("mahal",lv.sell,"target"):""].join("");
@@ -1425,8 +1435,9 @@ function renderDrawer(box){
   const mid=MID[tab]?tab:undefined;
   const sc=document.createElement("div"); sc.className="scrim"; sc.id="scrim";
   const d=document.createElement("div"); d.className="drawer"; d.id="drawer"; d.setAttribute("role","dialog"); d.setAttribute("aria-label","Detail "+o.ticker);
-  d.innerHTML=`<div class="dr-h"><div>${starBtn(o.ticker)} <b>${esc(o.ticker)}</b> <span class="num">${usd(o.price)}</span><br><span class="note">${esc(o.company||"")}</span></div><div style="display:flex;gap:6px">${calcBtn(o.ticker)}<button type="button" class="iconbtn" id="drClose" aria-label="Tutup">✕</button></div></div><div class="dr-b">${detail(o,mid)}</div>`;
+  d.innerHTML=`<div class="dr-h"><div>${starBtn(o.ticker)} <b>${esc(o.ticker)}</b> <span class="num">${usd(o.price)}</span><br><span class="note">${esc(o.company||"")}</span></div><div style="display:flex;gap:6px">${calcBtn(o.ticker)}<button type="button" class="iconbtn" id="drClose" aria-label="Tutup">✕</button></div></div><div class="dr-b">${detNeed()?'<p class="note">Memuat rincian…</p>':detail(o,mid)}</div>`;
   box.appendChild(sc); box.appendChild(d); document.body.style.overflow="hidden";
+  if(detNeed()) loadDetail().then(()=>{ if(openTicker===o.ticker) renderResults(); });
   const close=()=>{ openTicker=null; renderResults(); };
   sc.addEventListener("click",close); d.querySelector("#drClose").addEventListener("click",close);
 }
