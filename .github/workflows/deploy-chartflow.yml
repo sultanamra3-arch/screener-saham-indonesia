@@ -72,6 +72,8 @@ jobs:
       - name: Uji halaman
         if: steps.chk.outputs.ready == 'true'
         run: |
-          for u in / /api/me.php /app/id/ /_data/config.php; do
+          for u in / /api/me.php /app/id/ /_data/config.php /.well-known/assetlinks.json; do
             code=$(curl -s -o /dev/null -w "%{http_code}" "$SITE$u"); echo "- $u → $code" >> "$GITHUB_STEP_SUMMARY"
           done
+          al=$(curl -s "$SITE/.well-known/assetlinks.json"); echo "$al"
+          echo "$al" | grep -q "id.my.chartflow.twa" && echo "- ✅ assetlinks.json terbaca (APK layar penuh)" >> "$GITHUB_STEP_SUMMARY" || echo "- ⚠ assetlinks.json belum terbaca" >> "$GITHUB_STEP_SUMMARY"

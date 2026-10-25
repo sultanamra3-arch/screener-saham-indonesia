@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "id.my.chartflow.twa",
+    "sha256_cert_fingerprints": ["30:19:FD:3F:23:FF:2B:85:E5:95:B5:EE:C2:A5:8C:F6:93:1E:7E:0B:D7:61:94:0E:08:A2:3E:39:FB:C7:0B:3E"]
+  }
+}]
