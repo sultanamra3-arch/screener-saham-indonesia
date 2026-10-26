@@ -24,6 +24,7 @@ from pathlib import Path
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ohlc
 import strategies  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -173,6 +174,7 @@ def fetch_prices(codes: list[str]):
                     if isinstance(c, pd.Series):
                         c, v = c.to_frame(chunk[0]), v.to_frame(chunk[0])
                     fc.append(c); fv.append(v)
+                    ohlc.keep(df)
                     break
             except Exception as e:
                 log(f"  harga batch {i}: {e}")
@@ -365,6 +367,14 @@ def etf_info(close) -> dict:
 CYC_FILE = DATA / "cycles.json"
 SERIES_FILE = DATA / "series.json"
 CYC_STATE = DATA / "cycles_state.json"
+
+
+def _ohlc(close, volume, cols):
+    try:
+        n = ohlc.write(DATA / "ohlc", close, volume, cols, {"IHSG": INDEX}, rename=lambda c: c[:-3] if str(c).endswith(".JK") else c, decimals=0)
+        log(f"Data candlestick: {n} file")
+    except Exception as e:
+        log(f"  data candlestick gagal: {e}")
 
 
 def run_cycles(close, indices: dict, cfg: dict, stock_cols: list, breadth_cols: list, tick=None, vix=None, persist=True):
@@ -567,6 +577,7 @@ def main():
     liquid = [r["ticker"] for r in rows if r["liq"] == "L"]
     run_cycles(close, {"IHSG": INDEX}, {"ramadan": True, "holidays": set(notify_telegram.HOLIDAYS)},
                liquid, eligible, tick=strategies.tick)
+    _ohlc(close, volume, liquid)
     log(f"Selesai dalam {(time.time() - t0) / 60:.1f} menit -> {OUT_FILE.relative_to(ROOT)}")
 
     lc = out["liqCount"]
@@ -633,6 +644,7 @@ def intraday():
     eligible = [r["ticker"] for r in rows if r.get("liq") in ("L", "K")]
     run_cycles(close, {"IHSG": INDEX}, {"ramadan": True, "holidays": set(notify_telegram.HOLIDAYS)},
                liquid, eligible, tick=strategies.tick, persist=False)
+    _ohlc(close, volume, liquid)
     summary(f"### Update siang berhasil\n- {n} saham, harga sementara {last} pukul {prev['intraday']['wib']} WIB\n- Lama proses: {(time.time() - t0) / 60:.1f} menit")
 
 if __name__ == "__main__":

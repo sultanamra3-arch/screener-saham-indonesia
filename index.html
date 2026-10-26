@@ -139,6 +139,9 @@ tbody tr:last-child td{border-bottom:none}
 .cl div{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:6px;align-items:baseline}
 .cl .v{font-family:var(--f-mono);font-size:12px;text-align:right;color:var(--muted)}
 .calcbtn{font-size:12.5px;padding:3px 8px;white-space:nowrap}
+.indbar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}.indbar button{font-size:12.5px;padding:4px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:6px}
+.indbar button i{width:10px;height:3px;border-radius:2px;display:inline-block}.indbar button[aria-pressed=false]{opacity:.55}.indbar button[aria-pressed=true]{border-color:var(--accent);font-weight:600}
+.pnh{font-size:13px;margin:10px 0 2px;display:flex;gap:8px;align-items:baseline}
 .calcwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:10px}
 @media (max-width:760px){.calcwrap{grid-template-columns:1fr}}
 .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
@@ -616,7 +619,7 @@ function renderEtf(box){
 }
 
 // ---------- Siklus & Fibonacci ----------
-let CYC=null, SER=null, CYC_ERR=false, LWC_P=null, cyCharts=[], cyObs=[];
+let CYC=null, SER=null, CYC_ERR=false, LWC_P=null, cyCharts=[], cyObs=[], pxCharts=[], pxObs=[];
 function loadCycles(){
   if(CYC||CYC_ERR) return Promise.resolve();
   return fetch("data/cycles.json",{cache:"no-cache"}).then(r=>{if(!r.ok) throw 0; return r.json()}).then(c=>{CYC=c;}).catch(()=>{CYC_ERR=true;});
@@ -667,7 +670,18 @@ function scoreCard(sc){
     ${(sc.recent||[]).length?`<div class="trades" style="margin-top:8px">${sc.recent.slice().reverse().map(([d,x])=>`<div><span>${tgl(d,1)} · ${esc((x.why||[]).slice(0,2).join(", "))}</span><span class="${x.hit?"ok":"no"}">${x.hit?"tepat":"meleset"}</span></div>`).join("")}</div>`:""}
     <p class="note">Ramalan dicatat sebelum terjadi, lalu dinilai otomatis setelah titik balik terkonfirmasi (±15 hari bursa).</p>`;
 }
-function watchSize(ch,el){ const o=new ResizeObserver(()=>{ try{ ch.applyOptions({width:el.clientWidth}); }catch(e){} }); o.observe(el); cyObs.push(o); }
+function watchSize(ch,el,list){ const o=new ResizeObserver(()=>{ try{ ch.applyOptions({width:el.clientWidth}); }catch(e){} }); o.observe(el); (list||cyObs).push(o); }
+function rsiTxt(r){ if(r==null) return "";
+  return r>=70?`<b class="no">${nf(r,0)}: jenuh beli</b>, kenaikan sudah panas; hindari mengejar, rawan koreksi`
+    :r<=30?`<b class="ok">${nf(r,0)}: jenuh jual</b>, penurunan sudah dalam; sering dekat titik pantul (tunggu konfirmasi)`
+    :r>=50?`<b>${nf(r,0)}: netral cenderung kuat</b>, pembeli lebih dominan`:`<b>${nf(r,0)}: netral cenderung lemah</b>, penjual lebih dominan`; }
+// ---------- indikator ----------
+function smaA(v,n){ const o=new Array(v.length).fill(null); let s=0,q=[];
+  for(let i=0;i<v.length;i++){ if(v[i]==null){ continue; } q.push(v[i]); s+=v[i]; if(q.length>n) s-=q.shift(); if(q.length===n) o[i]=s/n; } return o; }
+function emaA(v,n){ const o=new Array(v.length).fill(null), k=2/(n+1); let e=null,c=0,s=0;
+  for(let i=0;i<v.length;i++){ const x=v[i]; if(x==null) continue; if(e==null){ c++; s+=x; if(c===n){ e=s/n; o[i]=e; } continue; } e=x*k+e*(1-k); o[i]=e; } return o; }
+function stdA(v,n,m){ const o=new Array(v.length).fill(null);
+  for(let i=n-1;i<v.length;i++){ if(m[i]==null) continue; let s=0,c=0; for(let j=i-n+1;j<=i;j++){ if(v[j]!=null){ s+=(v[j]-m[i])**2; c++; } } o[i]=Math.sqrt(s/c); } return o; }
 function rsiOf(vals,n=14){
   const out=new Array(vals.length).fill(null); let ag=0,al=0,k=0,prev=null;
   for(let i=0;i<vals.length;i++){ const v=vals[i]; if(v==null) continue; if(prev==null){ prev=v; continue; }
@@ -676,55 +690,108 @@ function rsiOf(vals,n=14){
     out[i]=al===0?100:100-100/(1+ag/al); }
   return out;
 }
-function rsiTxt(r){ if(r==null) return "";
-  return r>=70?`<b class="no">${nf(r,0)}: jenuh beli</b>, kenaikan sudah panas; hindari mengejar, rawan koreksi`
-    :r<=30?`<b class="ok">${nf(r,0)}: jenuh jual</b>, penurunan sudah dalam; sering dekat titik pantul (tunggu konfirmasi)`
-    :r>=50?`<b>${nf(r,0)}: netral cenderung kuat</b>, pembeli lebih dominan`:`<b>${nf(r,0)}: netral cenderung lemah</b>, penjual lebih dominan`; }
-function drawChart(el, dates, vals, a, rawan, future, idr, rel){
-  cyObs.forEach(o=>o.disconnect()); cyObs=[];
-  cyCharts.forEach(c=>{try{c.remove()}catch(e){}}); cyCharts=[];
+function macdA(c){ const a=emaA(c,12), b=emaA(c,26), m=c.map((_,i)=>a[i]!=null&&b[i]!=null?a[i]-b[i]:null), s=emaA(m,9);
+  return {m,s,h:m.map((x,i)=>x!=null&&s[i]!=null?x-s[i]:null)}; }
+function stochRsiA(c){ const r=rsiOf(c,14), st=new Array(c.length).fill(null);
+  for(let i=0;i<c.length;i++){ if(r[i]==null) continue; let lo=1e9,hi=-1e9,n=0; for(let j=i;j>=0&&n<14;j--){ if(r[j]==null) break; lo=Math.min(lo,r[j]); hi=Math.max(hi,r[j]); n++; }
+    if(n===14) st[i]=hi===lo?50:(r[i]-lo)/(hi-lo)*100; }
+  const k=smaA(st,3); return {k,d:smaA(k,3)}; }
+function vwapA(B,n=20){ const o=new Array(B.length).fill(null); let pv=0,vv=0,q=[];
+  for(let i=0;i<B.length;i++){ const b=B[i], v=b[5]||0, tp=(b[2]+b[3]+b[4])/3; q.push([tp*v,v]); pv+=tp*v; vv+=v; if(q.length>n){ const x=q.shift(); pv-=x[0]; vv-=x[1]; } if(q.length===n&&vv>0) o[i]=pv/vv; } return o; }
+const lastOf=a=>{ for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return [a[i],i]; return [null,-1]; };
+function crossed(a,b,k=3){ // 1 = a memotong ke atas b dalam k bar terakhir, -1 = ke bawah
+  const n=a.length; for(let i=n-1;i>=Math.max(1,n-k);i--){ if([a[i],b[i],a[i-1],b[i-1]].some(x=>x==null)) continue;
+    if(a[i-1]<=b[i-1]&&a[i]>b[i]) return 1; if(a[i-1]>=b[i-1]&&a[i]<b[i]) return -1; } return 0; }
+const IND=[["ma20","MA20","#f59e0b",1],["ma50","MA50","#0ea5e9",1],["ma200","MA200","#e11d48",1],["ema9","EMA9","#14b8a6",0],["bb","Bollinger","#64748b",0],["vwap","VWAP 20","#a855f7",0],
+  ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0]];
+function indOn(){ let s=null; try{ s=JSON.parse(store.get(WP+"ind")||"null"); }catch(e){} return new Set(s||IND.filter(x=>x[3]).map(x=>x[0])); }
+const OHLC={};
+function loadOhlc(name){ const k=String(name).replace(/[^A-Za-z0-9.]/g,"_"); if(k in OHLC) return Promise.resolve(OHLC[k]);
+  return fetch("data/ohlc/"+encodeURIComponent(k)+".json?v="+encodeURIComponent((CYC&&CYC.date)||""),{cache:"no-cache"}).then(r=>r.ok?r.json():null).then(j=>(OHLC[k]=j&&j.b&&j.b.length?j.b:null)).catch(()=>(OHLC[k]=null)); }
+function indRead(on,B,c,hasV,x){
+  const out=[], p=c[c.length-1], f=v=>usd(v);
+  const st=k=>{ const [v]=lastOf(x[k]); return v; };
+  if(on.has("ma20")||on.has("ma50")||on.has("ma200")){ const ab=[],bl=[]; [["MA20","ma20"],["MA50","ma50"],["MA200","ma200"]].forEach(([n,k])=>{ if(!on.has(k)) return; const v=st(k); if(v==null) return; (p>=v?ab:bl).push(n+" "+f(v)); });
+    const gc=x.ma50&&x.ma200?crossed(x.ma50,x.ma200,10):0;
+    out.push(`<b>Moving average:</b> harga ${ab.length?"di atas "+ab.join(", "):""}${ab.length&&bl.length?"; ":""}${bl.length?"di bawah "+bl.join(", "):""}. ${!bl.length?"Semua tren searah naik.":!ab.length?"Semua tren searah turun; hati-hati menangkap pisau jatuh.":"Tren campuran: jangka pendek dan panjang belum searah."}${gc===1?" <b class='ok'>Golden cross</b> (MA50 baru memotong ke atas MA200).":gc===-1?" <b class='no'>Death cross</b> (MA50 baru memotong ke bawah MA200).":""}`); }
+  if(on.has("ema9")){ const v=st("ema9"); if(v!=null) out.push(`<b>EMA9 ${f(v)}:</b> ${p>=v?"harga di atasnya, momentum jangka sangat pendek masih naik.":"harga di bawahnya, momentum jangka sangat pendek melemah."}`); }
+  if(on.has("bb")){ const u=st("bbU"), l=st("bbL"), m=st("bbM"); if(u!=null){ const pb=(p-l)/(u-l)*100, bw=x.bbU.map((v,i)=>v!=null&&x.bbM[i]?(v-x.bbL[i])/x.bbM[i]:null).filter(v=>v!=null), sq=bw.length>120&&bw[bw.length-1]<=Math.min(...bw.slice(-120))*1.05;
+    out.push(`<b>Bollinger (20, 2):</b> ${p>u?"<b class='no'>harga di atas pita atas</b>, sudah meregang; rawan kembali ke tengah.":p<l?"<b class='ok'>harga di bawah pita bawah</b>, jenuh jual; sering memantul ke tengah "+f(m)+".":`harga di ${nf(pb,0)}% lebar pita (0 = pita bawah ${f(l)}, 100 = pita atas ${f(u)}).`}${sq?" Pita sedang <b>menyempit</b> (squeeze): biasanya diikuti gerakan besar, arahnya belum diketahui.":""}`); } }
+  if(on.has("vwap")&&hasV){ const v=st("vwap"); if(v!=null) out.push(`<b>VWAP 20 hari ${f(v)}:</b> harga rata-rata tertimbang volume. ${p>=v?"Harga di atasnya: rata-rata pembeli 20 hari terakhir sedang untung.":"Harga di bawahnya: rata-rata pembeli 20 hari terakhir sedang rugi, sering jadi tekanan jual."}`); }
+  if(on.has("vol")&&hasV){ const V=B.map(b=>b[5]), a=smaA(V,20), [av]=lastOf(a), lv=V[V.length-1]; if(av){ const r=lv/av, up=c[c.length-1]>=c[c.length-2];
+    out.push(`<b>Volume:</b> ${nf(r,1)}× rata-rata 20 hari${r>=1.5?(up?" saat harga naik: <b class='ok'>kenaikan didukung pembeli</b>.":" saat harga turun: <b class='no'>tekanan jual besar</b>."):r<0.6?", sepi: gerakan hari ini kurang meyakinkan.":"."}`); } }
+  if(on.has("rsi")){ const [r]=lastOf(x.rsi); if(r!=null) out.push(`<b>RSI (14):</b> ${rsiTxt(r)}.`); }
+  if(on.has("macd")){ const [m]=lastOf(x.macd.m), [s]=lastOf(x.macd.s), [h,hi]=lastOf(x.macd.h); if(m!=null&&s!=null){ const cr=crossed(x.macd.m,x.macd.s,3), hp=x.macd.h[hi-1];
+    out.push(`<b>MACD (12, 26, 9):</b> ${cr===1?"<b class='ok'>baru memotong ke atas garis sinyal</b>: momentum mulai naik.":cr===-1?"<b class='no'>baru memotong ke bawah garis sinyal</b>: momentum mulai turun.":m>s?"di atas garis sinyal (momentum naik)":"di bawah garis sinyal (momentum turun)"}${cr?"":hp!=null?(Math.abs(h)>Math.abs(hp)?", makin kuat.":", mulai melemah."):"."} ${m>0?"Di atas nol: tren menengah naik.":"Di bawah nol: tren menengah turun."}`); } }
+  if(on.has("srsi")){ const [k]=lastOf(x.srsi.k), [d]=lastOf(x.srsi.d); if(k!=null&&d!=null){ const cr=crossed(x.srsi.k,x.srsi.d,3);
+    out.push(`<b>Stoch RSI (14 14 3 3):</b> %K ${nf(k,1)}, %D ${nf(d,1)}. ${cr===1&&Math.min(k,d)<25?"<b class='ok'>%K baru memotong ke atas %D di zona jenuh jual</b>: sinyal pantulan awal; lebih kuat bila harga di zona support.":cr===-1&&Math.max(k,d)>75?"<b class='no'>%K baru memotong ke bawah %D di zona jenuh beli</b>: rawan koreksi.":k<20?"Jenuh jual; tunggu %K memotong ke atas %D.":k>80?"Jenuh beli; hati-hati mengejar.":"Di tengah, belum ada sinyal."}`); } }
+  return out;
+}
+function drawChart(el, dates, vals, a, rawan, future, idr, opt){
+  pxObs.forEach(o=>o.disconnect()); pxObs=[];
+  pxCharts.forEach(c=>{try{c.remove()}catch(e){}}); pxCharts=[];
   const L=window.LightweightCharts; if(!L||!vals) return;
-  const fg=cssVar("--fg"), muted=cssVar("--muted"), line=cssVar("--line"), acc=cssVar("--accent"), good=cssVar("--good"), bad=cssVar("--bad"), warn=cssVar("--warn");
-  const ch=L.createChart(el,{height:380,layout:{background:{type:"solid",color:"transparent"},textColor:muted,fontFamily:"IBM Plex Mono, monospace"},
-    grid:{vertLines:{color:line},horzLines:{color:line}},rightPriceScale:{borderColor:line},timeScale:{borderColor:line},
-    crosshair:{mode:0},localization:{locale:"id-ID"}});
-  cyCharts.push(ch); ch.priceScale("right").applyOptions({minimumWidth:78});
-  const data=[]; dates.forEach((d,i)=>{ if(vals[i]!=null) data.push({time:d,value:vals[i]}); });
-  const fut=(future||[]).slice(0,45);
-  const s=ch.addLineSeries({color:acc,lineWidth:2,priceLineVisible:false,priceFormat:idr?{type:"price",precision:0,minMove:1}:{type:"price",precision:2,minMove:0.01}});
-  s.setData(data.concat(fut.map(d=>({time:d}))));
+  opt=opt||{};
+  const muted=cssVar("--muted"), line=cssVar("--line"), acc=cssVar("--accent"), good=cssVar("--good"), bad=cssVar("--bad"), warn=cssVar("--warn");
+  const on=opt.on||indOn();
+  // bar: [tgl, o, h, l, c, v]; tanpa data candlestick dipakai harga penutupan saja
+  const B=opt.bars&&opt.bars.length?opt.bars:dates.map((d,i)=>vals[i]==null?null:[d,vals[i],vals[i],vals[i],vals[i],null]).filter(Boolean);
+  const candle=!!(opt.bars&&opt.bars.length), hasV=candle&&B.some(b=>b[5]>0);
+  const T=B.map(b=>b[0]), C=B.map(b=>b[4]), fut=(future||[]).filter(d=>d>T[T.length-1]).slice(0,45), wsp=fut.map(d=>({time:d}));
+  const pf=idr?{type:"price",precision:0,minMove:1}:{type:"price",precision:2,minMove:0.01};
+  const base={layout:{background:{type:"solid",color:"transparent"},textColor:muted,fontFamily:"IBM Plex Mono, monospace"},
+    grid:{vertLines:{color:line},horzLines:{color:line}},rightPriceScale:{borderColor:line,minimumWidth:78},timeScale:{borderColor:line},crosshair:{mode:0},localization:{locale:"id-ID"}};
+  const ch=L.createChart(el,{...base,height:400}); pxCharts.push(ch);
+  const s=candle?ch.addCandlestickSeries({upColor:good,downColor:bad,borderUpColor:good,borderDownColor:bad,wickUpColor:good,wickDownColor:bad,priceLineVisible:false,priceFormat:pf})
+    :ch.addLineSeries({color:acc,lineWidth:2,priceLineVisible:false,priceFormat:pf});
+  s.setData((candle?B.map(b=>({time:b[0],open:b[1],high:b[2],low:b[3],close:b[4]})):B.map(b=>({time:b[0],value:b[4]}))).concat(wsp));
+  const ser=(arr,color,w=1,style=0)=>{ const z=ch.addLineSeries({color,lineWidth:w,lineStyle:style,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat:pf});
+    z.setData(T.map((t,i)=>arr[i]==null?{time:t}:{time:t,value:arr[i]}).concat(wsp)); return z; };
+  const x={rsi:rsiOf(C)};
+  if(on.has("ma20")) ser(x.ma20=smaA(C,20),"#f59e0b",1);
+  if(on.has("ma50")) ser(x.ma50=smaA(C,50),"#0ea5e9",1);
+  if(on.has("ma200")) ser(x.ma200=smaA(C,200),"#e11d48",2);
+  if(on.has("ma50")&&!x.ma200) x.ma200=smaA(C,200);
+  if(on.has("ema9")) ser(x.ema9=emaA(C,9),"#14b8a6",1);
+  if(on.has("bb")){ x.bbM=smaA(C,20); const sd=stdA(C,20,x.bbM); x.bbU=x.bbM.map((m,i)=>m==null?null:m+2*sd[i]); x.bbL=x.bbM.map((m,i)=>m==null?null:m-2*sd[i]);
+    ser(x.bbU,"#64748b",1,2); ser(x.bbM,"#64748b",1,3); ser(x.bbL,"#64748b",1,2); }
+  if(on.has("vwap")&&hasV) ser(x.vwap=vwapA(B),"#a855f7",2,1);
+  if(on.has("vol")&&hasV){ const v=ch.addHistogramSeries({priceScaleId:"vol",priceFormat:{type:"volume"},lastValueVisible:false,priceLineVisible:false});
+    ch.priceScale("vol").applyOptions({scaleMargins:{top:0.86,bottom:0}});
+    v.setData(B.map((b,i)=>({time:b[0],value:b[5]||0,color:(i&&b[4]<B[i-1][4])?bad+"66":good+"66"}))); }
+  const ts=new Set(T);
   const zz=ch.addLineSeries({color:warn,lineWidth:1,lineStyle:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
-  const pts=(a.piv||[]).concat(a.tent?[a.tent]:[]).filter(p=>p[0]>=dates[0]);
+  const pts=(a.piv||[]).concat(a.tent?[a.tent]:[]).filter(p=>ts.has(p[0]));
   zz.setData(pts.map(p=>({time:p[0],value:p[1]})));
-  s.setMarkers(pts.map(p=>({time:p[0],position:p[2]==="H"?"aboveBar":"belowBar",color:p[2]==="H"?bad:good,shape:"circle",size:0.6})));
+  const mk=pts.map(p=>({time:p[0],position:p[2]==="H"?"aboveBar":"belowBar",color:p[2]==="H"?bad:good,shape:"circle",size:0.6}));
+  if(rawan&&rawan.length&&fut.length){ const fs=new Set(fut); rawan.filter(r=>fs.has(r.d)).forEach(r=>mk.push({time:r.d,position:"aboveBar",color:warn,shape:"arrowDown",text:"rawan"}));
+    const last=C[C.length-1], ph=ch.addLineSeries({color:"transparent",lineVisible:false,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+    ph.setData(fut.map(d=>({time:d,value:last}))); ph.setMarkers(mk.filter(m=>fs.has(m.time))); s.setMarkers(mk.filter(m=>!fs.has(m.time))); }
+  else s.setMarkers(mk);
   (a.sup||[]).forEach((z,i)=>{ s.createPriceLine({price:z.mid,color:good,lineWidth:z.strength==="kuat"?2:1,lineStyle:2,axisLabelVisible:true,title:`S${i+1} ${z.strength}`}); });
   (a.res||[]).forEach((z,i)=>{ s.createPriceLine({price:z.mid,color:bad,lineWidth:z.strength==="kuat"?2:1,lineStyle:2,axisLabelVisible:true,title:`R${i+1} ${z.strength}`}); });
-  if(rawan&&rawan.length&&fut.length){
-    const last=data[data.length-1].value, set=new Set(fut);
-    const mk=ch.addLineSeries({color:"transparent",lineVisible:false,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
-    const rs=rawan.filter(x=>set.has(x.d));
-    mk.setData(fut.map(d=>({time:d,value:last})));
-    mk.setMarkers(rs.map(x=>({time:x.d,position:"aboveBar",color:warn,shape:"arrowDown",text:"rawan"})));
+  ch.timeScale().setVisibleLogicalRange({from:Math.max(0,B.length-150),to:B.length+fut.length});
+  watchSize(ch,el,pxObs);
+  // panel bawah
+  const P=opt.panels; const all=[ch];
+  if(P){ P.innerHTML="";
+    const panel=(key,title,h,build)=>{ const w=document.createElement("div"); w.innerHTML=`<div class="pnh"><b>${title}</b> <span class="note" data-pv="${key}"></span></div><div class="pnc"></div>`; P.appendChild(w);
+      const pc=L.createChart(w.querySelector(".pnc"),{...base,height:h,grid:{vertLines:{color:line},horzLines:{visible:false}},rightPriceScale:{borderColor:line,minimumWidth:78,scaleMargins:{top:0.1,bottom:0.08}},handleScale:{axisPressedMouseMove:false}});
+      pxCharts.push(pc); all.push(pc); build(pc, w.querySelector("[data-pv]")); watchSize(pc,w.querySelector(".pnc"),pxObs); };
+    const pl=(pc,arr,color,w=2,ap,fmt)=>{ const z=pc.addLineSeries({color,lineWidth:w,priceLineVisible:false,lastValueVisible:true,priceFormat:fmt||{type:"price",precision:0,minMove:1},...(ap?{autoscaleInfoProvider:ap}:{})}); z.setData(T.map((t,i)=>arr[i]==null?{time:t}:{time:t,value:arr[i]}).concat(wsp)); return z; };
+    const fix=()=>({priceRange:{minValue:0,maxValue:100}});
+    const lvl=(z,v,c,st=2)=>z.createPriceLine({price:v,color:c,lineWidth:1,lineStyle:st,axisLabelVisible:st!==3});
+    if(on.has("rsi")) panel("rsi",'<span style="color:#8b5cf6">RSI (14)</span>',120,(pc,lab)=>{ const z=pl(pc,x.rsi,"#8b5cf6",2,fix); lvl(z,70,bad); lvl(z,30,good); lvl(z,50,muted,3); const [r]=lastOf(x.rsi); lab.textContent=r!=null?nf(r,0):""; });
+    if(on.has("macd")){ x.macd=macdA(C); panel("macd",'<span style="color:#2563eb">MACD</span> / <span style="color:#f97316">sinyal</span> (12, 26, 9)',120,(pc,lab)=>{
+      const hs=pc.addHistogramSeries({priceLineVisible:false,lastValueVisible:false}); hs.setData(T.map((t,i)=>{ const v=x.macd.h[i]; return v==null?{time:t}:{time:t,value:v,color:v>=0?good+"99":bad+"99"}; }).concat(wsp));
+      const mf=idr?{type:"price",precision:0,minMove:1}:{type:"price",precision:2,minMove:0.01}; const z=pl(pc,x.macd.m,"#2563eb",2,null,mf); pl(pc,x.macd.s,"#f97316",1,null,mf); lvl(z,0,muted,3); const [m]=lastOf(x.macd.m),[sg]=lastOf(x.macd.s); lab.textContent=m!=null?`${nf(m,idr?0:2)} / ${nf(sg,idr?0:2)}`:""; }); }
+    if(on.has("srsi")){ x.srsi=stochRsiA(C); panel("srsi",'<span style="color:#16a34a">Stoch RSI %K</span> / <span style="color:#dc2626">%D</span> (14 14 3 3)',120,(pc,lab)=>{
+      const z=pl(pc,x.srsi.k,"#16a34a",2,fix); pl(pc,x.srsi.d,"#dc2626",2,fix); lvl(z,80,muted); lvl(z,20,muted); const [k]=lastOf(x.srsi.k),[d]=lastOf(x.srsi.d); lab.textContent=k!=null?`${nf(k,1)} / ${nf(d,1)}`:""; }); }
   }
-  ch.timeScale().setVisibleLogicalRange({from:Math.max(0,data.length-180),to:data.length+fut.length});
-  watchSize(ch,el);
-  if(rel){ // panel RSI(14), sejajar dengan grafik harga
-    const rv=rsiOf(vals), rd=[]; dates.forEach((d,i)=>{ if(vals[i]!=null) rd.push(rv[i]==null?{time:d}:{time:d,value:rv[i]}); });
-    const rc=L.createChart(rel,{height:140,layout:{background:{type:"solid",color:"transparent"},textColor:muted,fontFamily:"IBM Plex Mono, monospace"},
-      grid:{vertLines:{color:line},horzLines:{visible:false}},rightPriceScale:{borderColor:line,minimumWidth:78,scaleMargins:{top:0.08,bottom:0.08}},timeScale:{borderColor:line},
-      crosshair:{mode:0},localization:{locale:"id-ID"},handleScale:{axisPressedMouseMove:false}});
-    cyCharts.push(rc);
-    const rs=rc.addLineSeries({color:"#8b5cf6",lineWidth:2,priceLineVisible:false,autoscaleInfoProvider:()=>({priceRange:{minValue:0,maxValue:100}}),priceFormat:{type:"price",precision:0,minMove:1}});
-    rs.setData(rd.concat(fut.map(d=>({time:d}))));
-    rs.createPriceLine({price:70,color:bad,lineWidth:1,lineStyle:2,axisLabelVisible:true});
-    rs.createPriceLine({price:30,color:good,lineWidth:1,lineStyle:2,axisLabelVisible:true});
-    rs.createPriceLine({price:50,color:muted,lineWidth:1,lineStyle:3,axisLabelVisible:false});
-    let busy=false; const sync=(src,dst)=>src.timeScale().subscribeVisibleLogicalRangeChange(r=>{ if(busy||!r) return; busy=true; try{ dst.timeScale().setVisibleLogicalRange(r); }catch(e){} busy=false; });
-    sync(ch,rc); sync(rc,ch);
-    rc.timeScale().setVisibleLogicalRange(ch.timeScale().getVisibleLogicalRange());
-    watchSize(rc,rel);
-    const last=[...rv].reverse().find(v=>v!=null), info=document.getElementById("cyRsiTxt"); if(info) info.innerHTML=rsiTxt(last);
-  }
+  if(all.length>1){ let busy=false; all.forEach(src=>src.timeScale().subscribeVisibleLogicalRangeChange(r=>{ if(busy||!r) return; busy=true; all.forEach(d=>{ if(d!==src) try{ d.timeScale().setVisibleLogicalRange(r); }catch(e){} }); busy=false; }));
+    const r0=ch.timeScale().getVisibleLogicalRange(); all.slice(1).forEach(d=>d.timeScale().setVisibleLogicalRange(r0)); }
+  if(opt.read){ if(!x.macd&&on.has("macd")) x.macd=macdA(C); const lines=indRead(on,B,C,hasV,x);
+    opt.read.innerHTML=lines.length?`<div class="dl" style="font-size:14px;gap:6px">${lines.map(l=>`<div><span>${l}</span></div>`).join("")}</div><p class="note">Bacaan otomatis dari harga penutupan terakhir${candle?"":" (grafik garis: data candlestick saham ini belum tersedia)"}. Indikator adalah alat bantu; keputusan tetap dari sinyal metode dan zona support.</p>`:`<p class="note">Pilih indikator di atas grafik.</p>`; }
 }
 function drawBreadth(el,b){
   const L=window.LightweightCharts; if(!L||!b||!b.series) return;
@@ -760,10 +827,21 @@ function renderCycles(box){
     <div class="tablebox" style="padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
       <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
       <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
-      <div id="cyChart" style="width:100%;min-height:380px"></div>
-      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin:10px 0 4px;font-size:13.5px"><span><b style="color:#8b5cf6">RSI (14)</b> <span id="cyRsiTxt"></span></span><span class="legend"><span style="color:var(--bad)">- - 70 jenuh beli</span><span style="color:var(--good)">- - 30 jenuh jual</span></span></div>
-      <div id="cyRsi" style="width:100%;min-height:140px"></div>
-      <details style="margin-top:6px"><summary class="note" style="cursor:pointer">Apa itu RSI?</summary><p class="note" style="margin:6px 0 0">RSI (Relative Strength Index) mengukur kuatnya kenaikan dibanding penurunan selama 14 hari bursa, skala 0–100. Di atas 70 = jenuh beli (kenaikan sudah panas), di bawah 30 = jenuh jual (penurunan sudah dalam). Dalam tren naik yang kuat RSI bisa lama di atas 70, jadi jangan dipakai sendirian. Paling berguna bila searah dengan zona support: harga di support <b>dan</b> RSI dekat 30 adalah pertanda pantulan yang lebih meyakinkan.</p></details></div>
+      <div class="indbar" id="indBar">${(()=>{ const on=indOn(); return IND.map(([k,n,c])=>`<button type="button" data-ind="${k}" aria-pressed="${on.has(k)}"><i style="background:${c}"></i>${n}</button>`).join(""); })()}</div>
+      <div id="cyChart" style="width:100%;min-height:400px"></div>
+      <div id="cyPanels"></div></div>
+    <div class="mcard" style="margin-top:12px"><h4><span>📊 Bacaan indikator</span></h4><div id="cyRead"><p class="note">Memuat…</p></div>
+      <details style="margin-top:8px"><summary class="note" style="cursor:pointer">Penjelasan singkat tiap indikator</summary><div class="dl" style="font-size:13.5px;margin-top:6px;gap:6px">
+      <div><span><b>Candlestick</b>: satu batang = satu hari. Hijau = ditutup lebih tinggi dari pembukaan, merah = lebih rendah. Sumbu tipis = harga tertinggi dan terendah hari itu.</span></div>
+      <div><span><b>MA20 / MA50 / MA200</b>: rata-rata harga 20, 50, 200 hari (tren pendek, menengah, panjang). Golden cross = MA50 memotong ke atas MA200; death cross = sebaliknya.</span></div>
+      <div><span><b>EMA9</b>: rata-rata 9 hari yang lebih cepat bereaksi; dipakai trader jangka sangat pendek.</span></div>
+      <div><span><b>Bollinger Bands</b>: MA20 ± 2 simpangan baku. Harga jarang lama di luar pita; pita menyempit sering diikuti gerakan besar.</span></div>
+      <div><span><b>VWAP 20</b>: harga rata-rata 20 hari ditimbang volume, kira-kira modal rata-rata pembeli terakhir.</span></div>
+      <div><span><b>Volume</b>: jumlah saham yang ditransaksikan. Kenaikan dengan volume besar lebih meyakinkan.</span></div>
+      <div><span><b>RSI (14)</b>: kekuatan naik vs turun, 0–100. Di atas 70 jenuh beli, di bawah 30 jenuh jual.</span></div>
+      <div><span><b>MACD (12, 26, 9)</b>: selisih EMA12 dan EMA26 (biru) dengan garis sinyal (oranye). Memotong ke atas = momentum naik; batang = jarak keduanya.</span></div>
+      <div><span><b>Stoch RSI (14 14 3 3)</b>: rumus Stochastic yang diterapkan pada RSI, sangat sensitif. Di bawah 20 jenuh jual, di atas 80 jenuh beli; sinyal = %K (hijau) memotong %D (merah). Sering salah saat tren kuat, jadi pakai bersama zona support.</span></div>
+      </div></details></div>
     <div class="dgrid" style="margin-top:12px">
       ${isIdx&&rg?`<div class="mcard"><h4><span>Rentang minggu depan</span></h4><div class="dl">
         <div><span>Peluang 68% di antara</span><span class="num">${nf(rg.r68[0],0)} – ${nf(rg.r68[1],0)}</span></div>
@@ -789,7 +867,9 @@ function renderCycles(box){
       :`<p class="note" style="margin-top:8px">Uji ketepatan dan papan skor tersedia di tampilan indeks.</p>`}`;
   box.querySelectorAll("[data-cy]").forEach(bt=>bt.addEventListener("click",()=>{ store.set(WP+"cy.sel",bt.dataset.cy); renderResults(); }));
   $("cyQ").addEventListener("change",ev=>{ const v=ev.target.value.trim().toUpperCase(); if(CYC.stocks[v]){ store.set(WP+"cy.sel",v); renderResults(); } });
-  loadLWC().then(()=>{ if(tab!=="cycles") return; drawChart($("cyChart"),SER.dates,vals,a,isIdx?a.rawan:null,CYC.future,!isIdx&&usd(1).startsWith("Rp"),$("cyRsi")); if(b) drawBreadth($("cyBreadth"),b); })
+  let bars=null; const draw=()=>drawChart($("cyChart"),SER.dates,vals,a,isIdx?a.rawan:null,CYC.future,!isIdx&&usd(1).startsWith("Rp"),{bars,panels:$("cyPanels"),read:$("cyRead")});
+  $("indBar").addEventListener("click",ev=>{ const bt=ev.target.closest("[data-ind]"); if(!bt) return; const on=indOn(), k=bt.dataset.ind; on.has(k)?on.delete(k):on.add(k); store.set(WP+"ind",JSON.stringify([...on])); bt.setAttribute("aria-pressed",on.has(k)); draw(); });
+  Promise.all([loadLWC(),loadOhlc(sel)]).then(([,bb])=>{ if(tab!=="cycles") return; bars=bb; draw(); if(b) drawBreadth($("cyBreadth"),b); })
     .catch(()=>{ $("cyChart").innerHTML=`<p class="note">Grafik tidak bisa dimuat (pustaka grafik gagal diunduh).</p>`; });
 }
 

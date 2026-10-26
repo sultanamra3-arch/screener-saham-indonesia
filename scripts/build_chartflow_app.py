@@ -139,6 +139,8 @@ shutil.copytree(ROOT / "icons", out / "icons")
 for f in ("stocks.json", "detail.json", "cycles.json", "series.json"):
     if (ROOT / "data" / f).exists():
         shutil.copy(ROOT / "data" / f, out / "data" / f)
+if (ROOT / "data" / "ohlc").is_dir():
+    shutil.copytree(ROOT / "data" / "ohlc", out / "data" / "ohlc")
 # ---- ringkasan publik untuk pita berjalan di beranda (tanpa sinyal per saham)
 import json as _json
 _d = _json.loads((ROOT / "data" / "stocks.json").read_text())
