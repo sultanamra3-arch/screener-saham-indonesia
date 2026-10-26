@@ -238,6 +238,15 @@ button{transition:background .15s,border-color .15s}
 .tab .c b{color:var(--good)!important}
 .tab[aria-selected=true]{background:var(--fg)!important;border-color:var(--fg)!important;color:var(--bg)!important}
 .tab[aria-selected=true] .c,.tab[aria-selected=true] .c b{color:var(--bg)!important;opacity:.85}
+@media (max-width:420px){.topbar .brand>div{display:none}}
+/* sub-menu: tidak lagi digeser ke samping; di HP jadi kotak 2 kolom */
+.tabs{flex-wrap:wrap;overflow:visible!important}
+@media (max-width:640px){
+ .tabs{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px}
+ .tab{flex-direction:column!important;align-items:flex-start!important;gap:1px!important;border-radius:14px!important;padding:8px 12px!important;min-width:0}
+ .tab .n{font-size:14px!important;max-width:100%}
+ .tab .c{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+}
 .rail,.mcard,.tablebox,.etf,.calcwrap>.mcard{border:none!important;box-shadow:var(--shadow);border-radius:var(--r)!important}
 .mcard{padding:14px 16px}
 .tablebox{overflow:auto}

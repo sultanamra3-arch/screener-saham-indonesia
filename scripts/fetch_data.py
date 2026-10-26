@@ -211,6 +211,16 @@ def _cagr(vals):
     return ((v[-1] / v[0]) ** (1 / (len(v) - 1)) - 1) * 100
 
 
+def ttm_from_hist(dvh: list) -> float:
+    """Dividen 12 bulan terakhir dari [[tanggal, nilai], ...]: jendela 330 hari mundur dari dividen terakhir."""
+    if not dvh:
+        return 0.0
+    last = date.fromisoformat(dvh[-1][0])
+    if (date.today() - last).days >= 400:
+        return 0.0
+    return float(sum(v for d, v in dvh if (last - date.fromisoformat(d)).days < 330))
+
+
 def fundamentals(code: str) -> dict | None:
     import pandas as pd
     import yfinance as yf
@@ -286,7 +296,9 @@ def fundamentals(code: str) -> dict | None:
             f["divYears"] = yrs
             if by.get(last_full - 5, 0) > 0 and by.get(last_full, 0) > 0:
                 f["divGrowth5y"] = ((by[last_full] / by[last_full - 5]) ** (1 / 5) - 1) * 100
-            ttm = dv[dv.index >= dv.index[-1] - pd.Timedelta(days=365)].sum() if (pd.Timestamp.now(tz=dv.index.tz) - dv.index[-1]).days < 400 else 0.0
+            # 12 bulan terakhir dihitung mundur 330 hari dari dividen terakhir: dividen tahunan yang
+            # jadwalnya bergeser beberapa minggu tidak terhitung dua kali (dulu 365 hari -> yield BBNI 2x lipat)
+            ttm = dv[dv.index > dv.index[-1] - pd.Timedelta(days=330)].sum() if (pd.Timestamp.now(tz=dv.index.tz) - dv.index[-1]).days < 400 else 0.0
             f["dpsTTM"] = float(ttm)
             f["dvh"] = [[str(i.date()), round(float(v), 4)] for i, v in dv[dv.index >= dv.index[-1] - pd.Timedelta(days=800)].items()]
         else:
@@ -542,6 +554,8 @@ def main():
         o["days"] = int(close[c].notna().sum())
         if c in extra and c not in names:
             o["ipo"] = True
+        if o.get("dvh"):  # hitung ulang dari riwayat (juga memperbaiki data lama di cache)
+            o["dpsTTM"] = ttm_from_hist(o["dvh"])
         if o.get("price") and o.get("dpsTTM") is not None:
             o["div"] = o["dpsTTM"] / o["price"] * 100
         rows.append(clean(o))
