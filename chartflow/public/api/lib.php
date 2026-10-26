@@ -51,6 +51,14 @@ function rate_ok(array &$db, string $k, int $max, int $win): bool {
     $hits[] = $t; $db['rate'][$key] = $hits;
     return true;
 }
+// cek batas tanpa menambah hitungan; kembalikan detik tunggu (0 = boleh)
+function rate_wait(array &$db, string $k, int $max, int $win): int {
+    $key = $k . ':' . ip_key(); $t = now();
+    $hits = array_values(array_filter($db['rate'][$key] ?? [], function ($x) use ($t, $win) { return $x > $t - $win; }));
+    $db['rate'][$key] = $hits;
+    return count($hits) >= $max ? max(1, min($hits) + $win - $t) : 0;
+}
+function rate_hit(array &$db, string $k): void { $db['rate'][$k . ':' . ip_key()][] = now(); }
 function prune(array &$db): void {
     $t = now();
     foreach ($db['rate'] as $k => $v) { $v = array_filter($v, function ($x) use ($t) { return $x > $t - 86400; }); if (!$v) unset($db['rate'][$k]); else $db['rate'][$k] = array_values($v); }
@@ -72,7 +80,7 @@ function session_user(): ?array {
     $s = $db['sessions'][hash('sha256', $tok)] ?? null; if (!$s) return null;
     $c = $db['codes'][$s['code']] ?? null;
     if (!$c || $c['status'] !== 'active' || $c['exp'] < now()) return null;
-    return ['code' => $s['code'], 'name' => $c['name'] ?? '', 'exp' => $c['exp']];
+    return ['code' => $s['code'], 'name' => $c['name'] ?? '', 'exp' => $c['exp'], 'sid' => hash('sha256', $tok)];
 }
 
 function json_out(array $a, int $code = 200): void {

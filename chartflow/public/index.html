@@ -307,6 +307,7 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
   <h3>Masuk</h3><p class="s">Masukkan kode akses yang Anda terima.</p>
   <label class="f" for="code">Kode akses</label><input class="in code" id="code" name="code" placeholder="CF-XXXX-XXXX" autocomplete="one-time-code" required maxlength="14">
   <p class="msg" id="mLogin" role="alert"></p>
+  <div id="kickBox" hidden style="margin-top:10px;padding:12px;border-radius:12px;border:1px dashed currentColor;font-size:14px"><p style="margin:0 0 8px">Anda bisa mengeluarkan perangkat yang paling lama tidak dipakai, lalu masuk di perangkat ini. Hanya bisa <b>1× per 24 jam</b>; portofolio Anda tetap aman.</p><button type="button" class="btn pri" id="kickBtn" style="width:100%;justify-content:center">Keluarkan perangkat lama &amp; masuk di sini</button></div>
   <div class="row"><button type="button" class="btn sec" data-close>Batal</button><button class="btn pri" type="submit">Masuk</button></div>
   <p class="alt">Belum punya kode? <a data-open="req">Minta akses</a></p>
 </form></dialog>
@@ -326,9 +327,13 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
 const $=id=>document.getElementById(id);
 async function post(url,data){ const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data),credentials:"same-origin"}); let j={}; try{ j=await r.json(); }catch(e){} return j; }
 function goApp(){ const q=new URLSearchParams(location.search), n=q.get("next"); let m="id"; try{ m=localStorage.getItem("lastMarket")==="us"?"us":"id"; }catch(e){} location.href=(n&&/^\/app\//.test(n))?n:"/app/"+m+"/"; }
-$("fLogin").addEventListener("submit",async ev=>{ ev.preventDefault(); const b=ev.submitter, m=$("mLogin"); b.disabled=true; m.className="msg"; m.textContent="Memeriksa…";
-  const j=await post("/api/login.php",{code:$("code").value}); b.disabled=false;
-  if(j.ok){ m.className="msg ok"; m.textContent="Berhasil. Berlaku sampai "+j.exp+"."; setTimeout(goApp,600); } else { m.className="msg no"; m.textContent=j.msg||"Gagal masuk. Coba lagi."; } });
+async function doLogin(b,kick){ const m=$("mLogin"); b.disabled=true; m.className="msg"; m.textContent=kick?"Mengeluarkan perangkat lama…":"Memeriksa…";
+  const j=await post("/api/login.php",{code:$("code").value,kick:!!kick}); b.disabled=false;
+  $("kickBox").hidden=!(j.full&&j.canKick);
+  if(j.ok){ m.className="msg ok"; m.textContent=(j.kicked?"Perangkat lama dikeluarkan. ":"")+"Berhasil. Berlaku sampai "+j.exp+"."; setTimeout(goApp,j.kicked?1200:600); } else { m.className="msg no"; m.textContent=j.msg||"Gagal masuk. Coba lagi."; } }
+$("fLogin").addEventListener("submit",ev=>{ ev.preventDefault(); doLogin(ev.submitter,false); });
+$("kickBtn").addEventListener("click",ev=>doLogin(ev.currentTarget,true));
+$("code").addEventListener("input",()=>{ $("kickBox").hidden=true; });
 $("fReq").addEventListener("submit",async ev=>{ ev.preventDefault(); const f=ev.target, b=ev.submitter, m=$("mReq"); b.disabled=true; m.className="msg"; m.textContent="Mengirim…";
   const j=await post("/api/request.php",{name:f.name.value,contact:f.contact.value,why:f.why.value,website:f.website.value,agree:f.agree.checked}); b.disabled=false;
   if(j.ok){ m.className="msg ok"; m.textContent=j.msg||"Terkirim."; f.reset(); } else { m.className="msg no"; m.textContent=j.msg||"Gagal mengirim. Coba lagi."; } });

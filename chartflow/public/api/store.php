@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     [$fh, $db] = db_open();
     $c = $db['codes'][$u['code']] ?? [];
     $used = count(array_filter($db['sessions'], function ($s) use ($u) { return $s['code'] === $u['code']; }));
-    $db['codes'][$u['code']]['seen'] = now();
+    $db['codes'][$u['code']]['seen'] = now(); if (isset($db['sessions'][$u['sid']])) $db['sessions'][$u['sid']]['u'] = now();
     db_save($fh, $db);
     json_out(['ok' => true, 'data' => $d['data'] ?? (object)[], 'user' => [
         'name' => $c['name'] ?? '', 'code' => $u['code'], 'exp' => $c['exp'] ?? 0, 'expText' => fmt_date((int)($c['exp'] ?? 0)),

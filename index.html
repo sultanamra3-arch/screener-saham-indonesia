@@ -525,7 +525,7 @@ function methodCard(o,mid){
 function detail(o, only){
   const ids = only ? [only].concat(M.map(m=>m.id).filter(x=>x!==only)) : M.map(m=>m.id);
   const tt=(o.tt||[]);
-  return `${saranBox(`<p>${saranStock(o)}</p><p>${calcBtn(o.ticker,"🧮 Hitung lot, untung & rugi")}</p>`)}<div style="height:10px"></div><div class="dgrid">${flowCards(o)}${ids.map(id=>methodCard(o,id)).join("")}
+  return `${saranBox(`<p>${saranStock(o)}</p><p style="display:flex;gap:8px;flex-wrap:wrap">${chartBtn(o.ticker,"📈 Lihat grafik, support & RSI")}${calcBtn(o.ticker,"🧮 Hitung lot, untung & rugi")}</p>`)}<div style="height:10px"></div><div class="dgrid">${flowCards(o)}${ids.map(id=>methodCard(o,id)).join("")}
     ${tt.length?`<div class="mcard"><h4><span>Trend template Minervini</span><span class="na" style="font-weight:400">${tt.filter(x=>x[1]).length}/8</span></h4><div class="cl">${tt.map(x=>`<div>${x[1]?'<span class="ok">✓</span>':'<span class="no">✗</span>'}<span>${esc(x[0])}</span><span></span></div>`).join("")}</div></div>`:""}</div>`;
 }
 
@@ -668,7 +668,19 @@ function scoreCard(sc){
     <p class="note">Ramalan dicatat sebelum terjadi, lalu dinilai otomatis setelah titik balik terkonfirmasi (±15 hari bursa).</p>`;
 }
 function watchSize(ch,el){ const o=new ResizeObserver(()=>{ try{ ch.applyOptions({width:el.clientWidth}); }catch(e){} }); o.observe(el); cyObs.push(o); }
-function drawChart(el, dates, vals, a, rawan, future, idr){
+function rsiOf(vals,n=14){
+  const out=new Array(vals.length).fill(null); let ag=0,al=0,k=0,prev=null;
+  for(let i=0;i<vals.length;i++){ const v=vals[i]; if(v==null) continue; if(prev==null){ prev=v; continue; }
+    const d=v-prev, g=Math.max(d,0), l=Math.max(-d,0); prev=v; k++;
+    if(k<=n){ ag+=g/n; al+=l/n; if(k<n) continue; } else { ag=(ag*(n-1)+g)/n; al=(al*(n-1)+l)/n; }
+    out[i]=al===0?100:100-100/(1+ag/al); }
+  return out;
+}
+function rsiTxt(r){ if(r==null) return "";
+  return r>=70?`<b class="no">${nf(r,0)}: jenuh beli</b>, kenaikan sudah panas; hindari mengejar, rawan koreksi`
+    :r<=30?`<b class="ok">${nf(r,0)}: jenuh jual</b>, penurunan sudah dalam; sering dekat titik pantul (tunggu konfirmasi)`
+    :r>=50?`<b>${nf(r,0)}: netral cenderung kuat</b>, pembeli lebih dominan`:`<b>${nf(r,0)}: netral cenderung lemah</b>, penjual lebih dominan`; }
+function drawChart(el, dates, vals, a, rawan, future, idr, rel){
   cyObs.forEach(o=>o.disconnect()); cyObs=[];
   cyCharts.forEach(c=>{try{c.remove()}catch(e){}}); cyCharts=[];
   const L=window.LightweightCharts; if(!L||!vals) return;
@@ -676,7 +688,7 @@ function drawChart(el, dates, vals, a, rawan, future, idr){
   const ch=L.createChart(el,{height:380,layout:{background:{type:"solid",color:"transparent"},textColor:muted,fontFamily:"IBM Plex Mono, monospace"},
     grid:{vertLines:{color:line},horzLines:{color:line}},rightPriceScale:{borderColor:line},timeScale:{borderColor:line},
     crosshair:{mode:0},localization:{locale:"id-ID"}});
-  cyCharts.push(ch);
+  cyCharts.push(ch); ch.priceScale("right").applyOptions({minimumWidth:78});
   const data=[]; dates.forEach((d,i)=>{ if(vals[i]!=null) data.push({time:d,value:vals[i]}); });
   const fut=(future||[]).slice(0,45);
   const s=ch.addLineSeries({color:acc,lineWidth:2,priceLineVisible:false,priceFormat:idr?{type:"price",precision:0,minMove:1}:{type:"price",precision:2,minMove:0.01}});
@@ -696,6 +708,23 @@ function drawChart(el, dates, vals, a, rawan, future, idr){
   }
   ch.timeScale().setVisibleLogicalRange({from:Math.max(0,data.length-180),to:data.length+fut.length});
   watchSize(ch,el);
+  if(rel){ // panel RSI(14), sejajar dengan grafik harga
+    const rv=rsiOf(vals), rd=[]; dates.forEach((d,i)=>{ if(vals[i]!=null) rd.push(rv[i]==null?{time:d}:{time:d,value:rv[i]}); });
+    const rc=L.createChart(rel,{height:140,layout:{background:{type:"solid",color:"transparent"},textColor:muted,fontFamily:"IBM Plex Mono, monospace"},
+      grid:{vertLines:{color:line},horzLines:{visible:false}},rightPriceScale:{borderColor:line,minimumWidth:78,scaleMargins:{top:0.08,bottom:0.08}},timeScale:{borderColor:line},
+      crosshair:{mode:0},localization:{locale:"id-ID"},handleScale:{axisPressedMouseMove:false}});
+    cyCharts.push(rc);
+    const rs=rc.addLineSeries({color:"#8b5cf6",lineWidth:2,priceLineVisible:false,autoscaleInfoProvider:()=>({priceRange:{minValue:0,maxValue:100}}),priceFormat:{type:"price",precision:0,minMove:1}});
+    rs.setData(rd.concat(fut.map(d=>({time:d}))));
+    rs.createPriceLine({price:70,color:bad,lineWidth:1,lineStyle:2,axisLabelVisible:true});
+    rs.createPriceLine({price:30,color:good,lineWidth:1,lineStyle:2,axisLabelVisible:true});
+    rs.createPriceLine({price:50,color:muted,lineWidth:1,lineStyle:3,axisLabelVisible:false});
+    let busy=false; const sync=(src,dst)=>src.timeScale().subscribeVisibleLogicalRangeChange(r=>{ if(busy||!r) return; busy=true; try{ dst.timeScale().setVisibleLogicalRange(r); }catch(e){} busy=false; });
+    sync(ch,rc); sync(rc,ch);
+    rc.timeScale().setVisibleLogicalRange(ch.timeScale().getVisibleLogicalRange());
+    watchSize(rc,rel);
+    const last=[...rv].reverse().find(v=>v!=null), info=document.getElementById("cyRsiTxt"); if(info) info.innerHTML=rsiTxt(last);
+  }
 }
 function drawBreadth(el,b){
   const L=window.LightweightCharts; if(!L||!b||!b.series) return;
@@ -731,7 +760,10 @@ function renderCycles(box){
     <div class="tablebox" style="padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
       <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
       <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
-      <div id="cyChart" style="width:100%;min-height:380px"></div></div>
+      <div id="cyChart" style="width:100%;min-height:380px"></div>
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin:10px 0 4px;font-size:13.5px"><span><b style="color:#8b5cf6">RSI (14)</b> <span id="cyRsiTxt"></span></span><span class="legend"><span style="color:var(--bad)">- - 70 jenuh beli</span><span style="color:var(--good)">- - 30 jenuh jual</span></span></div>
+      <div id="cyRsi" style="width:100%;min-height:140px"></div>
+      <details style="margin-top:6px"><summary class="note" style="cursor:pointer">Apa itu RSI?</summary><p class="note" style="margin:6px 0 0">RSI (Relative Strength Index) mengukur kuatnya kenaikan dibanding penurunan selama 14 hari bursa, skala 0–100. Di atas 70 = jenuh beli (kenaikan sudah panas), di bawah 30 = jenuh jual (penurunan sudah dalam). Dalam tren naik yang kuat RSI bisa lama di atas 70, jadi jangan dipakai sendirian. Paling berguna bila searah dengan zona support: harga di support <b>dan</b> RSI dekat 30 adalah pertanda pantulan yang lebih meyakinkan.</p></details></div>
     <div class="dgrid" style="margin-top:12px">
       ${isIdx&&rg?`<div class="mcard"><h4><span>Rentang minggu depan</span></h4><div class="dl">
         <div><span>Peluang 68% di antara</span><span class="num">${nf(rg.r68[0],0)} – ${nf(rg.r68[1],0)}</span></div>
@@ -757,7 +789,7 @@ function renderCycles(box){
       :`<p class="note" style="margin-top:8px">Uji ketepatan dan papan skor tersedia di tampilan indeks.</p>`}`;
   box.querySelectorAll("[data-cy]").forEach(bt=>bt.addEventListener("click",()=>{ store.set(WP+"cy.sel",bt.dataset.cy); renderResults(); }));
   $("cyQ").addEventListener("change",ev=>{ const v=ev.target.value.trim().toUpperCase(); if(CYC.stocks[v]){ store.set(WP+"cy.sel",v); renderResults(); } });
-  loadLWC().then(()=>{ if(tab!=="cycles") return; drawChart($("cyChart"),SER.dates,vals,a,isIdx?a.rawan:null,CYC.future,!isIdx&&usd(1).startsWith("Rp")); if(b) drawBreadth($("cyBreadth"),b); })
+  loadLWC().then(()=>{ if(tab!=="cycles") return; drawChart($("cyChart"),SER.dates,vals,a,isIdx?a.rawan:null,CYC.future,!isIdx&&usd(1).startsWith("Rp"),$("cyRsi")); if(b) drawBreadth($("cyBreadth"),b); })
     .catch(()=>{ $("cyChart").innerHTML=`<p class="note">Grafik tidak bisa dimuat (pustaka grafik gagal diunduh).</p>`; });
 }
 
@@ -1002,6 +1034,8 @@ function openCalc(t,ov){
   saveCalc(st); tab="calc"; store.set(WP+"tab","calc"); try{history.replaceState(null,"","#calc")}catch(e){}
   renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0,behavior:"smooth"});
 }
+const chartBtn = (t,label="📈 Grafik") => `<button type="button" class="calcbtn chartbtn" data-chart="${esc(t)}">${label}</button>`;
+function openChart(t){ store.set(WP+"cy.sel",t); const dc=$("drClose"); if(dc) dc.click(); goTab("cycles"); window.scrollTo({top:0,behavior:"smooth"}); }
 const calcBtn = (t,label="🧮 Hitung") => `<button type="button" class="calcbtn" data-calc="${esc(t)}">${label}</button>`;
 const money = v => !isFinite(v) ? "–" : (v<0?"−":"")+usd(Math.abs(v));
 const fmtIn = v => v==null||v===""||!isFinite(v) ? "" : Number(v).toLocaleString("id-ID",{maximumFractionDigits:4});
@@ -1480,7 +1514,7 @@ function renderDrawer(box){
   const mid=MID[tab]?tab:undefined;
   const sc=document.createElement("div"); sc.className="scrim"; sc.id="scrim";
   const d=document.createElement("div"); d.className="drawer"; d.id="drawer"; d.setAttribute("role","dialog"); d.setAttribute("aria-label","Detail "+o.ticker);
-  d.innerHTML=`<div class="dr-h"><div>${starBtn(o.ticker)} <b>${esc(o.ticker)}</b> <span class="num">${usd(o.price)}</span><br><span class="note">${esc(o.company||"")}</span></div><div style="display:flex;gap:6px">${calcBtn(o.ticker)}<button type="button" class="iconbtn" id="drClose" aria-label="Tutup">✕</button></div></div><div class="dr-b">${detNeed()?'<p class="note">Memuat rincian…</p>':detail(o,mid)}</div>`;
+  d.innerHTML=`<div class="dr-h"><div>${starBtn(o.ticker)} <b>${esc(o.ticker)}</b> <span class="num">${usd(o.price)}</span><br><span class="note">${esc(o.company||"")}</span></div><div style="display:flex;gap:6px">${chartBtn(o.ticker)}${calcBtn(o.ticker)}<button type="button" class="iconbtn" id="drClose" aria-label="Tutup">✕</button></div></div><div class="dr-b">${detNeed()?'<p class="note">Memuat rincian…</p>':detail(o,mid)}</div>`;
   box.appendChild(sc); box.appendChild(d); document.body.style.overflow="hidden";
   if(detNeed()) loadDetail().then(()=>{ if(openTicker===o.ticker) renderResults(); });
   const close=()=>{ openTicker=null; renderResults(); };
@@ -1553,6 +1587,7 @@ function toggleRow(tr){ openTicker=openTicker===tr.dataset.t?null:tr.dataset.t; 
 $("results").addEventListener("click",ev=>{
   const sg=ev.target.closest("#c_sug"); if(sg){ const s=calcState(); s.lots=+sg.dataset.lots; saveCalc(s); renderResults(); return; }
   const tp=ev.target.closest("#c_toporto"); if(tp){ const s=calcState(); s.lots=+tp.dataset.lots; s.pmeth=/CAN SLIM/.test(s.sSrc||"")?"canslim":"lain"; addToPorto(s); return; }
+  const chb=ev.target.closest(".chartbtn"); if(chb){ ev.stopPropagation(); openChart(chb.dataset.chart); return; }
   const cb=ev.target.closest(".calcbtn"); if(cb){ ev.stopPropagation(); openCalc(cb.dataset.calc,cb.dataset.e?{entry:+cb.dataset.e,stop:+cb.dataset.s,target:+cb.dataset.tg||null}:null); return; }
   const sb=ev.target.closest(".star"); if(sb){ ev.stopPropagation(); toggleStar(sb.dataset.star); renderTabs(); renderResults(); return; }
   const wr=ev.target.closest("tr.wrow"); if(wr){ store.set(WP+"cy.sel",wr.dataset.go); tab="cycles"; store.set(WP+"tab","cycles"); try{history.replaceState(null,"","#cycles")}catch(e){} renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0,behavior:"smooth"}); return; }
