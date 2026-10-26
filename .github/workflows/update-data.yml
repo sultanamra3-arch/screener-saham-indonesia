@@ -70,6 +70,17 @@ jobs:
             mkdir -p -f ${FTP_DIR:-.}/_appfiles/id; mirror -R --parallel=4 out_app ${FTP_DIR:-.}/_appfiles/id; mkdir -p -f ${FTP_DIR:-.}/pub; mirror -R out_app_pub ${FTP_DIR:-.}/pub"
           echo "Salinan id terkirim ke chartflow.my.id/app/id/" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Cek alarm harga pengguna ChartFlow
+        if: success() && env.FTP_SERVER != ''
+        continue-on-error: true
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          if [ -z "$TG_TOKEN" ]; then echo "Token Telegram belum diatur"; exit 0; fi
+          HOOK=$(printf '%s' "$TG_TOKEN:chartflow-hook" | sha256sum | cut -c1-48)
+          r=$(curl -s -m 60 -X POST -d "k=$HOOK&m=id" https://chartflow.my.id/api/alarm_check.php -w " http=%{http_code}")
+          echo "$r"; echo "- Alarm harga: $r" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Kirim ringkasan ke Telegram
         if: success()
         continue-on-error: true

@@ -112,7 +112,81 @@ BODY_JS = r'''<dialog id="cfDlg"><div class="b"><b style="font-size:18px" id="cf
 })();
 </script>
 '''
-s = s.replace("<style>", HEAD_JS + "<style>", 1).replace("</style>", CSS + "</style>", 1)
+# ---- 🔔 alarm harga (hanya ChartFlow; tombol di index.html muncul bila window.CF_ALARM ada)
+ALARM_HEAD = r"""<script>window.CF_ALARM=function(){ if(window.CF_ALARM_OPEN) window.CF_ALARM_OPEN.apply(null,arguments); };</script>
+"""
+ALARM_CSS = """
+#cfAl{border:none;border-radius:20px;padding:0;width:min(420px,calc(100% - 24px));max-height:90vh;background:var(--surface);color:var(--fg);box-shadow:0 30px 80px rgba(0,0,0,.3)}
+#cfAl::backdrop{background:rgba(10,15,30,.45)}#cfAl .b{padding:20px;display:flex;flex-direction:column;gap:10px}
+#cfAl{overflow:auto}#cfAl .g{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}#cfAl .g label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);min-width:0}#cfAl .g input,#cfAl .g select{width:100%;box-sizing:border-box;min-width:0}
+#cfAl input,#cfAl select{font:inherit;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+#cfAl .al{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+#cfAl .al.me{font-weight:700}#cfAl .tgbox{border-radius:12px;padding:10px 12px;font-size:13.5px}
+.alarmbtn{padding:3px 7px}
+"""
+ALARM_JS = r"""<dialog id="cfAl"><div class="b">
+  <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:17px" id="alT">🔔 Alarm harga</b><button type="button" onclick="this.closest('dialog').close()" aria-label="Tutup">✕</button></div>
+  <div id="alTg"></div>
+  <div id="alForm"><div class="g">
+    <label>Kode saham<input id="alCode" autocomplete="off" style="text-transform:uppercase"></label>
+    <label>Kirim bila harga<select id="alOp"><option value="le">turun ke ≤</option><option value="ge">naik ke ≥</option></select></label>
+    <label>Harga<input id="alP" inputmode="decimal"></label>
+    <label>Catatan (opsional)<input id="alNote" maxlength="60" placeholder="mis. antrean S2"></label></div>
+    <p class="note" id="alNow" style="margin:6px 0 0"></p>
+    <button type="button" class="primary" id="alAdd" style="width:100%;margin-top:8px">Pasang alarm</button>
+    <p class="note" id="alMsg" style="margin:6px 0 0"></p></div>
+  <div><b style="font-size:14px">Alarm aktif</b> <span class="note" id="alCnt"></span><div id="alList"></div></div>
+  <div id="alFired"></div>
+  <p class="note" style="margin:0">Dicek saat data diperbarui (BEI ±12.15 dan ±17.45 WIB, AS ±05.45 WIB) memakai harga tertinggi/terendah hari itu. Bukan real-time. Alarm mati sendiri setelah terkirim.</p>
+</div></dialog>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)}, D=$("cfAl"), ST=null, cur=null;
+  var M=/\/app\/us\//.test(location.pathname)?"us":"id";
+  var fmt=function(v,m){ m=m||M; return v==null?"–":(m==="id"?"Rp"+Number(v).toLocaleString("id-ID",{maximumFractionDigits:0}):"$"+Number(v).toLocaleString("id-ID",{minimumFractionDigits:2,maximumFractionDigits:2})); };
+  var num=function(s){ s=String(s||"").trim(); if(M==="id") s=s.replace(/\./g,"").replace(",","."); else s=s.replace(/\./g,"").replace(",","."); var v=parseFloat(s); return isFinite(v)?v:null; };
+  var esc=function(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); };
+  function api(body){ return fetch("/api/alarm.php",body?{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{credentials:"same-origin"}).then(function(r){ return r.json(); }); }
+  function paint(){
+    if(!ST) return; var t=$("alCode").value.trim().toUpperCase();
+    $("alTg").innerHTML=ST.linked?'<div class="tgbox" style="background:var(--good-soft);color:var(--good)">✅ Telegram terhubung. Alarm dikirim ke Telegram Anda. <a href="#" id="alUn" style="color:inherit">Putuskan</a></div>'
+      :'<div class="tgbox" style="background:var(--warn-soft);color:var(--warn)"><b>Hubungkan Telegram dulu</b> supaya alarm bisa dikirim.<br>'+(ST.link?'<a class="primary" href="'+ST.link+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:7px 12px;border-radius:10px;text-decoration:none;background:var(--accent);color:var(--accent-ink);font-weight:700">📲 Hubungkan Telegram</a> <a href="#" id="alRe" style="color:inherit;margin-left:6px">Sudah, cek lagi</a><br><span style="font-weight:400">Telegram terbuka → tekan <b>Mulai/Start</b>.</span>':"Bot belum siap; coba lagi nanti.")+'</div>';
+    var L=ST.alarms||[];
+    $("alCnt").textContent="("+L.length+" dari "+ST.max+")";
+    $("alList").innerHTML=L.length?L.map(function(a){ return '<div class="al'+(a.t===t?" me":"")+'"><span>'+esc(a.t)+' '+(a.op==="le"?"≤":"≥")+' '+fmt(a.p,a.m)+' <span class="note">'+(a.m==="us"?"AS":"BEI")+(a.note?" · "+esc(a.note):"")+'</span></span><button type="button" data-del="'+a.id+'" aria-label="Hapus">✕</button></div>'; }).join(""):'<p class="note" style="margin:4px 0">Belum ada alarm.</p>';
+    var F=ST.fired||[];
+    $("alFired").innerHTML=F.length?'<details><summary class="note" style="cursor:pointer">Alarm yang sudah berbunyi ('+F.length+')</summary>'+F.slice().reverse().map(function(a){ return '<div class="al"><span>'+esc(a.t)+' '+(a.op==="le"?"≤":"≥")+' '+fmt(a.p,a.m)+'</span><span class="note">'+new Date(a.at*1000).toLocaleDateString("id-ID",{day:"numeric",month:"short"})+'</span></div>'; }).join("")+'</details>':"";
+    var u=$("alUn"); if(u) u.onclick=function(e){ e.preventDefault(); api({unlink:1}).then(function(j){ if(j.ok){ ST=j; paint(); } }); };
+    var r=$("alRe"); if(r) r.onclick=function(e){ e.preventDefault(); load(); };
+  }
+  function load(){ return api().then(function(j){ if(j.ok){ ST=j; paint(); } else $("alMsg").textContent=j.msg||"Gagal memuat."; }).catch(function(){ $("alMsg").textContent="Offline."; }); }
+  $("alList").addEventListener("click",function(e){ var b=e.target.closest("[data-del]"); if(!b) return; api({del:b.dataset.del}).then(function(j){ if(j.ok){ ST=j; paint(); } }); });
+  $("alCode").addEventListener("input",paint);
+  $("alAdd").addEventListener("click",function(){
+    var t=$("alCode").value.trim().toUpperCase(), p=num($("alP").value), m=$("alMsg");
+    if(!t||!(p>0)){ m.textContent="Isi kode saham dan harga."; return; }
+    var op=$("alOp").value;
+    if(cur&&t===cur.t&&cur.price){ if(op==="le"&&p>=cur.price){ m.textContent="Harga sekarang "+fmt(cur.price)+" sudah di bawah/sama dengan itu. Pilih harga lebih rendah atau ganti ke “naik ke ≥”."; return; }
+      if(op==="ge"&&p<=cur.price){ m.textContent="Harga sekarang "+fmt(cur.price)+" sudah di atas/sama dengan itu."; return; } }
+    m.textContent="Menyimpan…";
+    api({add:{m:M,t:t,op:op,p:p,note:$("alNote").value}}).then(function(j){ if(j.ok){ ST=j; paint(); m.textContent="✅ Alarm terpasang."+(j.linked?"":" Hubungkan Telegram supaya terkirim."); $("alNote").value=""; } else m.textContent=j.msg||"Gagal."; });
+  });
+  window.CF_ALARM_OPEN=function(t,p,price){
+    cur=t?{t:t,price:price?+price:null}:null;
+    $("alT").textContent="🔔 Alarm harga"+(t?" "+t:"");
+    $("alCode").value=t||""; $("alMsg").textContent="";
+    var op="le"; if(p&&price&&+p>+price) op="ge";
+    $("alOp").value=op;
+    $("alP").value=p?(M==="id"?Number(p).toLocaleString("id-ID",{maximumFractionDigits:0}):String(p).replace(".",",")):"";
+    $("alNow").textContent=t&&price?"Harga terakhir "+fmt(+price)+".":"";
+    D.showModal(); load();
+  };
+  var dl=$("cfDlg"); if(dl){ var b=document.createElement("button"); b.type="button"; b.textContent="🔔 Alarm harga saya"; b.style.width="100%";
+    b.addEventListener("click",function(){ dl.close(); window.CF_ALARM_OPEN(null); }); var last=dl.querySelector(".b > div:last-child"); last.parentNode.insertBefore(b,last); }
+})();
+</script>
+"""
+s = s.replace("<style>", HEAD_JS + ALARM_HEAD + "<style>", 1).replace("</style>", CSS + ALARM_CSS + "</style>", 1)
 # ---- tombol "Pasang aplikasi": di Android langsung unduh APK
 APK_JS = r"""<dialog id="cfApk"><div class="b"><b style="font-size:17px">📲 Mengunduh ChartFlow.apk…</b>
 <ol style="margin:10px 0 0;padding-left:20px;line-height:1.6;font-size:14px"><li>Tunggu unduhan selesai, lalu ketuk <b>ChartFlow.apk</b> di notifikasi atau folder <b>Download</b>.</li>
@@ -132,7 +206,7 @@ APK_JS = r"""<dialog id="cfApk"><div class="b"><b style="font-size:17px">📲 Me
 })();</script>
 """
 i = s.rindex("</body>")
-s = s[:i] + BODY_JS + APK_JS + s[i:]
+s = s[:i] + BODY_JS + APK_JS + ALARM_JS + s[i:]
 (out / "index.html").write_text(s, encoding="utf-8")
 shutil.copy(ROOT / "sw.js", out / "sw.js")
 shutil.copytree(ROOT / "icons", out / "icons")

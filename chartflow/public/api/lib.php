@@ -103,4 +103,7 @@ function tg(string $method, array $params): ?array {
     $r = curl_exec($ch); curl_close($ch);
     return $r ? json_decode($r, true) : null;
 }
+function link_tok(string $code): string { return substr(hash_hmac('sha256', $code, CF_SALT . ':tglink'), 0, 24); }
+function money_fmt(float $v, string $m): string { return $m === 'id' ? 'Rp' . number_format($v, 0, ',', '.') : '$' . number_format($v, 2, ',', '.'); }
+const CF_ALARM_MAX = 30;
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }

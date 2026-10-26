@@ -1086,7 +1086,7 @@ function renderWatch(box){
       <td class="num">${pl.tgt?`<span class="ok">${usd(pl.tgt)}</span><br><span class="note">+${nf(pl.up,1)}%</span>`:'<span class="note">tak ada resistance<br>kuat ≤30%</span>'}</td>
       <td class="num">${rrS(pl)}</td>
       <td style="font-size:13px">${sigCell(x.sg)}${secBadge(x.o,sTags)}</td>
-      <td><button type="button" class="calcbtn" data-calc="${esc(x.t)}" data-e="${pl.e}" data-s="${pl.stop}" data-tg="${pl.tgt||""}">🧮</button></td></tr>`; };
+      <td><button type="button" class="calcbtn" data-calc="${esc(x.t)}" data-e="${pl.e}" data-s="${pl.stop}" data-tg="${pl.tgt||""}">🧮</button>${alarmBtn(x.t,pl.kind==="queue"?pl.e:null,x.o.price)}</td></tr>`; };
   const st=stars(), starred=[...st].map(t=>({t,o:rows.find(x=>x.ticker===t),z:nearZones(t)})).filter(x=>x.o);
   const broken=(W.broken||[]).filter(b=>byT[b.t]);
   const idxName=Object.keys(CYC.indices)[0], zs=((CYC.score||{})[idxName]||{}).zones||{};
@@ -1145,6 +1145,7 @@ function openCalc(t,ov){
   saveCalc(st); tab="calc"; store.set(WP+"tab","calc"); try{history.replaceState(null,"","#calc")}catch(e){}
   renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0,behavior:"smooth"});
 }
+const alarmBtn = (t,p,price) => window.CF_ALARM?`<button type="button" class="calcbtn alarmbtn" data-alarm="${esc(t)}" data-ap="${p||""}" data-cur="${price||""}" title="Pasang alarm harga">🔔</button>`:"";
 const chartBtn = (t,label="📈 Grafik") => `<button type="button" class="calcbtn chartbtn" data-chart="${esc(t)}">${label}</button>`;
 function openChart(t){ store.set(WP+"cy.sel",t); const dc=$("drClose"); if(dc) dc.click(); goTab("cycles"); window.scrollTo({top:0,behavior:"smooth"}); }
 const calcBtn = (t,label="🧮 Hitung") => `<button type="button" class="calcbtn" data-calc="${esc(t)}">${label}</button>`;
@@ -1625,7 +1626,7 @@ function renderDrawer(box){
   const mid=MID[tab]?tab:undefined;
   const sc=document.createElement("div"); sc.className="scrim"; sc.id="scrim";
   const d=document.createElement("div"); d.className="drawer"; d.id="drawer"; d.setAttribute("role","dialog"); d.setAttribute("aria-label","Detail "+o.ticker);
-  d.innerHTML=`<div class="dr-h"><div>${starBtn(o.ticker)} <b>${esc(o.ticker)}</b> <span class="num">${usd(o.price)}</span><br><span class="note">${esc(o.company||"")}</span></div><div style="display:flex;gap:6px">${chartBtn(o.ticker)}${calcBtn(o.ticker)}<button type="button" class="iconbtn" id="drClose" aria-label="Tutup">✕</button></div></div><div class="dr-b">${detNeed()?'<p class="note">Memuat rincian…</p>':detail(o,mid)}</div>`;
+  d.innerHTML=`<div class="dr-h"><div>${starBtn(o.ticker)} <b>${esc(o.ticker)}</b> <span class="num">${usd(o.price)}</span><br><span class="note">${esc(o.company||"")}</span></div><div style="display:flex;gap:6px">${alarmBtn(o.ticker,null,o.price)}${chartBtn(o.ticker)}${calcBtn(o.ticker)}<button type="button" class="iconbtn" id="drClose" aria-label="Tutup">✕</button></div></div><div class="dr-b">${detNeed()?'<p class="note">Memuat rincian…</p>':detail(o,mid)}</div>`;
   box.appendChild(sc); box.appendChild(d); document.body.style.overflow="hidden";
   if(detNeed()) loadDetail().then(()=>{ if(openTicker===o.ticker) renderResults(); });
   const close=()=>{ openTicker=null; renderResults(); };
@@ -1698,6 +1699,7 @@ function toggleRow(tr){ openTicker=openTicker===tr.dataset.t?null:tr.dataset.t; 
 $("results").addEventListener("click",ev=>{
   const sg=ev.target.closest("#c_sug"); if(sg){ const s=calcState(); s.lots=+sg.dataset.lots; saveCalc(s); renderResults(); return; }
   const tp=ev.target.closest("#c_toporto"); if(tp){ const s=calcState(); s.lots=+tp.dataset.lots; s.pmeth=/CAN SLIM/.test(s.sSrc||"")?"canslim":"lain"; addToPorto(s); return; }
+  const alb=ev.target.closest(".alarmbtn"); if(alb){ ev.stopPropagation(); window.CF_ALARM(alb.dataset.alarm,alb.dataset.ap?+alb.dataset.ap:null,alb.dataset.cur?+alb.dataset.cur:null); return; }
   const chb=ev.target.closest(".chartbtn"); if(chb){ ev.stopPropagation(); openChart(chb.dataset.chart); return; }
   const cb=ev.target.closest(".calcbtn"); if(cb){ ev.stopPropagation(); openCalc(cb.dataset.calc,cb.dataset.e?{entry:+cb.dataset.e,stop:+cb.dataset.s,target:+cb.dataset.tg||null}:null); return; }
   const sb=ev.target.closest(".star"); if(sb){ ev.stopPropagation(); toggleStar(sb.dataset.star); renderTabs(); renderResults(); return; }
