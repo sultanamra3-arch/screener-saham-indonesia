@@ -24,6 +24,8 @@ jobs:
       FTP_DIR: ${{ secrets.FTP_DIR }}
       TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+      WA_PHONE: ${{ secrets.WA_PHONE }}
+      WA_APIKEY: ${{ secrets.WA_APIKEY }}
       SITE: https://chartflow.my.id
     steps:
       - uses: actions/checkout@v5
@@ -47,6 +49,8 @@ jobs:
           const CF_CHAT_ID = '$TG_CHAT';
           const CF_HOOK_SECRET = '$HOOK';
           const CF_SALT = '$SALT';
+          const CF_WA_PHONE = '$(printf '%s' "$WA_PHONE" | tr -cd '0-9+')';
+          const CF_WA_KEY = '$(printf '%s' "$WA_APIKEY" | tr -cd '0-9A-Za-z')';
           PHP
           sed -i 's/^          //' chartflow/public/_data/config.php
 

@@ -106,4 +106,12 @@ function tg(string $method, array $params): ?array {
 function link_tok(string $code): string { return substr(hash_hmac('sha256', $code, CF_SALT . ':tglink'), 0, 24); }
 function money_fmt(float $v, string $m): string { return $m === 'id' ? 'Rp' . number_format($v, 0, ',', '.') : '$' . number_format($v, 2, ',', '.'); }
 const CF_ALARM_MAX = 30;
+// Salinan WhatsApp untuk pengelola (CallMeBot, hanya ke nomor sendiri). Diam bila belum diatur.
+function wa_owner(string $html): void {
+    if (!defined('CF_WA_PHONE') || !defined('CF_WA_KEY') || CF_WA_PHONE === '' || CF_WA_KEY === '') return;
+    $t = preg_replace('#</?b>#', '*', $html); $t = preg_replace('#</?i>#', '_', $t);
+    $t = html_entity_decode(strip_tags($t), ENT_QUOTES, 'UTF-8');
+    $ch = curl_init('https://api.callmebot.com/whatsapp.php?' . http_build_query(['phone' => CF_WA_PHONE, 'text' => mb_substr($t, 0, 1500), 'apikey' => CF_WA_KEY]));
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 30]); curl_exec($ch); curl_close($ch);
+}
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
