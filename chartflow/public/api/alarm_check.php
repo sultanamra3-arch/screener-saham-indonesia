@@ -41,7 +41,6 @@ foreach ($db['alarms'] ?? [] as $code => $list) {
             'text' => "🔔 <b>Alarm harga ChartFlow</b> (" . ($m === 'id' ? 'BEI' : 'AS') . ")\n\n" . implode("\n\n", $msg) . "\n\nAlarm ini sudah dimatikan. Pasang lagi di https://chartflow.my.id bila perlu.\n<i>Harga dari pembaruan data terakhir, bukan real-time.</i>"]);
         if (!empty($r['ok'])) {
             $sent++;
-            if ((string)$c['tg'] === (string)CF_CHAT_ID) wa_owner("🔔 <b>Alarm harga ChartFlow</b> (" . ($m === 'id' ? 'BEI' : 'AS') . ")\n\n" . implode("\n\n", $msg));
             foreach ($fire as $a) $db['afired'][$code][] = ['t' => $a['t'], 'm' => $m, 'op' => $a['op'], 'p' => $a['p'], 'at' => $now, 'cur' => $a['cur']];
             $db['afired'][$code] = array_slice($db['afired'][$code], -20);
         } else {
@@ -115,7 +114,6 @@ foreach ($db['codes'] as $code => $c) {
             'text' => "💼 <b>Portofolio ChartFlow</b> (" . ($m === 'id' ? 'BEI' : 'AS') . ")\n\n" . implode("\n\n", $lines) . "\n\n<i>Informasi otomatis dari aturan metode yang Anda pilih, bukan ajakan membeli atau menjual. Keputusan sepenuhnya di tangan Anda. Peringatan yang sama tidak dikirim ulang.</i>"]);
         if (empty($r['ok'])) continue;   // gagal: coba lagi pada pembaruan berikutnya
         $psent++;
-        if ((string)$c['tg'] === (string)CF_CHAT_ID) wa_owner("💼 <b>Portofolio ChartFlow</b> (" . ($m === 'id' ? 'BEI' : 'AS') . ")\n\n" . implode("\n\n", $lines));
     }
     $db['pnot'][$code][$m] = $keepSeen;
 }

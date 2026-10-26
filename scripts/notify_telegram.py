@@ -14,9 +14,7 @@ import html
 import math
 import json
 import os
-import re
 import sys
-import time as _time
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -462,46 +460,7 @@ def split(msg: str, limit: int = 3900) -> list[str]:
     return parts
 
 
-def wa_text(msg: str) -> str:
-    """HTML Telegram -> format WhatsApp (*tebal*, _miring_)."""
-    t = re.sub(r"</?b>", "*", msg)
-    t = re.sub(r"</?i>", "_", t)
-    t = re.sub(r"<a [^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>", r"\2 (\1)", t)
-    t = re.sub(r"<[^>]+>", "", t)
-    return html.unescape(t).replace("**", "")
-
-
-def wa_send(msg: str):
-    """Salinan ke WhatsApp lewat CallMeBot (gratis, hanya ke nomor sendiri). Diam bila WA_PHONE/WA_APIKEY kosong."""
-    phone = os.environ.get("WA_PHONE", "").strip().replace(" ", "")
-    key = os.environ.get("WA_APIKEY", "").strip()
-    if not phone or not key:
-        return
-    text = wa_text(msg)
-    parts, cur = [], ""
-    for line in text.split("\n"):
-        if len(cur) + len(line) + 1 > 1500 and cur:
-            parts.append(cur)
-            cur = ""
-        cur += line + "\n"
-    if cur.strip():
-        parts.append(cur)
-    ok = 0
-    for part in parts:
-        try:
-            r = requests.get("https://api.callmebot.com/whatsapp.php", params={"phone": phone, "text": part.strip(), "apikey": key}, timeout=60)
-            if r.status_code == 200 and "error" not in r.text.lower()[:300]:
-                ok += 1
-            else:
-                print(f"WhatsApp (CallMeBot) menolak: HTTP {r.status_code} {r.text[:160]}")
-        except Exception as ex:
-            print(f"WhatsApp (CallMeBot) gagal: {ex}")
-        _time.sleep(3)
-    print(f"Terkirim ke WhatsApp ({ok}/{len(parts)} pesan)")
-
-
 def send(msg: str):
-    wa_send(msg)
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
     chat = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
     if not token or not chat:
