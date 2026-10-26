@@ -11,6 +11,7 @@ Butuh secret TELEGRAM_BOT_TOKEN dan TELEGRAM_CHAT_ID. Jika belum diisi, pesan ha
 from __future__ import annotations
 
 import html
+import math
 import json
 import os
 import sys
@@ -149,6 +150,9 @@ def market_regime(d: dict, c: dict) -> str:
 RR_MIN, UP_MIN = 2, 4.0
 
 
+_ftick = lambda v: (lambda t: math.floor(v / t) * t)(1 if v < 200 else 2 if v < 500 else 5 if v < 2000 else 10 if v < 5000 else 25)
+
+
 def support_section(d: dict, show_waits: bool = True) -> list[str]:
     f = ROOT / "data" / "cycles.json"
     if not f.exists():
@@ -211,18 +215,18 @@ def support_section(d: dict, show_waits: bool = True) -> list[str]:
     waits.sort(key=lambda x: x[:2])
     L = []
     if items:
-        L += ["", b(f"📍 Masuk area support, ruang naik cukup ({min(len(items), 8)})")]
+        L += ["", b(f"✅ Rencana beli: bisa dibeli sekarang ({min(len(items), 8)})")]
         for _, _, t, o, z, (bb, hh), r1, rr, low in items[:8]:
             s = " · ".join(x for x in (f"Layak beli: {', '.join(bb)}" if bb else "", f"Tahan: {', '.join(hh)}" if hh else "") if x)
-            tgt = f"R1 {usd(r1['lo'])} (R:R 1:{str(round(rr, 1)).replace('.', ',')})" if r1 else "R1 terbuka (tak ada resistance kuat ≤30%)"
-            L.append(f"{b(t)} {usd(o.get('price'))} · support {rng(z)} ({z['strength']}){' · turun ke support berikutnya' if low else ''} · {tgt} · jebol &lt; {usd(z['brk'])}")
+            tgt = f"{usd(r1['lo'])} (R:R 1:{str(round(rr, 1)).replace('.', ',')})" if r1 else "terbuka (tak ada resistance kuat ≤30%)"
+            L.append(f"{b(t)} beli ≤ {usd(o.get('price'))} · stop &lt; {usd(z['brk'])} · target {tgt} · support {rng(z)} ({z['strength']}){' · baru turun ke support berikutnya' if low else ''}")
             L.append(f"<i>{e(s)}</i>")
         if len(items) > 8:
-            L.append(f"…dan {len(items) - 8} lainnya di tab Watchlist pribadi")
+            L.append(f"…dan {len(items) - 8} lainnya di tab Watchlist")
     if waits and show_waits:
-        L += ["", b(f"🎯 Antre beli di support berikutnya ({len(waits)})"),
-              "<i>Sudah di area support tapi R1 terlalu dekat; tunggu harga turun ke support berikutnya.</i>"]
-        L.append(" · ".join(f"{b(t)} {usd(s2['hi'])}" for _, t, o, s2, rr2 in waits[:6])
+        L += ["", b(f"⏳ Pasang antrean beli ({len(waits)})"),
+              "<i>Ruang naik dari harga sekarang masih sempit; pasang order beli di harga ini.</i>"]
+        L.append(" · ".join(f"{b(t)} {usd(s2['hi'])} (stop &lt; {usd(_ftick(s2['lo'] * 0.99))})" for _, t, o, s2, rr2 in waits[:6])
                  + (f" · +{len(waits) - 6} lainnya" if len(waits) > 6 else ""))
     brk = []
     for x in w.get("broken") or []:

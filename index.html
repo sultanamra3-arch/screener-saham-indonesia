@@ -479,7 +479,7 @@ function renderTabs(){
     else if(t.id==="calc") c="Lot, untung, rugi";
     else if(t.id==="divcal") { const td=(DATA&&DATA.priceDate)||""; const n=list.filter(o=>o.dv&&o.dv.ex>=td&&o.dv.ex<=new Date(new Date(td).getTime()+14*864e5).toISOString().slice(0,10)).length; c=`<b>${n}</b> dalam 2 minggu`; }
     else if(t.id==="porto") { const P=porto(); if(!P.open.length) c="Catat & pantau"; else { const nd=P.open.filter(ps=>posEval(ps).acts.some(a=>a.lv<=1)).length; c=`<b>${P.open.length}</b> posisi${nd?` · ⚠ ${nd} perlu tindakan`:""}`; } }
-    else if(t.id==="watch") { if(CYC&&CYC.watch){ const al=allowedMethods(), byT=Object.fromEntries(list.map(o=>[o.ticker,o])); const n=Object.entries(CYC.watch.in).filter(([tk,w])=>byT[tk]&&(w.strength!=="lemah")&&watchStrict(tk,w,sigOf(byT[tk],al))).length; c=`<b>${n}</b> layak beli di support`; } else c="★ dan area support"; }
+    else if(t.id==="watch") { if(CYC&&CYC.watch){ const pl=planList(Object.fromEntries(list.map(o=>[o.ticker,o]))).list, n=pl.filter(x=>x.pl.kind==="now").length; c=`<b>${n}</b> beli sekarang · ${pl.length-n} antrean`; } else c="★ dan area support"; }
     else if(t.id==="cycles") { const f=CYC&&Object.values(CYC.indices)[0]; c=f?`<b>${(f.rawan||[]).length}</b> tanggal rawan`:"Analisis"; }
     else { const u=list.map(o=>uv(o,t.id)), b=u.filter(x=>x.s==="buy").length, nw=u.filter(x=>x.s==="buy"&&x.fresh).length; c=`<b>${b}</b> layak beli${nw?` · ${nw} baru`:""}`; }
     return `<button class="tab" role="tab" type="button" aria-selected="${t.id===tab}" data-id="${t.id}"><span class="k">${esc(t.k)}</span><span class="n">${esc(t.name)}</span><span class="c">${c}</span></button>`;
@@ -906,94 +906,72 @@ function sigCell(sg){
   return [sg.b.length?`<b class="ok">Layak beli:</b> ${esc(sg.b.join(", "))}`:"", sg.h.length?`<b>💼 Tahan:</b> ${esc(sg.h.join(", "))}`:""].filter(Boolean).join("<br>");
 }
 function watchStrict(t,w,sg){ return (w.strength==="kuat"||w.strength==="sedang")&&sg.any&&(roomOf(t,w)||{ok:true}).ok; }
+// ---------- Rencana beli (Watchlist) ----------
+function planOf(x){
+  const a=CYC.stocks[x.t]; if(!a) return null; const r1=strongRes(a), p=x.o.price, rm=x.rm;
+  const mk=(kind,e,stop,z,n)=>{ const risk=Math.max(e-stop,e*0.005), up=r1?(r1.lo/e-1)*100:null, rr=r1?(r1.lo-e)/risk:null;
+    return {kind,e,stop,z,n,tgt:r1?r1.lo:null,up,rr,loss:(stop/e-1)*100,dist:(e/p-1)*100,ok:rr==null||(rr>=RR_MIN&&up>=UP_MIN)}; };
+  const nCur=rm&&rm.lad?rm.lad.pos:1;
+  if(!x.near){ const now=mk("now",p,x.w.brk,x.w,nCur); if(now.ok) return now; }
+  else { const q=mk("queue",x.w.hi,x.w.brk,x.w,nCur); if(q.ok&&q.dist<0) return q; }
+  if(rm&&rm.s2&&rm.s2ok){ const q=mk("queue",rm.s2buy,rm.s2brk,rm.s2,rm.nextN); if(q.ok) return q; }
+  return null;
+}
+function planList(byT){
+  const W=CYC.watch, allow=allowedMethods();
+  const mk=(src,near)=>Object.entries(src||{}).filter(([t,w])=>byT[t]&&w.strength!=="lemah").map(([t,w])=>{ const x={t,w,o:byT[t],sg:sigOf(byT[t],allow),near}; x.rm=roomOf(t,w); return x; }).filter(x=>x.sg.any);
+  const all=[...mk(W.in,false),...mk(W.near,true)]; let skip=0; const out=[];
+  all.forEach(x=>{ x.pl=planOf(x); if(x.pl) out.push(x); else skip++; });
+  out.sort((a,b)=>(a.pl.kind==="now"?0:1)-(b.pl.kind==="now"?0:1)||(a.pl.kind==="now"?(b.pl.rr??9)-(a.pl.rr??9):b.pl.dist-a.pl.dist));
+  return {list:out,skip};
+}
 function renderWatch(box){
   if(!CYC&&!CYC_ERR){ box.innerHTML=`<div class="tablebox"><div class="empty">Memuat data area support…</div></div>`; loadCycles().then(()=>{ if(tab==="watch"){ renderTabs(); renderResults(); } }); return; }
   if(CYC_ERR||!CYC.watch){ box.innerHTML=`<div class="tablebox"><div class="empty">Data area support belum tersedia. Akan terisi setelah pembaruan data berikutnya.</div></div>`; return; }
   const W=CYC.watch, allow=allowedMethods(), r=regime();
-  const showAll=store.get(WP+"w.all")==="1", onlyNew=store.get(WP+"w.new")==="1";
   const byT=Object.fromEntries(filtered().map(o=>[o.ticker,o]));
   const newSet=new Set(W.new||[]), lowSet=new Set(W.lower||[]);
-  const mk=(src)=>Object.entries(src).filter(([t])=>byT[t]).map(([t,w])=>({t,w,o:byT[t],sg:sigOf(byT[t],allow),rm:roomOf(t,w)}));
-  let inList=mk(W.in), nearList=mk(W.near);
-  const base=x=>(x.w.strength==="kuat"||x.w.strength==="sedang")&&x.sg.any;
-  const totalIn=inList.length;
-  if(!showAll){ inList=inList.filter(base); nearList=nearList.filter(x=>x.sg.any&&(!x.rm||x.rm.ok)); }
-  if(onlyNew) inList=inList.filter(x=>newSet.has(x.t));
-  const posOf=x=>x.rm&&x.rm.lad?Math.min(3,x.rm.lad.pos):1;
-  const rank={kuat:0,sedang:1,lemah:2}, rrv=x=>x.rm&&x.rm.rr!=null?x.rm.rr:9;
-  const sorter=(a,b)=>(b.sg.any-a.sg.any)||((b.rm?b.rm.ok:1)-(a.rm?a.rm.ok:1))||(rrv(b)-rrv(a))||(rank[a.w.strength]-rank[b.w.strength]);
-  inList.sort(sorter); nearList.sort(sorter);
-  const idxName=Object.keys(CYC.indices)[0], zs=((CYC.score||{})[idxName]||{}).zones||{};
-  const r1Cell=(rm,t)=>{ if(rm&&rm.r1) return `${usd(rm.r1.lo)} <span class="st ${strCls(rm.r1.strength)}">${rm.r1.strength}</span>`;
-    const wk=((CYC.stocks[t]||{}).res||[])[0]; return `<span class="na">tidak ada kuat/sedang dalam 30%</span>${wk?`<br><span class="note">terdekat lemah ${usd(wk.lo)} (${pct(wk.dist)})</span>`:""}`; };
-  const ladCell=(x,k)=>{ const L=x.rm&&x.rm.lad; const z=L&&L.L[k]; if(!z) return '<td class="num"><span class="na">–</span></td>';
-    const tag=z.cur?`<span class="st buy">${x.near?"menuju":"di sini"}</span>`:z.passed?'<span class="note">tembus</span>':`<span class="note">${pct((z.hi/x.o.price-1)*100)}</span>`;
-    return `<td class="num lad"><span class="${z.cur?"cur":z.passed?"gone":""}">${zr(z)}</span><br><span class="st ${strCls(z.strength)}">${z.strength}</span> ${tag}</td>`; };
-  const posCell=x=>{ const L=x.rm&&x.rm.lad; const n=L?L.pos:1;
-    return `<td class="lad"><b>${x.near?"Menuju":"Di"} S${n}</b>${newSet.has(x.t)?' <span class="st buy">baru</span>':""}${lowSet.has(x.t)?' <span class="st hold">turun ke support berikutnya</span>':""}<br><span class="note">${L&&L.pk.d?`${pct(L.drop)} dari puncak ${usd(L.pk.v)} (${tgl(L.pk.d)})`:"dekat puncak"}</span><br><span class="note">${x.w.dist<=0?"di zona":"+"+nf(x.w.dist,1)+"% di atas zona"} · jebol &lt; ${usd(x.w.brk)}</span></td>`; };
-  const row=x=>`<tr class="row wrow" data-go="${esc(x.t)}" tabindex="0">${stockCell(x.o)}
-      <td class="num">${usd(x.o.price)}</td>${posCell(x)}${ladCell(x,0)}${ladCell(x,1)}${ladCell(x,2)}
-      <td class="num">${r1Cell(x.rm,x.t)}</td>
-      <td class="num">${x.rm&&x.rm.up!=null?"+"+nf(x.rm.up,1)+"%":"–"}<br>${rrTxt(x.rm)}</td>
-      <td style="font-size:13px">${sigCell(x.sg)}</td><td class="why">${esc(shortAdvice(x.w,x.sg,x.rm))} ${calcBtn(x.t)}</td></tr>`;
-  nearList.forEach(x=>x.near=true);
-  const head=`<thead><tr><th>Saham</th><th class="num">Harga</th><th>Posisi</th><th class="num">S1</th><th class="num">S2</th><th class="num">S3</th><th class="num">R1</th><th class="num">Ruang naik · R:R</th><th>Sinyal</th><th>Saran singkat</th></tr></thead>`;
-  const okN=inList.filter(x=>!x.rm||x.rm.ok).length;
-  const statusCell=x=>{ const rm=x.rm; if(!x.sg.any) return '<span class="na">belum ada sinyal</span>';
-    if(!rm||rm.ok) return '<span class="st buy">✅ layak beli</span>';
-    return rm.s2?`<span class="st hold">⏳ antre di S${rm.nextN}</span><br><b class="num">${usd(rm.s2buy)}</b> <span class="note">(${pct(rm.s2.dist)})</span><br><span class="note">jebol &lt; ${usd(rm.s2brk)}${rm.rr2!=null?` · R:R di sana 1 : ${nf(rm.rr2,1)}`:""}</span>`
-      :'<span class="st wait">⏳ ruang sempit, belum ada support berikutnya</span>'; };
-  const sTags=sectorTags();
-  const gRow=x=>{ const L=x.rm&&x.rm.lad, z=L&&L.L[L.pos-1]||x.w;
+  const {list,skip}=planList(byT), nNow=list.filter(x=>x.pl.kind==="now").length, nQ=list.length-nNow;
+  const sTags=sectorTags(), own=new Set(porto().open.map(p=>p.code));
+  const rrS=pl=>pl.rr==null?'<span class="ok">terbuka</span>':`<span class="${pl.rr>=3?"ok":""}">1 : ${nf(pl.rr,1)}</span>`;
+  const row=x=>{ const pl=x.pl, now=pl.kind==="now";
     return `<tr class="row wrow" data-go="${esc(x.t)}" tabindex="0">${stockCell(x.o)}
       <td class="num">${usd(x.o.price)}</td>
-      <td class="num lad"><span class="cur">${zr(x.w)}</span> <span class="st ${strCls(x.w.strength)}">${x.w.strength}</span>${newSet.has(x.t)?' <span class="st buy">baru</span>':""}${lowSet.has(x.t)?' <span class="st hold">baru turun ke sini</span>':""}<br><span class="note">${x.w.dist<=0?"di zona":"+"+nf(x.w.dist,1)+"% di atas zona"} · jebol &lt; ${usd(x.w.brk)}</span><br><span class="note">${L&&L.pk.d&&L.drop<=-1?`${pct(L.drop)} dari puncak ${usd(L.pk.v)}`:"dekat puncak terakhir"}</span></td>
-      <td class="num">${r1Cell(x.rm,x.t)}</td>
-      <td class="num">${x.rm&&x.rm.up!=null?"+"+nf(x.rm.up,1)+"%":"–"}<br>${rrTxt(x.rm)}</td>
-      <td class="num lad">${statusCell(x)}</td>
-      <td style="font-size:13px">${sigCell(x.sg)}${secBadge(x.o,sTags)}</td><td class="why">${esc(shortAdvice(x.w,x.sg,x.rm))} ${calcBtn(x.t)}</td></tr>`; };
-  const gHead=n=>`<thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Zona S${n} sekarang</th><th class="num">R1</th><th class="num">Ruang naik · R:R</th><th class="num">Status</th><th>Sinyal</th><th>Saran singkat</th></tr></thead>`;
-  const GDESC={1:"Support pertama di bawah puncak terakhir. Koreksi masih ringan, ruang ke resistance biasanya sempit.",
-    2:"Sudah menembus S1 dan tertahan di support kedua. Koreksi sedang, ruang naik lebih lebar.",
-    3:"Sudah menembus S1 dan S2. Diskon terbesar, tapi risiko tren rusak juga terbesar: beli kecil dan disiplin di batas jebol."};
-  const groups=[1,2,3].map(n=>{ const g=inList.filter(x=>posOf(x)===n), ok=g.filter(x=>x.sg.any&&(!x.rm||x.rm.ok)).length, open=store.get(WP+"w.g"+n)!=="0";
-    return `<details class="wgrp" data-g="${n}" ${open?"open":""}><summary><h2 style="display:inline">📍 Saham di S${n}${n===3?" atau lebih dalam":""} <span class="note" style="font-size:15px;font-weight:400">(${g.length} saham · ${ok} layak beli)</span></h2></summary>
-      <p class="note" style="margin:4px 0 8px">${GDESC[n]}</p>
-      <div class="tablebox"><table>${gHead(n)}<tbody>${g.length?g.map(gRow).join(""):`<tr><td colspan="8" class="empty">${onlyNew?"Tidak ada yang baru masuk hari ini.":"Tidak ada saat ini."}</td></tr>`}</tbody></table></div></details>`; }).join("");
+      <td>${now?'<span class="st buy">✅ Beli sekarang</span>':'<span class="st hold">⏳ Pasang antrean</span>'}${own.has(x.t)?' <span class="note">💼 tambah posisi</span>':""}${newSet.has(x.t)||lowSet.has(x.t)?' <span class="st buy">baru</span>':""}
+        <br><span class="note">${now?`di zona S${pl.n} ${zr(pl.z)} (${pl.z.strength})`:`menunggu turun ${nf(-pl.dist,1)}% ke S${pl.n} (${pl.z.strength})`}</span></td>
+      <td class="num"><b>${now?"≤ ":""}${usd(pl.e)}</b>${now&&x.w.dist>0?`<br><span class="note">ideal ${usd(x.w.hi)}</span>`:""}</td>
+      <td class="num no" style="white-space:nowrap">&lt;&nbsp;${usd(pl.stop)}<br><span class="note">${nf(pl.loss,1)}%</span></td>
+      <td class="num">${pl.tgt?`<span class="ok">${usd(pl.tgt)}</span><br><span class="note">+${nf(pl.up,1)}%</span>`:'<span class="note">tak ada resistance<br>kuat ≤30%</span>'}</td>
+      <td class="num">${rrS(pl)}</td>
+      <td style="font-size:13px">${sigCell(x.sg)}${secBadge(x.o,sTags)}</td>
+      <td><button type="button" class="calcbtn" data-calc="${esc(x.t)}" data-e="${pl.e}" data-s="${pl.stop}" data-tg="${pl.tgt||""}">🧮</button></td></tr>`; };
   const st=stars(), starred=[...st].map(t=>({t,o:rows.find(x=>x.ticker===t),z:nearZones(t)})).filter(x=>x.o);
   const broken=(W.broken||[]).filter(b=>byT[b.t]);
+  const idxName=Object.keys(CYC.indices)[0], zs=((CYC.score||{})[idxName]||{}).zones||{};
   box.innerHTML=saranBox(`<p>${saranMarket().html.split("</p>")[0]}</p><p>${r.k==="tertekan"
-      ?"Pasar tertekan: sinyal yang dihitung di sini hanya dari <b>Dividen, Value, dan Quality</b>, karena support lebih sering jebol dan metode trader sedang tidak bisa diandalkan."
-      :`Sinyal dihitung dari ${esc(allow.map(id=>MID[id].name).join(", "))}.`} Beli hanya bila <b>ruang naik ke R1 minimal ${UP_MIN}% dan ${RR_MIN}× risikonya</b> (R:R ≥ 1 : ${RR_MIN}). Bila ruangnya sempit, antre di support berikutnya (tanda ⏳). Tunda pembelian bila harga ditutup di bawah <b>batas jebol</b>.</p>`)+`
-    <details class="mcard" style="margin-top:10px"><summary><b>Arti S1, S2, R1, dan R:R</b></summary><div class="dl" style="font-size:14px;margin-top:6px">
-      <div><span><b>S1, S2, S3</b>: zona support kuat/sedang dihitung dari <b>puncak terakhir</b> ke bawah. S1 = support pertama di bawah puncak, S2 = kedua, S3 = ketiga. Zona yang dicoret sudah <i>tembus</i> (harga sudah turun melewatinya).</span></div>
-      <div><span><b>Di S1</b>: koreksi ringan, ruang ke resistance biasanya sempit. <b>Di S2</b>: koreksi sedang, ruang naik lebih lebar. <b>Di S3</b>: diskon terbesar, tapi risiko tren rusak juga paling besar; beli kecil dan disiplin di batas jebol.</span></div>
-      <div><span><b>R1</b>: resistance kuat/sedang terdekat di atas harga, tempat kenaikan biasanya tertahan. Resistance lemah (hanya satu garis) tidak dihitung.</span></div>
-      <div><span><b>Ruang naik</b>: jarak harga sekarang ke R1. <b>R:R</b>: ruang naik dibagi jarak ke batas jebol (risiko). 1 : 2 artinya potensi untung dua kali potensi rugi.</span></div>
-      <div><span><b>terbuka</b>: tidak ada resistance kuat/sedang dalam 30% di atas harga.</span></div></div></details>
-    <div class="rhead" style="margin-top:12px"><div class="l"><h2>Di area support: ${inList.length} saham, ${okN} layak beli</h2>
-      <p class="note">Harga di dalam zona support atau maksimal ${nf(W.rules.in,0)}% di atasnya, dan belum jebol. ${showAll?`Menampilkan semua (${totalIn}), termasuk zona lemah dan yang belum ada sinyal.`:`Zona kuat/sedang yang layak beli (atau ada di Portofolio) (${inList.length} dari ${totalIn}).`}
-      ✅ layak beli = ruang naik ≥ ${UP_MIN}% dan R:R ≥ 1 : ${RR_MIN}; ⏳ = ruang masih sempit, antre di support berikutnya.
-      ${zs.n?` Rekam jejak zona ${esc(idxName)}: ${zs.hit} dari ${zs.n} zona yang tersentuh bertahan.`:` Rekam jejak zona masih dikumpulkan.`}</p></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="wAll" aria-pressed="${showAll}">${showAll?"Tampilkan yang ketat saja":"Tampilkan semua"}</button>
-      <button type="button" id="wNew" aria-pressed="${onlyNew}">Baru masuk hari ini (${(W.new||[]).filter(t=>byT[t]).length})</button></div></div>
-    ${groups}
-    <div class="rhead" style="margin-top:16px"><div class="l"><h2>Mendekati support</h2><p class="note">${nf(W.rules.in,0)}–${nf(W.rules.near,0)}% di atas zona support kuat/sedang${showAll?"":`, hanya yang layak beli (atau ada di Portofolio) dan R:R ≥ 1 : ${RR_MIN}`}. Bersiap sebelum harga sampai di zona.</p></div></div>
-    <div class="tablebox"><table>${head}<tbody>${nearList.length?nearList.slice(0,40).map(row).join(""):`<tr><td colspan="10" class="empty">Tidak ada saat ini.</td></tr>`}</tbody></table></div>
-    <div class="rhead" style="margin-top:16px"><div class="l"><h2>★ Saham yang Anda tandai</h2><p class="note">Klik ☆ di tabel mana pun untuk menandai. Tersimpan di browser ini.</p></div></div>
+      ?"Pasar tertekan: hanya saham yang layak beli menurut <b>Dividen, Value, dan Quality</b>, karena support lebih sering jebol dan metode trader sedang tidak bisa diandalkan."
+      :`Saham yang layak beli menurut ${esc(allow.map(id=>MID[id].name).join(", "))}.`} Masuk daftar hanya bila <b>ruang naik ke target minimal ${UP_MIN}% dan ${RR_MIN}× risikonya</b>. Tutup posisi bila harga ditutup di bawah <b>stop</b>.</p>`)+`
+    <div class="rhead" style="margin-top:12px"><div class="l"><h2>Rencana beli: ${nNow} beli sekarang · ${nQ} antrean</h2>
+      <p class="note"><b>✅ Beli sekarang</b> = harga sudah di zona support dan hitungannya layak. <b>⏳ Pasang antrean</b> = pasang order beli di harga itu dan tunggu. ${skip?`${skip} saham lain di area support dilewati karena ruang naiknya sempit. `:""}${zs.n?`Rekam jejak zona ${esc(idxName)}: ${zs.hit} dari ${zs.n} zona yang tersentuh bertahan.`:""}</p></div></div>
+    <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th>Aksi</th><th class="num">Beli di</th><th class="num">Stop</th><th class="num">Target</th><th class="num">R:R</th><th>Sinyal</th><th></th></tr></thead><tbody>
+    ${list.length?list.slice(0,60).map(row).join(""):`<tr><td colspan="9" class="empty">Belum ada saham yang memenuhi syarat hari ini. Lebih baik menunggu daripada memaksa beli.</td></tr>`}</tbody></table></div>
+    <details class="mcard" style="margin-top:10px"><summary><b>Cara membaca rencana beli</b></summary><div class="dl" style="font-size:14px;margin-top:6px">
+      <div><span><b>Beli di</b>: harga beli. Untuk “beli sekarang”, beli di harga sekarang atau lebih rendah (“ideal” = batas atas zona support). Untuk antrean, pasang order beli di harga ini.</span></div>
+      <div><span><b>Stop</b>: bila harga <b>ditutup</b> di bawah angka ini, support dianggap jebol; jual atau batalkan antrean.</span></div>
+      <div><span><b>Target</b>: resistance kuat/sedang terdekat (R1), tempat kenaikan biasanya tertahan. <b>R:R</b> = potensi untung dibagi potensi rugi; 1 : 2 artinya untung dua kali rugi.</span></div>
+      <div><span><b>S1, S2, S3</b>: support pertama, kedua, ketiga dari puncak terakhir. Grafiknya ada di tab Siklus (klik baris).</span></div>
+      <div><span>🧮 membuka Kalkulator dengan harga beli, stop, dan target sudah terisi, untuk menghitung jumlah lot.</span></div></div></details>
+    <div class="rhead" style="margin-top:16px"><div class="l"><h2>★ Saham yang Anda tandai</h2><p class="note">Klik ☆ di tabel mana pun untuk menandai.</p></div></div>
     <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Support terdekat</th><th class="num">Jarak</th><th class="num">R1</th><th>Status</th></tr></thead><tbody>
-    ${starred.length?starred.map(x=>{ const z=x.z&&x.z.s, w=W.in[x.t], rm=w?roomOf(x.t,w):null, r1=x.z?strongRes(x.z.a):null; return `<tr class="row wrow" data-go="${esc(x.t)}" tabindex="0">${stockCell(x.o)}<td class="num">${usd(x.o.price)}</td>
+    ${starred.length?starred.map(x=>{ const z=x.z&&x.z.s, w=W.in[x.t], r1=x.z?strongRes(x.z.a):null, pl=list.find(y=>y.t===x.t); return `<tr class="row wrow" data-go="${esc(x.t)}" tabindex="0">${stockCell(x.o)}<td class="num">${usd(x.o.price)}</td>
       <td class="num">${z?zr(z)+" ("+z.strength+")":"–"}</td><td class="num">${w?(w.dist<=0?"di zona":"+"+nf(w.dist,1)+"%"):z?"+"+nf((x.o.price/z.hi-1)*100,1)+"%":"–"}</td>
-      <td class="num">${r1?usd(r1.lo)+" ("+pct(r1.dist)+")":"–"}${rm?"<br>"+rrTxt(rm):""}</td>
-      <td style="font-size:13px">${w?`<span class="st ${rm&&!rm.ok?"hold":"buy"}">${rm&&rm.lad?"di S"+rm.lad.pos:"di area support"}${rm&&!rm.ok?", ruang sempit":""}</span> `:""}${sigCell(sigOf(x.o,M.map(m=>m.id)))}</td></tr>`}).join("")
+      <td class="num">${r1?usd(r1.lo)+" ("+pct(r1.dist)+")":"–"}</td>
+      <td style="font-size:13px">${pl?(pl.pl.kind==="now"?'<span class="st buy">✅ beli sekarang</span> ':`<span class="st hold">⏳ antre ${usd(pl.pl.e)}</span> `):""}${sigCell(sigOf(x.o,M.map(m=>m.id)))}</td></tr>`}).join("")
       :`<tr><td colspan="6" class="empty">Belum ada saham yang Anda tandai.</td></tr>`}</tbody></table></div>
-    ${broken.length?`<div class="rhead" style="margin-top:16px"><div class="l"><h2>⚠️ Support jebol hari ini</h2><p class="note">Kemarin di area support, hari ini ditutup di bawah batas jebol. Tunda pembelian dan evaluasi ulang.</p></div></div>
+    ${broken.length?`<div class="rhead" style="margin-top:16px"><div class="l"><h2>⚠️ Support jebol hari ini</h2><p class="note">Kemarin di area support, hari ini ditutup di bawah batas jebol. Batalkan antrean dan evaluasi ulang.</p></div></div>
       <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Zona yang jebol</th><th class="num">Di bawah zona</th></tr></thead><tbody>
       ${broken.map(b=>`<tr class="row wrow" data-go="${esc(b.t)}" tabindex="0">${stockCell(byT[b.t])}<td class="num">${usd(b.price)}</td><td class="num">${zr(b)} (${b.strength})</td><td class="num no">${pct(b.drop)}</td></tr>`).join("")}</tbody></table></div>`:""}
     <p class="note" style="margin-top:8px">Klik baris untuk membuka grafik di tab Siklus. Zona support dan resistance adalah area kemungkinan, bukan jaminan.</p>`;
-  $("wAll").addEventListener("click",()=>{ store.set(WP+"w.all",showAll?"0":"1"); renderResults(); });
-  $("wNew").addEventListener("click",()=>{ store.set(WP+"w.new",onlyNew?"0":"1"); renderResults(); });
-  box.querySelectorAll("details.wgrp").forEach(d=>d.addEventListener("toggle",()=>store.set(WP+"w.g"+d.dataset.g,d.open?"1":"0")));
 }
 
 // ---------- Kalkulator ----------
@@ -1016,9 +994,10 @@ function stockLevels(t){
   else { const v=mget(o,"value"); if(v.lv&&v.lv.target){ target=v.lv.target; tSrc="target Graham +50%"; } else { target=p*1.15; tSrc="+15% (tidak ada resistance terdekat)"; } }
   return {o,p,stop:+(+stop).toFixed(IS_ID?0:2),target:+(+target).toFixed(IS_ID?0:2),sSrc,tSrc};
 }
-function openCalc(t){
+function openCalc(t,ov){
   const st=calcState(), L=stockLevels(t); if(!L) return;
   Object.assign(st,{code:t,entry:L.p,stop:L.stop,target:L.target,sSrc:L.sSrc,tSrc:L.tSrc,buy:L.p,cur:L.p});
+  if(ov){ st.entry=ov.entry; st.stop=ov.stop; st.sSrc="batas jebol support (Rencana beli)"; if(ov.target){ st.target=ov.target; st.tSrc="resistance R1 (Rencana beli)"; } }
   if(st.mode==="sim") st.mode="plan";
   saveCalc(st); tab="calc"; store.set(WP+"tab","calc"); try{history.replaceState(null,"","#calc")}catch(e){}
   renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0,behavior:"smooth"});
@@ -1419,8 +1398,11 @@ function renderPorto(box){
       <div>Untung/rugi berjalan<b class="${pl>=0?"ok":"no"}">${money(pl)} (${tot.cost?(pl>=0?"+":"")+nf(pl/tot.cost*100,2):"0"}%)</b></div>
       <div>Untung/rugi terealisasi<b class="${rz>=0?"ok":"no"}">${money(rz)}${P.closed.length?` · ${wins}/${P.closed.length} untung`:""}</b></div></div>
     ${!IS_ID&&fx&&tot.cost?`<p class="note">≈ Rp${nf(tot.val*fx,0)} dengan kurs ${nf(fx,0)}.</p>`:""}
-    ${SP?`<div class="mcard" style="border-left:4px solid var(--accent)"><h4><span>Jual ${esc(SP.code)}</span></h4><div class="cgrid">${fld("s_price","Harga jual",(rows.find(o=>o.ticker===SP.code)||{}).price)}
+    ${SP?`<div class="mcard" style="border-left:4px solid var(--accent)"><h4><span>Jual ${esc(SP.code)}</span><span class="note">dipegang ${nf(SP.qty,0)} ${UNAME}</span></h4><div class="cgrid">${fld("s_price","Harga jual",(rows.find(o=>o.ticker===SP.code)||{}).price)}
+      ${fld("s_qty","Jumlah dijual ("+UNAME+")",SP.qty)}
       <label class="cf" for="s_date"><span>Tanggal jual</span><input type="date" id="s_date" value="${todayISO()}"></label></div>
+      <p style="margin:6px 0 0;display:flex;gap:6px;flex-wrap:wrap"><button type="button" data-sq="1">Semua</button><button type="button" data-sq="0.5">½</button><button type="button" data-sq="0.3333">⅓</button><button type="button" data-sq="0.25">¼</button></p>
+      <p class="note" id="s_prev" style="margin:6px 0 0"></p>
       <p style="margin:8px 0 0;display:flex;gap:8px"><button type="button" id="s_ok" class="primary">Catat penjualan</button><button type="button" id="s_no">Batal</button></p></div><div style="height:10px"></div>`:""}
     ${form}
     <div class="rhead" style="margin-top:16px"><div class="l"><h2>Posisi terbuka (${P.open.length})</h2><p class="note">Diperiksa setiap kali data diperbarui. Urutan: yang perlu tindakan di atas.</p></div></div>
@@ -1437,7 +1419,7 @@ function renderPorto(box){
       ${(()=>{ const n=P.closed.length, cst=P.closed.reduce((s,c)=>s+c.qty*UNIT*c.price*(1+feeRates()[0]),0), lose=n-wins, dd=P.closed.filter(c=>c.days!=null);
         window.__ctot=`<tfoot><tr class="tot"><td><b>TOTAL</b><br><span class="note">${n} transaksi</span></td><td></td><td></td><td class="num">${dd.length?"rata-rata "+nf(dd.reduce((s,c)=>s+c.days,0)/dd.length,0)+" hari":"–"}</td>
           <td class="num ${rz>=0?"ok":"no"}"><b>${money(rz)}</b>${cst?` (${rz>=0?"+":""}${nf(rz/cst*100,2)}%)`:""}<br><span class="note">${wins} untung · ${lose} rugi (${nf(wins/n*100,0)}%)</span></td><td></td></tr></tfoot>`; return ""; })()}
-      ${[...P.closed].reverse().map(c=>`<tr><td><span class="tk">${esc(c.code)}</span><span class="nm">${esc((MID[c.method]||{}).name||"campuran")}</span></td><td class="num">${usd(c.price)}<br><span class="note">${esc(c.date||"")}</span></td><td class="num">${usd(c.sp)}<br><span class="note">${esc(c.sd||"")}</span></td><td class="num">${c.days!=null?c.days+" hari":"–"}</td><td class="num ${c.pl>=0?"ok":"no"}">${money(c.pl)} (${c.plp>=0?"+":""}${nf(c.plp,2)}%)</td><td><button type="button" data-cd="${c.id}" aria-label="Hapus">✕</button></td></tr>`).join("")}</tbody>${window.__ctot||""}</table></div>`:""}
+      ${[...P.closed].reverse().map(c=>`<tr><td><span class="tk">${esc(c.code)}</span><span class="nm">${nf(c.qty,0)} ${UNAME}${c.part?` (sebagian dari ${nf(c.part,0)})`:""} · ${esc((MID[c.method]||{}).name||"campuran")}</span></td><td class="num">${usd(c.price)}<br><span class="note">${esc(c.date||"")}</span></td><td class="num">${usd(c.sp)}<br><span class="note">${esc(c.sd||"")}</span></td><td class="num">${c.days!=null?c.days+" hari":"–"}</td><td class="num ${c.pl>=0?"ok":"no"}">${money(c.pl)} (${c.plp>=0?"+":""}${nf(c.plp,2)}%)</td><td><button type="button" data-cd="${c.id}" aria-label="Hapus">✕</button></td></tr>`).join("")}</tbody>${window.__ctot||""}</table></div>`:""}
     <div class="mcard" style="margin-top:16px"><h4><span>Cadangan data</span></h4><p class="note">Portofolio tersimpan di browser ini saja. Unduh cadangan secara berkala, lalu pulihkan di HP atau laptop lain bila perlu.</p>
       <p style="display:flex;gap:8px;flex-wrap:wrap;margin:0"><button type="button" id="p_exp">⬇ Unduh cadangan</button><label class="btnlike"><input type="file" id="p_imp" accept=".json,application/json" hidden>⬆ Pulihkan dari file</label></p></div>`;
   // events
@@ -1457,10 +1439,19 @@ function renderPorto(box){
     if(b.dataset.sure!=="1"){ b.dataset.sure="1"; b.textContent="Yakin hapus?"; return; }
     P2.open=P2.open.filter(y=>y.id!==x.id); savePorto(P2); renderTabs(); renderResults(); }));
   box.querySelectorAll("[data-cd]").forEach(b=>b.addEventListener("click",()=>{ if(b.dataset.sure!=="1"){ b.dataset.sure="1"; b.textContent="Yakin?"; return; } const P2=porto(); P2.closed=P2.closed.filter(y=>y.id!==b.dataset.cd); savePorto(P2); renderResults(); }));
-  const sok=$("s_ok"); if(sok) sok.addEventListener("click",()=>{ const P2=porto(), x=P2.open.find(y=>y.id===sold), sp=val("s_price"); if(!x||!(sp>0)) return;
-    const [fb,fs,tax]=feeRates(), sh=x.qty*UNIT, cost=sh*x.price*(1+fb), pl=sh*sp*(1-fs)+sh*(x.dps||0)*(1-tax)-cost, sd=$("s_date").value;
-    P2.closed.push({...x,sp,sd,pl,plp:pl/cost*100,days:x.date&&sd?Math.round((new Date(sd)-new Date(x.date))/864e5):null});
-    P2.open=P2.open.filter(y=>y.id!==sold); savePorto(P2); store.set(WP+"porto.sell",""); renderTabs(); renderResults(); });
+  const sCalc=()=>{ const x=P.open.find(y=>y.id===sold); if(!x) return null; const sp=val("s_price"), q=val("s_qty");
+    if(!(sp>0)||!(q>0)||q>x.qty) return {x,err:!(q>0)||q>x.qty?`Jumlah harus 1 sampai ${nf(x.qty,0)} ${UNAME}.`:"Isi harga jual."};
+    const [fb,fs,tax]=feeRates(), sh=q*UNIT, cost=sh*x.price*(1+fb), pl=sh*sp*(1-fs)+sh*(x.dps||0)*(1-tax)-cost; return {x,sp,q,cost,pl}; };
+  const sPrev=()=>{ const el=$("s_prev"); if(!el) return; const c=sCalc(); if(!c) return;
+    el.innerHTML=c.err?`<span class="no">${c.err}</span>`:`Untung/rugi ${c.q} ${UNAME}: <b class="${c.pl>=0?"ok":"no"}">${money(c.pl)} (${c.pl>=0?"+":""}${nf(c.pl/c.cost*100,2)}%)</b>${c.q<c.x.qty?` · sisa <b>${nf(c.x.qty-c.q,0)} ${UNAME}</b> tetap di portofolio`:" · posisi ditutup"}`; };
+  ["s_price","s_qty"].forEach(id=>{ const el=$(id); if(el) el.addEventListener("input",sPrev); }); sPrev();
+  box.querySelectorAll("[data-sq]").forEach(b=>b.addEventListener("click",()=>{ const x=P.open.find(y=>y.id===sold); if(!x) return; const f=+b.dataset.sq;
+    $("s_qty").value=fmtIn(f===1?x.qty:Math.max(1,Math.round(x.qty*f))); sPrev(); }));
+  const sok=$("s_ok"); if(sok) sok.addEventListener("click",()=>{ const c=sCalc(); if(!c||c.err){ sPrev(); return; }
+    const P2=porto(), x=P2.open.find(y=>y.id===sold), sd=$("s_date").value, q=c.q;
+    P2.closed.push({...x,id:x.id+(q<x.qty?"-"+Date.now().toString(36):""),qty:q,sp:c.sp,sd,pl:c.pl,plp:c.pl/c.cost*100,part:q<x.qty?x.qty:undefined,days:x.date&&sd?Math.round((new Date(sd)-new Date(x.date))/864e5):null});
+    if(q<x.qty) x.qty=+(x.qty-q).toFixed(4); else P2.open=P2.open.filter(y=>y.id!==sold);
+    savePorto(P2); store.set(WP+"porto.sell",""); renderTabs(); renderResults(); });
   const sno=$("s_no"); if(sno) sno.addEventListener("click",()=>{ store.set(WP+"porto.sell",""); renderResults(); });
   $("p_exp").addEventListener("click",()=>{ const b=new Blob([JSON.stringify({site:IS_ID?"id":"us",saved:new Date().toISOString(),...porto()},null,1)],{type:"application/json"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=`portofolio-${IS_ID?"indonesia":"us"}-${todayISO()}.json`; document.body.appendChild(a); a.click(); a.remove(); });
@@ -1562,7 +1553,7 @@ function toggleRow(tr){ openTicker=openTicker===tr.dataset.t?null:tr.dataset.t; 
 $("results").addEventListener("click",ev=>{
   const sg=ev.target.closest("#c_sug"); if(sg){ const s=calcState(); s.lots=+sg.dataset.lots; saveCalc(s); renderResults(); return; }
   const tp=ev.target.closest("#c_toporto"); if(tp){ const s=calcState(); s.lots=+tp.dataset.lots; s.pmeth=/CAN SLIM/.test(s.sSrc||"")?"canslim":"lain"; addToPorto(s); return; }
-  const cb=ev.target.closest(".calcbtn"); if(cb){ ev.stopPropagation(); openCalc(cb.dataset.calc); return; }
+  const cb=ev.target.closest(".calcbtn"); if(cb){ ev.stopPropagation(); openCalc(cb.dataset.calc,cb.dataset.e?{entry:+cb.dataset.e,stop:+cb.dataset.s,target:+cb.dataset.tg||null}:null); return; }
   const sb=ev.target.closest(".star"); if(sb){ ev.stopPropagation(); toggleStar(sb.dataset.star); renderTabs(); renderResults(); return; }
   const wr=ev.target.closest("tr.wrow"); if(wr){ store.set(WP+"cy.sel",wr.dataset.go); tab="cycles"; store.set(WP+"tab","cycles"); try{history.replaceState(null,"","#cycles")}catch(e){} renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0,behavior:"smooth"}); return; }
   const tr=ev.target.closest("tr.row"); if(tr) toggleRow(tr); });
