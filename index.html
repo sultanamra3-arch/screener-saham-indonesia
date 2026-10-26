@@ -1018,6 +1018,36 @@ function sigCell(sg){
   return [sg.b.length?`<b class="ok">Layak beli:</b> ${esc(sg.b.join(", "))}`:"", sg.h.length?`<b>💼 Tahan:</b> ${esc(sg.h.join(", "))}`:""].filter(Boolean).join("<br>");
 }
 function watchStrict(t,w,sg){ return (w.strength==="kuat"||w.strength==="sedang")&&sg.any&&(roomOf(t,w)||{ok:true}).ok; }
+// ---------- Rekam jejak Rencana beli ----------
+let TRK=null, TRK_P=null;
+function loadTrk(){ if(TRK_P) return TRK_P;
+  TRK_P=fetch("data/plan_track.json?v="+encodeURIComponent((DATA&&DATA.priceDate)||""),{cache:"no-cache"}).then(r=>r.ok?r.json():null).catch(()=>null).then(j=>(TRK=j||{})); return TRK_P; }
+function trkScore(D){ const n=D.length; if(!n) return null; const r=D.map(x=>x.ret);
+  return {n,tg:D.filter(x=>x.res==="target").length,sl:D.filter(x=>x.res==="stop").length,tm:D.filter(x=>x.res==="time").length,
+    avg:r.reduce((a,b)=>a+b,0)/n,win:r.filter(x=>x>0).length,days:D.map(x=>Math.round((new Date(x.xd)-new Date(x.in))/864e5)).reduce((a,b)=>a+b,0)/n}; }
+function trackCard(){
+  const T=TRK||{}; if(!T.start) return `<p class="note">Pencatatan dimulai pada pembaruan sore berikutnya. Setiap rencana beli dicatat lalu dinilai otomatis: kena target, kena stop, atau waktu habis.</p>`;
+  const done=(T.done||[]), fin=done.filter(x=>x.res!=="nofill"), nof=done.length-fin.length, open=(T.open||[]);
+  const run=open.filter(x=>x.in), wait=open.filter(x=>!x.in);
+  const line=(lbl,s)=>s?`<div><span>${lbl}</span><span class="num"><b>${s.n}</b> selesai · <span class="ok">🎯 ${s.tg}</span> · <span class="no">🛑 ${s.sl}</span> · ⏰ ${s.tm} · rata-rata <b class="${s.avg>=0?"ok":"no"}">${s.avg>=0?"+":""}${nf(s.avg,2)}%</b></span></div>`:`<div><span>${lbl}</span><span class="note">belum ada yang selesai</span></div>`;
+  const all=trkScore(fin);
+  const RES={target:'<span class="st buy">🎯 target</span>',stop:'<span class="st wait">🛑 stop</span>',time:'<span class="st hold">⏰ waktu habis</span>',nofill:'<span class="note">tidak terisi</span>'};
+  const rowsD=[...done].filter(x=>x.res!=="nofill").reverse().slice(0,12).map(x=>`<tr><td><span class="tk">${esc(x.t)}</span><span class="nm">${x.k==="now"?"beli sekarang":"antrean"} · ${tgl(x.d)}</span></td>
+    <td class="num">${x.ip!=null?usd(x.ip):usd(x.e)}</td><td class="num">${x.xp!=null?usd(x.xp):"–"}<br><span class="note">${tgl(x.xd)}</span></td><td>${RES[x.res]||""}</td>
+    <td class="num ${x.ret>=0?"ok":"no"}">${x.ret!=null?(x.ret>=0?"+":"")+nf(x.ret,2)+"%":"–"}</td></tr>`).join("");
+  const rowsO=[...run].sort((a,b)=>(b.cur||0)-(a.cur||0)).map(x=>`<tr><td><span class="tk">${esc(x.t)}</span><span class="nm">${x.k==="now"?"beli sekarang":"antrean terisi"} · ${tgl(x.in)}</span></td>
+    <td class="num">${usd(x.ip)}</td><td class="num">stop ${usd(x.s)}<br><span class="note">${x.g?"target "+usd(x.g):"target terbuka"}</span></td><td><span class="st hold">berjalan</span></td>
+    <td class="num ${x.cur>=0?"ok":"no"}">${x.cur!=null?(x.cur>=0?"+":"")+nf(x.cur,2)+"%":"–"}</td></tr>`).join("");
+  return `<div class="statgrid" style="margin:4px 0 10px">
+      <div>Selesai<b>${fin.length}</b></div><div>Kena target<b class="ok">${all?all.tg:0}${all?` (${nf(all.tg/all.n*100,0)}%)`:""}</b></div>
+      <div>Kena stop<b class="no">${all?all.sl:0}</b></div><div>Rata-rata per transaksi<b class="${all&&all.avg>=0?"ok":"no"}">${all?(all.avg>=0?"+":"")+nf(all.avg,2)+"%":"–"}</b></div></div>
+    <div class="dl" style="font-size:14px">${line("✅ Beli sekarang",trkScore(fin.filter(x=>x.k==="now")))}${line("⏳ Antrean",trkScore(fin.filter(x=>x.k==="queue")))}
+      <div><span>Sedang berjalan · antrean menunggu · tidak terisi</span><span class="num">${run.length} · ${wait.length} · ${nof}</span></div>
+      ${all?`<div><span>Lama rata-rata · menang</span><span class="num">${nf(all.days,0)} hari · ${all.win}/${all.n} (${nf(all.win/all.n*100,0)}%)</span></div>`:""}</div>
+    ${fin.length<20?`<p class="note">Baru ${fin.length} transaksi selesai. Angka mulai bisa dipercaya setelah sekitar 20 transaksi (3–4 minggu).</p>`:""}
+    ${rowsO||rowsD?`<div class="tablebox" style="margin-top:8px"><table><thead><tr><th>Saham</th><th class="num">Beli</th><th class="num">Keluar / batas</th><th>Hasil</th><th class="num">Untung/rugi</th></tr></thead><tbody>${rowsO}${rowsD}</tbody></table></div>`:""}
+    <p class="note">Dicatat sejak ${tgl(T.start,1)} dari Rencana beli setiap sore. 🎯 = harga tertinggi menyentuh target R1; 🛑 = harga ditutup di bawah stop; ⏰ = 40 hari bursa tanpa keduanya (dinilai di harga penutupan). Antrean dianggap terisi bila harga terendah menyentuh harga antrean; tidak tersentuh 10 hari bursa = tidak terisi.${IS_ID?" Sudah dipotong biaya beli 0,15% dan jual 0,25%.":""}</p>`;
+}
 // ---------- Rencana beli (Watchlist) ----------
 function planOf(x){
   const a=CYC.stocks[x.t]; if(!a) return null; const r1=strongRes(a), p=x.o.price, rm=x.rm;
@@ -1067,6 +1097,7 @@ function renderWatch(box){
       <p class="note"><b>✅ Beli sekarang</b> = harga sudah di zona support dan hitungannya layak. <b>⏳ Pasang antrean</b> = pasang order beli di harga itu dan tunggu. ${skip?`${skip} saham lain di area support dilewati karena ruang naiknya sempit. `:""}${zs.n?`Rekam jejak zona ${esc(idxName)}: ${zs.hit} dari ${zs.n} zona yang tersentuh bertahan.`:""}</p></div></div>
     <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th>Aksi</th><th class="num">Beli di</th><th class="num">Stop</th><th class="num">Target</th><th class="num">R:R</th><th>Sinyal</th><th></th></tr></thead><tbody>
     ${list.length?list.slice(0,60).map(row).join(""):`<tr><td colspan="9" class="empty">Belum ada saham yang memenuhi syarat hari ini. Lebih baik menunggu daripada memaksa beli.</td></tr>`}</tbody></table></div>
+    <div class="mcard" style="margin-top:12px"><h4><span>📈 Rekam jejak Rencana beli</span></h4><div id="trk">${TRK?trackCard():'<p class="note">Memuat…</p>'}</div></div>
     <details class="mcard" style="margin-top:10px"><summary><b>Cara membaca rencana beli</b></summary><div class="dl" style="font-size:14px;margin-top:6px">
       <div><span><b>Beli di</b>: harga beli. Untuk “beli sekarang”, beli di harga sekarang atau lebih rendah (“ideal” = batas atas zona support). Untuk antrean, pasang order beli di harga ini.</span></div>
       <div><span><b>Stop</b>: bila harga <b>ditutup</b> di bawah angka ini, support dianggap jebol; jual atau batalkan antrean.</span></div>
@@ -1083,7 +1114,7 @@ function renderWatch(box){
     ${broken.length?`<div class="rhead" style="margin-top:16px"><div class="l"><h2>⚠️ Support jebol hari ini</h2><p class="note">Kemarin di area support, hari ini ditutup di bawah batas jebol. Batalkan antrean dan evaluasi ulang.</p></div></div>
       <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Zona yang jebol</th><th class="num">Di bawah zona</th></tr></thead><tbody>
       ${broken.map(b=>`<tr class="row wrow" data-go="${esc(b.t)}" tabindex="0">${stockCell(byT[b.t])}<td class="num">${usd(b.price)}</td><td class="num">${zr(b)} (${b.strength})</td><td class="num no">${pct(b.drop)}</td></tr>`).join("")}</tbody></table></div>`:""}
-    <p class="note" style="margin-top:8px">Klik baris untuk membuka grafik di tab Siklus. Zona support dan resistance adalah area kemungkinan, bukan jaminan.</p>`;
+    <p class="note" style="margin-top:8px">Klik baris untuk membuka grafik di tab Siklus. Zona support dan resistance adalah area kemungkinan, bukan jaminan.</p>`;  if(!TRK) loadTrk().then(()=>{ const el=$("trk"); if(el) el.innerHTML=trackCard(); });
 }
 
 // ---------- Kalkulator ----------

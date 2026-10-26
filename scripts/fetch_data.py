@@ -369,6 +369,25 @@ SERIES_FILE = DATA / "series.json"
 CYC_STATE = DATA / "cycles_state.json"
 
 
+def _track(idr: bool, fees):
+    """Rekam jejak Rencana beli (hanya update sore/penuh)."""
+    try:
+        import notify_telegram as nt
+        import plan_track
+
+        d = json.loads(OUT_FILE.read_text())
+        c = json.loads(CYC_FILE.read_text())
+        st = d.get("stats") or {}
+        bad = {m for m in ("canslim", "momentum", "swing") if (st.get(m) or {}).get("n", 0) >= 10 and (st.get(m) or {}).get("avg", 0) < 0}
+        allow = nt.INV if nt.market_regime(d, c) == "tertekan" else [m for m in nt.ORDER if m not in bad]
+        pl = plan_track.plans(d, c, allow, nt.layak, idr=idr, liquid_only=idr)
+        s = plan_track.update(DATA / "plan_track.json", DATA / "ohlc", d["priceDate"], pl, fees)
+        sc = plan_track.score(s)
+        log(f"Rekam jejak: {len(pl)} rencana hari ini, {len(s['open'])} berjalan, {sc.get('n', 0)} selesai")
+    except Exception as e:
+        log(f"  rekam jejak gagal: {e}")
+
+
 def _ohlc(close, volume, cols):
     try:
         n = ohlc.write(DATA / "ohlc", close, volume, cols, {"IHSG": INDEX}, rename=lambda c: c[:-3] if str(c).endswith(".JK") else c, decimals=0)
@@ -578,6 +597,7 @@ def main():
     run_cycles(close, {"IHSG": INDEX}, {"ramadan": True, "holidays": set(notify_telegram.HOLIDAYS)},
                liquid, eligible, tick=strategies.tick)
     _ohlc(close, volume, liquid)
+    _track(True, (0.0015, 0.0025))
     log(f"Selesai dalam {(time.time() - t0) / 60:.1f} menit -> {OUT_FILE.relative_to(ROOT)}")
 
     lc = out["liqCount"]

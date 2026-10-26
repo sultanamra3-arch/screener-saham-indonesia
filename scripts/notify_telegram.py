@@ -243,6 +243,30 @@ def support_section(d: dict, show_waits: bool = True) -> list[str]:
 
 
 
+def track_section(d: dict) -> list[str]:
+    """Skor mingguan Rekam jejak Rencana beli (dikirim untuk sesi hari Jumat)."""
+    f = ROOT / "data" / "plan_track.json"
+    if not f.exists() or date.fromisoformat(d["priceDate"]).weekday() != 4:
+        return []
+    import plan_track
+    st = json.loads(f.read_text())
+    s = plan_track.score(st)
+    wk = (date.fromisoformat(d["priceDate"]) - timedelta(days=6)).isoformat()
+    w = plan_track.score(st, since=wk)
+    run = [r for r in st.get("open", []) if r.get("in")]
+    fmt = lambda x: ("+" if x >= 0 else "−") + f"{abs(x):.2f}".replace(".", ",") + "%"
+    L = ["", b("📈 Rekam jejak Rencana beli")]
+    if s.get("n"):
+        L.append(f"Sejak {hari(st['start'], True)}: {s['n']} selesai · 🎯 {s['tg']} target · 🛑 {s['sl']} stop · ⏰ {s['tm']} · rata-rata {fmt(s['avg'])}")
+    else:
+        L.append(f"Dicatat sejak {hari(st['start'], True)}; belum ada transaksi yang selesai.")
+    if w.get("n"):
+        L.append(f"Minggu ini: {w['n']} selesai, rata-rata {fmt(w['avg'])}")
+    if run:
+        L.append(f"Berjalan: {len(run)} posisi, rata-rata {fmt(sum(r.get('cur', 0) for r in run) / len(run))}")
+    return L
+
+
 def extras_section(d: dict) -> list[str]:
     """Insider membeli (AS), arus asing KSEI (ID), dan pengingat ex-dividen."""
     from datetime import date as _date, timedelta as _td
@@ -322,6 +346,7 @@ def morning(d: dict) -> str | None:
     try:
         L += support_section(d)
         L += extras_section(d)
+        L += track_section(d)
     except Exception as ex:
         print(f"Bagian area support dilewati: {ex}")
     L += ["", "Hanya saham likuid (transaksi ≥ Rp5 miliar/hari). Harga sudah dibulatkan ke fraksi BEI.",
