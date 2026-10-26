@@ -347,6 +347,10 @@ def morning(d: dict) -> str | None:
         L += support_section(d)
         L += extras_section(d)
         L += track_section(d)
+        dq = [x for x in d.get("dq") or [] if x.get("liq", "L") == "L"]
+        if dq:
+            L += ["", b(f"🧪 Data janggal ({len(dq)})") + " <i>sinyal terkait tidak dihitung</i>",
+                  " · ".join(f"{b(x['t'])} ({e(x['why'])})" for x in dq[:8]) + (f" · +{len(dq) - 8} lainnya" if len(dq) > 8 else "")]
     except Exception as ex:
         print(f"Bagian area support dilewati: {ex}")
     L += ["", "Hanya saham likuid (transaksi ≥ Rp5 miliar/hari). Harga sudah dibulatkan ke fraksi BEI.",

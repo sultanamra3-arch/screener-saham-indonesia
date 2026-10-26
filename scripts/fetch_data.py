@@ -569,6 +569,9 @@ def main():
     state = load_state()
     log("Menghitung 7 metode ...")
     res = strategies.run(rows, close, volume, day, state, eligible)
+    import dataguard
+    dq = dataguard.apply(rows, close)
+    log(f"  penjaga data: {len(dq)} saham ditandai janggal")
     import divcal
     import ksei
     today = date.fromisoformat(day)
@@ -599,6 +602,7 @@ def main():
         "syariahSource": syr.get("kep"), "missingFundamentals": missing,
         "thresholds": {"liqHi": LIQ_HI, "liqLo": LIQ_LO, "divMin": strategies.DIV_MIN, "fees": [strategies.FEE_BUY, strategies.FEE_SELL]},
         **res,
+        "dq": dq,
         "stocks": rows,
         "etf": etf_info(close),
     }
