@@ -943,6 +943,11 @@ function nearZones(t){
 // ---------- Saran: bahasa sehari-hari ----------
 const SAFE=!!window.CF_SAFE; // versi untuk umum (chartflow.my.id): keterangan aturan, bukan ajakan
 const T=(a,b)=>SAFE?b:a;
+if(SAFE){ ST.buy="Memenuhi syarat"; }
+// versi umum: ganti sisa kata "layak beli" di semua tampilan menjadi "memenuhi syarat"
+function safeText(root){ if(!SAFE||!root) return; const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); let n;
+  while((n=w.nextNode())){ const v=n.nodeValue; if(/layak beli|Rencana beli|rencana beli/i.test(v)) n.nodeValue=v.replace(/Layak beli/g,"Memenuhi syarat").replace(/layak beli/g,"memenuhi syarat").replace(/Rencana beli/g,"Area beli").replace(/rencana beli/g,"area beli"); } }
+if(SAFE){ let tm2=null; new MutationObserver(()=>{ clearTimeout(tm2); tm2=setTimeout(()=>{ safeText(document.getElementById("results")); safeText(document.getElementById("tabs")); safeText(document.getElementById("drawer")); },20); }).observe(document.body,{childList:true,subtree:true}); }
 function seedOf(s){ let h=0; for(const c of String(s)) h=(h*31+c.charCodeAt(0))>>>0; return h; }
 const pick=(a,k)=>a[seedOf(k+((DATA&&DATA.priceDate)||""))%a.length];
 function fracTxt(b){ if(b==null) return null; return b<12?"kurang dari 1 dari 8":b<20?"kurang dari 1 dari 5":b<30?"sekitar 1 dari 4":b<40?"sekitar 1 dari 3":b<60?"sekitar separuh":b<70?"sekitar 2 dari 3":b<85?"sekitar 3 dari 4":"hampir semua"; }
@@ -1623,10 +1628,11 @@ function renderPorto(box){
       <datalist id="p_list">${rows.filter(o=>!IS_ID||o.liq!=="T").map(o=>`<option value="${esc(o.ticker)}">`).join("")}</datalist>
       ${fld("p_price","Harga beli",f.price)}${fld("p_qty","Jumlah ("+UNAME+")",f.qty)}
       <label class="cf" for="p_date"><span>Tanggal beli</span><input type="date" id="p_date" value="${esc(f.date||"")}"></label>
-      <label class="cf" for="p_meth"><span>Dibeli dengan metode</span><select id="p_meth">${methOpts}</select><span class="note" id="p_rule" style="font-size:12px;margin-top:3px">${esc(PRULE[f.method]||"")}</span></label>
+      <label class="cf" for="p_meth"><span>Dibeli dengan metode</span><select id="p_meth">${methOpts}</select></label>
       ${fld("p_stop","Stop loss (opsional)",f.stop)}${fld("p_target","Target (opsional)",f.target)}${fld("p_dps","Dividen diterima per lembar",f.dps)}
     </div>
-    <label class="cf" for="p_why" style="margin-top:8px"><span>📝 Alasan beli (jurnal, opsional)</span><input id="p_why" maxlength="200" value="${esc(f.why||"")}" placeholder="mis. antrean S2 terisi, dividen rutin, RSI jenuh jual"></label>
+    <p class="note" id="p_rule" style="margin:8px 0 0">📏 ${esc(PRULE[f.method]||"")}</p>
+    <label class="cf" for="p_why" style="margin-top:8px"><span>📝 Alasan beli (jurnal, opsional)</span><input type="text" id="p_why" maxlength="200" value="${esc(f.why||"")}" placeholder="mis. antrean S2 terisi, dividen rutin, RSI jenuh jual"></label>
     <p style="margin:8px 0 0;display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="p_save" class="primary">${E?"Simpan perubahan":"➕ Tambah ke portofolio"}</button>${E||pre?`<button type="button" id="p_cancel">Batal</button>`:""}</p>
     <p class="note">Stop dan target boleh dikosongkan: website memakai aturan asli metodenya (misalnya CAN SLIM −7% / +20%, Graham +50%). Biaya transaksi dan pajak dividen mengikuti pengaturan di Kalkulator.</p></div>`;
   const row=({ps,e})=>{ const [stH]=statusOf(e);
@@ -1652,7 +1658,7 @@ function renderPorto(box){
       <p style="margin:6px 0 0;display:flex;gap:6px;flex-wrap:wrap"><button type="button" data-sq="1">Semua</button><button type="button" data-sq="0.5">½</button><button type="button" data-sq="0.3333">⅓</button><button type="button" data-sq="0.25">¼</button></p>
       <p class="note" id="s_prev" style="margin:6px 0 0"></p>
       ${SP.why?`<p class="note" style="margin:6px 0 0">📝 Alasan beli dulu: <i>${esc(SP.why)}</i></p>`:""}
-      <label class="cf" for="s_note" style="margin-top:8px"><span>💭 Catatan / pelajaran (opsional)</span><input id="s_note" maxlength="200" placeholder="mis. jual karena target tercapai; lain kali tunggu konfirmasi"></label>
+      <label class="cf" for="s_note" style="margin-top:8px"><span>💭 Catatan / pelajaran (opsional)</span><input type="text" id="s_note" maxlength="200" placeholder="mis. jual karena target tercapai; lain kali tunggu konfirmasi"></label>
       <p style="margin:8px 0 0;display:flex;gap:8px"><button type="button" id="s_ok" class="primary">Catat penjualan</button><button type="button" id="s_no">Batal</button></p></div><div style="height:10px"></div>`:""}
     ${(()=>{ const ok=new Set(JSON.parse(store.get(WP+"porto.csok")||"[]")), cs=P.open.filter(x=>x.method==="canslim"&&!ok.has(x.id)); if(!cs.length) return "";
       return `<div class="mcard" style="border-left:4px solid var(--warn);margin-bottom:12px"><h4><span>🔎 Cek metode posisi Anda</span></h4>
@@ -1681,8 +1687,8 @@ function renderPorto(box){
   box.querySelectorAll("input.numin").forEach(el=>el.addEventListener("input",()=>liveFmt(el)));
   const val=id=>parseIn(($(id)||{}).value);
   $("p_code").addEventListener("change",ev=>{ const t=ev.target.value.trim().toUpperCase(); ev.target.value=t; const o=rows.find(x=>x.ticker===t); if(o&&!$("p_price").value){ $("p_price").value=fmtIn(o.price); }
-    const sel=$("p_meth"); if(!E&&!sel.dataset.touched){ sel.value=methFor(t); $("p_rule").textContent=PRULE[sel.value]||""; } });
-  $("p_meth").addEventListener("change",ev=>{ ev.target.dataset.touched="1"; $("p_rule").textContent=PRULE[ev.target.value]||""; });
+    const sel=$("p_meth"); if(!E&&!sel.dataset.touched){ sel.value=methFor(t); $("p_rule").textContent="📏 "+(PRULE[sel.value]||""); } });
+  $("p_meth").addEventListener("change",ev=>{ ev.target.dataset.touched="1"; $("p_rule").textContent="📏 "+(PRULE[ev.target.value]||""); });
   $("p_save").addEventListener("click",()=>{
     const code=$("p_code").value.trim().toUpperCase(), price=val("p_price"), qty=val("p_qty");
     if(!code||!(price>0)||!(qty>0)){ alertBox("Isi kode, harga beli, dan jumlah."); return; }
@@ -1822,7 +1828,7 @@ function renderScreen(box){
   const fmtv=(k,v)=>v==null?"–":k==="price"?usd(v):k==="mcap"||k==="adv"?nf(v,0):(FFM[k][2]==="%"&&v>0&&/^(sma|hi|perf)/.test(k)?"+":"")+nf(v,FFM[k][2]==="x"?1:1)+(FFM[k][2]==="%"?"%":FFM[k][2]==="x"?"×":"");
   const rule=(r,i)=>`<div class="frule"><select data-fk="${i}">${FF.map(f=>`<option value="${f[0]}" ${f[0]===r[0]?"selected":""}>${esc(f[1])}</option>`).join("")}</select>
     <select data-fo="${i}"><option value="<" ${r[1]==="<"?"selected":""}>&lt;</option><option value=">" ${r[1]===">"?"selected":""}>&gt;</option></select>
-    <input data-fv="${i}" inputmode="decimal" value="${r[2]??""}" placeholder="nilai"><button type="button" data-fd="${i}" aria-label="Hapus aturan">✕</button></div>`;
+    <input type="text" data-fv="${i}" inputmode="decimal" value="${r[2]??""}" placeholder="nilai"><button type="button" data-fd="${i}" aria-label="Hapus aturan">✕</button></div>`;
   box.innerHTML=`<div class="rhead"><div class="l"><h2>Filter sendiri</h2><p class="note">Buat aturan sendiri seperti di screener Stockbit. Semua aturan harus terpenuhi. Filter likuiditas${IS_ID?", syariah,":""} dan sektor di atas tetap berlaku.</p></div></div>
     <div class="mcard"><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"><span class="note" style="align-self:center">Contoh:</span>${FPRE.map((p,i)=>`<button type="button" data-fp="${i}">${esc(p[0])}</button>`).join("")}</div>
       <div id="frules">${R.map(rule).join("")}</div>

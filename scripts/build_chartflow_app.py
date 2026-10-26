@@ -245,12 +245,25 @@ _ok = (_d.get("market") or {}).get("ok")
 _reg = "naik" if _above >= 60 and _ok is not False else "tertekan" if _above < 40 or (_ok is False and _above < 50) else "campuran"
 _b = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
 _pd = _d.get("priceDate", "")
+# ringkasan Rekam jejak Area beli untuk beranda (tanpa nama saham yang sedang berjalan)
+_trk = None
+try:
+    _t = _json.loads((ROOT / "data" / "plan_track.json").read_text())
+    _D = [r for r in _t.get("done", []) if r.get("res") != "nofill"]
+    _run = [r for r in _t.get("open", []) if r.get("in")]
+    _trk = {"start": _t.get("start"), "n": len(_D), "tg": sum(r["res"] == "target" for r in _D), "sl": sum(r["res"] == "stop" for r in _D),
+            "tm": sum(r["res"] == "time" for r in _D), "avg": round(sum(r["ret"] for r in _D) / len(_D), 2) if _D else None,
+            "win": sum(r["ret"] > 0 for r in _D), "run": len(_run), "wait": sum(1 for r in _t.get("open", []) if not r.get("in")),
+            "last": [{"t": r["t"], "res": r["res"], "ret": r.get("ret"), "d": r.get("xd")} for r in _D[-5:][::-1]]}
+except Exception:
+    pass
 pub = Path(str(out) + "_pub")
 pub.mkdir(parents=True, exist_ok=True)
 (pub / f"{market}.json").write_text(_json.dumps({
     "m": market, "regime": _reg, "above200": _above,
     "layak": sum(1 for o in _rows if any(_layak(o, m) for m in _ORDER)),
     "date": f"{int(_pd[8:10])} {_b[int(_pd[5:7]) - 1]}" if len(_pd) >= 10 else "",
+    "trk": _trk,
 }))
 
 print(f"Salinan {market} siap di {out}: {sum(1 for _ in out.rglob('*') if _.is_file())} file")

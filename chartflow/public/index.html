@@ -84,6 +84,11 @@ section{padding:72px 0}
 .step:before{counter-increment:s;content:counter(s);position:absolute;top:22px;right:22px;font-size:44px;font-weight:800;color:var(--sunk);line-height:1}
 .step h3{font-size:18px;margin-bottom:8px}.step p{color:var(--muted);font-size:15px}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
+h3.grp{font-size:18px;margin:30px 0 14px;display:flex;align-items:center;gap:8px}h3.grp:first-of-type{margin-top:0}
+.jgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.jcard{background:var(--surface);border-radius:var(--r);padding:22px;box-shadow:var(--shadow)}
+.jcard h3{margin:0 0 12px;font-size:17px}.jnum{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}.jnum div{background:var(--bg);border-radius:12px;padding:10px;text-align:center}
+.jnum b{display:block;font-size:22px}.jnum span{font-size:12px;color:var(--muted)}.jlast{font-size:13.5px;display:grid;gap:4px}.jlast div{display:flex;justify-content:space-between}
+@media (max-width:760px){.jgrid{grid-template-columns:1fr}.jnum{grid-template-columns:repeat(2,1fr)}}
 .split img{width:100%;border-radius:16px;box-shadow:var(--shadow);border:1px solid var(--line)}
 .ticks{list-style:none;padding:0;margin:18px 0 0;display:grid;gap:10px}
 .ticks li{padding-left:30px;position:relative;color:var(--muted)}
@@ -145,7 +150,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
 /* ---------- warna: Aurora ---------- */
 .hero{background:radial-gradient(1200px 600px at 80% -10%,rgba(59,91,255,.33),transparent),linear-gradient(160deg,#0b1030 0%,#1a1458 45%,#0b3b4a 100%);color:#fff}
 .hero p.lead,.hero .note{color:#c7d2fe}
-.hero .pill{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.19);color:#e0e7ff}
+.hero .pill{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.19);color:#e0e7ff}.hero .pill b{color:#6ee7b7!important;-webkit-text-fill-color:#6ee7b7}
 .blob{opacity:.55!important}.b1{background:#4f7bff}.b2{background:#10e3a1}.b3{background:#c026d3}
 .candles{opacity:.45}
 #rot{background:linear-gradient(90deg,#7dd3fc,#34f5c5,#f0abfc);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -208,7 +213,7 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
 <body>
 <nav class="nav"><div class="wrap">
   <a class="brand" href="#"><img src="/img/icon-192.png" alt="">ChartFlow</a>
-  <div class="links"><a href="#fitur">Fitur</a><a href="#lihat">Tampilan</a><a href="#metode">Metode</a><a href="#cara">Cara kerja</a><a href="#faq">FAQ</a></div>
+  <div class="links"><a href="#fitur">Fitur</a><a href="#lihat">Tampilan</a><a href="#jejak">Rekam jejak</a><a href="#metode">Metode</a><a href="#faq">FAQ</a></div>
   <div class="act"><button class="ic" id="theme" aria-label="Ganti tema">🌙</button><button class="btn sec" data-open="req">Minta akses</button><button class="btn pri" data-open="login">Masuk</button></div>
 </div></nav>
 
@@ -216,50 +221,67 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
   <div>
     <span class="pill">🟢 Data diperbarui otomatis · <b>2× sehari</b> untuk BEI</span>
     <h1>Temukan saham terbaik dengan metode <span id="rot">para ahli</span><span class="caret" aria-hidden="true"></span></h1>
-    <p class="lead">Screener saham Bursa Efek Indonesia dan Wall Street yang menyaring setiap saham dengan 7 metode investor dan trader ternama, lengkap dengan area beli, batas rugi, dan target menurut aturan tiap metode, beserta alasannya.</p>
+    <p class="lead">Saham BEI dan Wall Street disaring dengan 7 metode investor dan trader ternama, lengkap dengan grafik dan indikator ala aplikasi sekuritas, area beli menurut aturan, dan alarm harga ke Telegram Anda.</p>
     <div class="cta"><button class="btn pri" data-open="login">Masuk dengan kode →</button><button class="btn sec" data-open="req">Minta kode akses</button></div>
     <p class="note">Akses terbatas dan gratis. Kode diberikan setelah permintaan Anda disetujui. Informasi edukasi, bukan ajakan membeli atau menjual.</p>
     <p class="note apkl" hidden><a href="/download/ChartFlow.apk" download id="apkLink">📱 Unduh aplikasi Android (APK)</a></p>
   </div>
-  <div class="shot"><img class="desk" src="/img/shot-watch.webp" alt="Tampilan Watchlist area support"><img class="mob" src="/img/shot-mobile.webp" alt="Tampilan di HP"></div>
+  <div class="shot"><img class="desk" src="/img/shot-chart.webp" alt="Grafik dengan indikator MA, RSI, dan MACD"><img class="mob" src="/img/shot-mobile.webp" alt="Tampilan Area beli di HP"></div>
 </div>
 <div class="wrap stw"><div class="stats">
   <div class="stat"><b data-count="839">839</b><span>saham BEI disaring otomatis</span></div>
   <div class="stat"><b data-count="518">518</b><span>saham S&amp;P 500 + Nasdaq-100</span></div>
   <div class="stat"><b data-count="7">7</b><span>metode dengan aturan aslinya</span></div>
-  <div class="stat"><b>Telegram</b><span>peringatan otomatis setiap hari</span></div>
+  <div class="stat"><b data-count="8">8</b><span>indikator grafik dengan bacaan otomatis</span></div>
 </div></div>
 <div class="tape" aria-label="Ringkasan"><div class="tape-in" id="tape"></div></div></header>
 
 <section id="fitur"><div class="wrap">
-  <div class="sh"><span class="k">Fitur</span><h2>Semua yang Anda butuhkan untuk memutuskan</h2><p>Dari mencari saham, menentukan harga beli, sampai menjaga posisi yang sudah dibeli.</p></div>
+  <div class="sh"><span class="k">Fitur</span><h2>Dari mencari saham sampai menjaga posisi</h2><p>Semua alat yang biasanya tersebar di beberapa aplikasi, dalam satu tempat dan dengan bahasa yang mudah dipahami.</p></div>
+  <h3 class="grp">🔎 Mencari saham</h3>
   <div class="grid">
-    <div class="card"><div class="e">🎯</div><h3>Sinyal jelas</h3><p>Memenuhi syarat, terlambat, atau ada tanda jual menurut tiap metode, dengan harga batas beli dan alasannya.</p></div>
-    <div class="card"><div class="e">📍</div><h3>Area support S1–S3</h3><p>Saham yang sedang di area support dengan ruang naik cukup (R:R ≥ 1:2), plus antrean di support berikutnya.</p></div>
-    <div class="card"><div class="e">💼</div><h3>Portofolio</h3><p>Catat pembelian, untung/rugi setelah biaya, dan peringatan saat kena stop, capai target, atau sinyal jual.</p></div>
-    <div class="card"><div class="e">🧮</div><h3>Kalkulator lot</h3><p>Berapa lot yang aman dibeli, rugi jika kena stop, untung di target, dan harga impas.</p></div>
-    <div class="card"><div class="e">🗺️</div><h3>Peta sektor</h3><p>Sektor yang sedang diburu atau ditinggalkan investor, dan sektor yang mulai bangkit.</p></div>
-    <div class="card"><div class="e">🌏</div><h3>Arus uang besar</h3><p>Perubahan kepemilikan asing dan institusi (KSEI) serta pembelian oleh direksi (insider) di AS.</p></div>
-    <div class="card"><div class="e">📅</div><h3>Kalender dividen</h3><p>Jadwal ex-dividen, perkiraan dividen dan yield, serta kapan paling lambat membeli.</p></div>
-    <div class="card"><div class="e">📲</div><h3>Aplikasi &amp; Telegram</h3><p>Pasang di HP seperti aplikasi. Ringkasan sinyal dan pengingat penting dikirim ke Telegram.</p></div>
+    <div class="card"><div class="e">🧭</div><h3>7 metode, bahasa sederhana</h3><p>Setiap saham dinilai 7 metode. Keterangannya ringkas: memenuhi syarat, belum di area beli, atau ada tanda jual, beserta alasannya.</p></div>
+    <div class="card"><div class="e">🎛️</div><h3>Filter sendiri</h3><p>Susun aturan sendiri seperti screener Stockbit: PER, ROE, yield, RSI, jarak dari MA, dan lainnya. Simpan sebagai favorit.</p></div>
+    <div class="card"><div class="e">⚖️</div><h3>Bandingkan saham</h3><p>2–3 saham berdampingan: valuasi, pertumbuhan, dividen, kinerja, dan status tiap metode. Angka terbaik langsung ditandai.</p></div>
+    <div class="card"><div class="e">🔍</div><h3>Pencarian cepat</h3><p>Ketik kode atau nama perusahaan dari halaman mana pun, rinciannya langsung terbuka.</p></div>
   </div>
+  <h3 class="grp">🎯 Menentukan harga</h3>
+  <div class="grid">
+    <div class="card"><div class="e">📍</div><h3>Area beli</h3><p>Harga beli, batas rugi, dan target menurut aturan, dari zona support terdekat. Hanya yang calon untungnya minimal 2× calon rugi.</p></div>
+    <div class="card"><div class="e">🕯️</div><h3>Grafik & 8 indikator</h3><p>Candlestick dan volume dengan MA 20/50/200, EMA, Bollinger, VWAP, RSI, MACD, dan Stochastic RSI. Masing-masing dengan bacaan otomatis.</p></div>
+    <div class="card"><div class="e">📈</div><h3>Zona support & resistance</h3><p>Dari Fibonacci, titik balik, rata-rata bergerak, dan angka bulat. Setiap unsur diuji: mana yang terbukti, mana yang tidak.</p></div>
+    <div class="card"><div class="e">🧮</div><h3>Kalkulator lot</h3><p>Berapa lot, rugi bila kena batas rugi, untung di target, dan harga impas setelah biaya.</p></div>
+  </div>
+  <h3 class="grp">🛡️ Menjaga posisi</h3>
+  <div class="grid">
+    <div class="card"><div class="e">💼</div><h3>Portofolio & jurnal</h3><p>Untung/rugi setelah biaya, alasan beli dan pelajaran saat jual, serta statistik pribadi: metode mana yang paling cocok untuk Anda.</p></div>
+    <div class="card"><div class="e">🔔</div><h3>Alarm ke Telegram</h3><p>Pasang alarm harga, lalu terima pesan di Telegram Anda sendiri. Posisi yang menyentuh batas rugi atau target juga dikabari.</p></div>
+    <div class="card"><div class="e">📅</div><h3>Kalender dividen</h3><p>Jadwal ex-dividen, perkiraan dividen dan yield, serta batas terakhir membeli.</p></div>
+    <div class="card"><div class="e">🌏</div><h3>Arus uang & sektor</h3><p>Kepemilikan asing dan institusi (KSEI), pembelian direksi di AS, dan sektor yang sedang diburu atau ditinggalkan.</p></div>
+  </div>
+  <p class="note" style="text-align:center;margin-top:22px">📱 Bisa dipasang sebagai aplikasi Android, tampilannya menyesuaikan HP, dan portofolio Anda tersimpan di akun, jadi ikut muncul di perangkat lain.</p>
 </div></section>
 
 
 <section id="lihat" style="padding-top:20px"><div class="wrap">
-  <div class="sh"><span class="k">Di dalamnya</span><h2>Lihat langsung isinya</h2><p>Tampilan asli dari screener, diperbarui otomatis setiap hari.</p></div>
+  <div class="sh"><span class="k">Di dalamnya</span><h2>Lihat langsung isinya</h2><p>Tampilan asli dari ChartFlow, diperbarui otomatis setiap hari.</p></div>
   <div class="stabs" id="stabs">
-    <button class="stab" data-i="0" aria-pressed="true">📍 Watchlist<span class="bar"></span></button>
-    <button class="stab" data-i="1" aria-pressed="false">💼 Portofolio<span class="bar"></span></button>
-    <button class="stab" data-i="2" aria-pressed="false">🗺️ Peta sektor<span class="bar"></span></button>
-    <button class="stab" data-i="3" aria-pressed="false">🧮 Kalkulator<span class="bar"></span></button>
+    <button class="stab" data-i="0" aria-pressed="true">📍 Area beli<span class="bar"></span></button>
+    <button class="stab" data-i="1" aria-pressed="false">🕯️ Grafik<span class="bar"></span></button>
+    <button class="stab" data-i="2" aria-pressed="false">💼 Portofolio<span class="bar"></span></button>
+    <button class="stab" data-i="3" aria-pressed="false">📊 Jurnal<span class="bar"></span></button>
+    <button class="stab" data-i="4" aria-pressed="false">🎛️ Filter<span class="bar"></span></button>
+    <button class="stab" data-i="5" aria-pressed="false">⚖️ Bandingkan<span class="bar"></span></button>
   </div>
   <div class="show" id="show">
-    <img class="on" src="/img/shot-watch.webp" alt="Watchlist area support S1–S3">
+    <img class="on" src="/img/shot-watch.webp" alt="Area beli: harga beli, batas rugi, dan target">
+    <img src="/img/shot-chart.webp" alt="Grafik dengan indikator" loading="lazy">
     <img src="/img/shot-porto.webp" alt="Portofolio dengan untung/rugi dan status" loading="lazy">
-    <img src="/img/shot-sector.webp" alt="Peta sektor" loading="lazy">
-    <img src="/img/shot-calc.webp" alt="Kalkulator lot dan risiko" loading="lazy">
+    <img src="/img/shot-jurnal.webp" alt="Statistik jurnal trading" loading="lazy">
+    <img src="/img/shot-screen.webp" alt="Filter sendiri" loading="lazy">
+    <img src="/img/shot-compare.webp" alt="Bandingkan saham" loading="lazy">
   </div>
+  <p class="note" style="text-align:center;margin-top:10px">Contoh portofolio dan jurnal di atas memakai data contoh.</p>
 </div></section>
 
 <section id="metode" style="padding-top:20px"><div class="wrap">
@@ -275,11 +297,10 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
   </div>
 </div></section>
 
-<section><div class="wrap split">
-  <div><span class="pill">📈 Siklus &amp; Fibonacci</span><h2 style="font-size:34px;margin:14px 0 10px">Zona harga yang terukur, bukan tebakan</h2>
-    <p style="color:var(--muted)">Support dan resistance dari Fibonacci, titik balik, rata-rata bergerak, dan angka bulat. Setiap unsur diuji: mana yang terbukti lebih baik dari acak, mana yang tidak.</p>
-    <ul class="ticks"><li><b>Jujur soal bukti</b>: unsur yang tidak terbukti ditandai “tidak berbeda dari acak”.</li><li><b>Rentang minggu depan</b> dan kesehatan pasar (breadth) untuk IHSG dan S&amp;P 500.</li><li><b>Klik saham</b> untuk melihat grafik, zona, dan keterangan singkatnya.</li></ul></div>
-  <img src="/img/shot-chart.webp" alt="Grafik zona support dan resistance">
+<section id="jejak" style="padding-top:20px"><div class="wrap">
+  <div class="sh"><span class="k">Rekam jejak terbuka</span><h2>Kami catat hasilnya, menang atau kalah</h2><p>Setiap saham yang masuk Area beli dicatat otomatis, lalu dinilai: menyentuh target, menyentuh batas rugi, atau habis waktu 40 hari bursa. Tidak ada yang dihapus.</p></div>
+  <div class="jgrid" id="jejakBox"><div class="jcard"><p class="note">Memuat rekam jejak…</p></div></div>
+  <p class="note" style="text-align:center;margin-top:12px">Hasil masa lalu tidak menjamin hasil berikutnya. Sudah termasuk perkiraan biaya transaksi untuk BEI.</p>
 </div></section>
 
 <section id="cara"><div class="wrap">
@@ -287,7 +308,7 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
   <div class="steps">
     <div class="step"><h3>Minta akses</h3><p>Isi nama dan kontak Anda. Permintaan langsung masuk ke pengelola.</p></div>
     <div class="step"><h3>Terima kode</h3><p>Setelah disetujui, Anda menerima kode akses pribadi lewat WhatsApp atau Telegram.</p></div>
-    <div class="step"><h3>Masuk &amp; pakai</h3><p>Masukkan kode, lalu pakai screener BEI dan Wall Street di HP maupun laptop.</p></div>
+    <div class="step"><h3>Masuk &amp; pakai</h3><p>Masukkan kode, lalu pakai ChartFlow di HP, laptop, atau aplikasi Android. Hubungkan Telegram untuk alarm.</p></div>
   </div>
 </div></section>
 
@@ -295,8 +316,12 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
   <div class="sh"><span class="k">FAQ</span><h2>Pertanyaan umum</h2></div>
   <details class="faq"><summary>Dari mana datanya?</summary><p>Harga dan laporan keuangan dari Yahoo Finance dan Finnhub, kepemilikan efek dari KSEI, daftar syariah dari OJK. Data BEI diperbarui saat istirahat siang dan setelah bursa tutup; data AS setiap pagi.</p></details>
   <details class="faq"><summary>Apakah ini saran investasi?</summary><p>Bukan. Semua sinyal adalah hitungan mekanis dari aturan tiap metode. Keputusan dan risiko tetap di tangan Anda.</p></details>
+  <details class="faq"><summary>Apakah gratis?</summary><p>Ya. ChartFlow gratis; akses dibatasi dengan kode supaya layanan tetap terjaga.</p></details>
   <details class="faq"><summary>Berapa lama kode berlaku?</summary><p>30 hari dan bisa diperpanjang. Satu kode dapat dipakai di maksimal 2 perangkat.</p></details>
-  <details class="faq"><summary>Bisa dipakai di HP?</summary><p>Bisa. Tampilan dibuat untuk HP dan bisa dipasang di layar utama seperti aplikasi.</p></details>
+  <details class="faq"><summary>Perangkat saya penuh, bagaimana?</summary><p>Di kotak Masuk akan muncul tombol untuk mengeluarkan perangkat yang paling lama tidak dipakai. Bisa dilakukan sendiri 1× per 24 jam, dan portofolio Anda tetap aman.</p></details>
+  <details class="faq"><summary>Alarm dan peringatan dikirim lewat apa?</summary><p>Lewat Telegram pribadi Anda. Setelah masuk, buka 🔔 lalu tekan "Hubungkan Telegram". Harga dicek saat data diperbarui (BEI sekitar 12.15 dan 17.45 WIB, AS sekitar 05.45 WIB), jadi bukan real-time.</p></details>
+  <details class="faq"><summary>Seberapa akurat sinyalnya?</summary><p>Tidak ada sinyal yang selalu benar. Karena itu kami mencatat hasil Area beli secara terbuka di bagian <a href="#jejak">Rekam jejak</a>, termasuk yang menyentuh batas rugi.</p></details>
+  <details class="faq"><summary>Ada aplikasinya?</summary><p>Ada aplikasi Android (APK) yang bisa diunduh dari halaman ini. Di iPhone, buka lewat Safari lalu pilih "Tambahkan ke Layar Utama". Tampilannya menyesuaikan HP.</p></details>
 </div></section>
 
 <section style="padding-top:10px"><div class="wrap"><div class="ctaBox"><div><h2>Siap mencoba?</h2><p>Minta kode akses sekarang. Biasanya disetujui di hari yang sama.</p></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn pri" data-open="req">Minta kode akses</button><button class="btn sec" data-open="login" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.5)">Saya sudah punya kode</button></div></div></div></section>
@@ -375,7 +400,7 @@ const RM=matchMedia("(prefers-reduced-motion: reduce)").matches;
 })();
 // muncul saat digulir + angka menghitung
 (function(){
-  document.querySelectorAll(".card,.m,.step,.split>*,.sh,details.faq,.ctaBox,.stat,.show,.stabs").forEach(e=>e.classList.add("rv"));
+  document.querySelectorAll(".card,.m,.step,.split>*,.sh,details.faq,.ctaBox,.stat,.show,.stabs,.jgrid,h3.grp").forEach(e=>e.classList.add("rv"));
   if(RM||!("IntersectionObserver" in window)){ document.querySelectorAll(".rv").forEach(e=>e.classList.add("in")); return; }
   const io=new IntersectionObserver(es=>es.forEach(e=>{ if(!e.isIntersecting) return; const t=e.target; io.unobserve(t);
     const sib=[...t.parentNode.children].filter(x=>x.classList.contains("rv")); t.style.transitionDelay=Math.min(sib.indexOf(t),7)*80+"ms"; t.classList.add("in");
@@ -397,7 +422,17 @@ const RM=matchMedia("(prefers-reduced-motion: reduce)").matches;
   render([]);
   Promise.all(["id","us"].map(m=>fetch("/pub/"+m+".json",{cache:"no-cache"}).then(r=>r.ok?r.json():null).catch(()=>null))).then(([a,b])=>{
     const ex=[]; const one=(d,f,nm)=>{ if(!d) return; ex.push(`<span>${f} ${nm}: ${tag[d.regime]||d.regime} <span class="mu">${d.above200}% saham tren naik</span></span>`); ex.push(`<span>${f} <b>${d.layak}</b> saham memenuhi syarat beli <span class="mu">(${d.date})</span></span>`); };
-    one(a,"🇮🇩","IHSG"); one(b,"🇺🇸","S&amp;P 500"); if(ex.length) render(ex); });
+    one(a,"🇮🇩","IHSG"); one(b,"🇺🇸","S&amp;P 500"); if(ex.length) render(ex);
+    const box=$("jejakBox"); if(!box) return;
+    const BL=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"], tg=d=>d?`${+d.slice(8,10)} ${BL[+d.slice(5,7)-1]} ${d.slice(0,4)}`:"";
+    const RS={target:"🎯 target",stop:"🛑 batas rugi",time:"⏰ waktu habis"};
+    const card=(d,f,nm)=>{ const t=d&&d.trk; if(!t) return `<div class="jcard"><h3>${f} ${nm}</h3><p class="note">Pencatatan dimulai pada pembaruan data berikutnya.</p></div>`;
+      const pc=v=>v==null?"–":(v>=0?"+":"")+String(v.toFixed(2)).replace(".",",")+"%";
+      return `<div class="jcard"><h3>${f} ${nm} <span class="note" style="font-weight:400">sejak ${tg(t.start)}</span></h3>
+        <div class="jnum"><div><b>${t.n}</b><span>selesai</span></div><div><b style="color:var(--good)">${t.tg}</b><span>🎯 target</span></div><div><b style="color:var(--bad)">${t.sl}</b><span>🛑 batas rugi</span></div><div><b style="color:${t.avg==null?"inherit":t.avg>=0?"var(--good)":"var(--bad)"}">${pc(t.avg)}</b><span>rata-rata</span></div></div>
+        <p class="note" style="margin:0 0 8px">${t.run} sedang berjalan · ${t.wait} menunggu area beli${t.n&&t.n<20?` · angka mulai bermakna setelah ±20 transaksi`:""}</p>
+        ${t.last&&t.last.length?`<div class="jlast">${t.last.map(x=>`<div><span><b>${x.t}</b> · ${RS[x.res]||x.res}</span><span style="color:${x.ret>=0?"var(--good)":"var(--bad)"}">${pc(x.ret)}</span></div>`).join("")}</div>`:`<p class="note" style="margin:0">Belum ada transaksi yang selesai.</p>`}</div>`; };
+    box.innerHTML=card(a,"🇮🇩","Bursa Efek Indonesia")+card(b,"🇺🇸","Wall Street"); });
 })();
 // tampilan berganti otomatis
 (function(){
