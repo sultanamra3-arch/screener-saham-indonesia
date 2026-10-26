@@ -5,7 +5,7 @@ const CF_USER_MAX = 500000; // byte per akun
 $u = session_user();
 if (!$u) json_out(['ok' => false, 'msg' => 'login'], 401);
 $file = user_file($u['code']);
-$KEY = '/^(si|ss)\.(porto|star|calc)$/';
+$KEY = '/^(si|ss)\.(porto|star|calc|flt|cmp)$/';
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $d = is_file($file) ? (json_decode((string)file_get_contents($file), true) ?: []) : [];

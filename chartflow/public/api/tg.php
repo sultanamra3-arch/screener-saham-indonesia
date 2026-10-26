@@ -59,7 +59,7 @@ if ($m && ((string)($m['chat']['id'] ?? '') !== (string)CF_CHAT_ID || preg_match
         if ($hit) { foreach ($db['codes'] as $c => $v) if (($v['tg'] ?? null) == $cid) unset($db['codes'][$c]['tg']); $db['codes'][$hit]['tg'] = $cid; }
         db_save($fh, $db);
         $say($hit ? '✅ Telegram terhubung ke akun ChartFlow <b>' . h($db['codes'][$hit]['name'] ?? '') . "</b>.
-Alarm harga yang Anda pasang di website akan dikirim ke sini. Ketik /stop untuk memutus."
+Alarm harga dan peringatan portofolio Anda (kena stop, target, sinyal jual) akan dikirim ke sini. Ketik /stop untuk memutus."
             : 'Tautan tidak dikenal atau kode akses sudah tidak aktif. Buka menu 🔔 Alarm di chartflow.my.id lalu tekan "Hubungkan Telegram" lagi.');
         if ($hit) tg('sendMessage', ['chat_id' => CF_CHAT_ID, 'text' => '🔔 ' . h($db['codes'][$hit]['name'] ?? $hit) . ' menghubungkan Telegram untuk alarm harga.']);
     } elseif (preg_match('#^/stop#', $txt)) {

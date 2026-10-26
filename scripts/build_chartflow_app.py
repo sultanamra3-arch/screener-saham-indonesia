@@ -36,7 +36,7 @@ for a, b in rep:
 HEAD_JS = r'''<script>
 /* ChartFlow: muat data akun dari server sebelum aplikasi berjalan */
 (function(){
-  var KEYS=["si.porto","ss.porto","si.star","ss.star","si.calc","ss.calc"];
+  var KEYS=["si.porto","ss.porto","si.star","ss.star","si.calc","ss.calc","si.flt","ss.flt","si.cmp","ss.cmp"];
   window.CF_KEYS=KEYS;
   try{
     var x=new XMLHttpRequest(); x.open("GET","/api/store.php",false); x.send();
@@ -149,7 +149,7 @@ ALARM_JS = r"""<dialog id="cfAl"><div class="b">
   function api(body){ return fetch("/api/alarm.php",body?{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{credentials:"same-origin"}).then(function(r){ return r.json(); }); }
   function paint(){
     if(!ST) return; var t=$("alCode").value.trim().toUpperCase();
-    $("alTg").innerHTML=ST.linked?'<div class="tgbox" style="background:var(--good-soft);color:var(--good)">✅ Telegram terhubung. Alarm dikirim ke Telegram Anda. <a href="#" id="alUn" style="color:inherit">Putuskan</a></div>'
+    $("alTg").innerHTML=ST.linked?'<div class="tgbox" style="background:var(--good-soft);color:var(--good)">✅ Telegram terhubung. Alarm harga dan peringatan portofolio (stop, target, sinyal jual) dikirim ke Telegram Anda. <a href="#" id="alUn" style="color:inherit">Putuskan</a></div>'
       :'<div class="tgbox" style="background:var(--warn-soft);color:var(--warn)"><b>Hubungkan Telegram dulu</b> supaya alarm bisa dikirim.<br>'+(ST.link?'<a class="primary" href="'+ST.link+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:7px 12px;border-radius:10px;text-decoration:none;background:var(--accent);color:var(--accent-ink);font-weight:700">📲 Hubungkan Telegram</a> <a href="#" id="alRe" style="color:inherit;margin-left:6px">Sudah, cek lagi</a><br><span style="font-weight:400">Telegram terbuka → tekan <b>Mulai/Start</b>.</span>':"Bot belum siap; coba lagi nanti.")+'</div>';
     var L=ST.alarms||[];
     $("alCnt").textContent="("+L.length+" dari "+ST.max+")";
