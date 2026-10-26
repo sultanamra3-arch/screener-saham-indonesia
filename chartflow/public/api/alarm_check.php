@@ -85,23 +85,23 @@ foreach ($db['codes'] as $code => $c) {
             if ($cl && max(array_merge($cl, [$p])) >= $buy * 1.10 && $stop < $buy) $stop = $buy;
         } elseif ($meth === 'value') {
             $target = $target ?: $buy * 1.5;
-            if ($days !== null && $days >= 730) $ev['2y'] = '⏰ sudah 2 tahun: aturan Graham menyuruh jual walau target belum tercapai';
+            if ($days !== null && $days >= 730) $ev['2y'] = '⏰ sudah 2 tahun: batas waktu aturan Graham terpenuhi';
         } elseif ($meth === 'growth') {
             if (!$target && !empty($st['lv']['target'])) $target = (float)$st['lv']['target'];
         } elseif ($meth === 'quality') {
-            if (!empty($st['lv']['sell']) && $p >= $st['lv']['sell']) $ev['q'] = '🔴 harga sudah sangat mahal (FCF yield < 1,5%): aturan Terry Smith menyuruh jual';
+            if (!empty($st['lv']['sell']) && $p >= $st['lv']['sell']) $ev['q'] = '🔴 harga sudah sangat mahal (FCF yield < 1,5%): aturan jual Terry Smith terpenuhi';
         } elseif ($meth === 'dividend') {
             if (isset($o['payout']) && $o['payout'] > 100) $ev['pay'] = '🔴 payout di atas 100%: dividen berisiko dipotong';
         } elseif ($meth === 'momentum') {
-            if (isset($o['momRank']) && $o['momRank'] < 80) $ev['mom'] = '🔴 peringkat momentum ' . round($o['momRank']) . ' (< 80): jual pada pengecekan awal bulan';
+            if (isset($o['momRank']) && $o['momRank'] < 80) $ev['mom'] = '🔴 peringkat momentum ' . round($o['momRank']) . ' (< 80): aturan jual Momentum terpenuhi';
         } elseif ($meth === 'swing') {
             $cl = $closes($t, '0000'); $a5 = array_slice($cl, -5);
-            if (count($a5) === 5 && $p > array_sum($a5) / 5) $ev['s5'] = '🔴 harga sudah di atas SMA5: aturan Connors menyuruh jual';
+            if (count($a5) === 5 && $p > array_sum($a5) / 5) $ev['s5'] = '🔴 harga sudah di atas rata-rata 5 hari: aturan jual Connors terpenuhi';
         }
-        if ($st && ($st['s'] ?? '') === 'sell') $ev['sell'] = '🔴 sinyal Jual ' . ($NAMES[$meth] ?? $meth) . (!empty($st['rs']) ? ': ' . $st['rs'] : '');
-        if ($stop && $p <= $stop) $ev['stop'] = '🛑 kena stop loss ' . money_fmt($stop, $m) . ': jual';
-        if ($target && $p >= $target) $ev['tgt'] = '🎯 target ' . money_fmt($target, $m) . ' tercapai' . ($meth === 'canslim' ? ": jual untung (O'Neil)" : ': pertimbangkan jual');
-        if (isset($broken[$t])) $ev['brk:' . $day] = '⚠️ support jebol hari ini: evaluasi ulang';
+        if ($st && ($st['s'] ?? '') === 'sell') $ev['sell'] = '🔴 tanda jual metode ' . ($NAMES[$meth] ?? $meth) . (!empty($st['rs']) ? ': ' . $st['rs'] : '');
+        if ($stop && $p <= $stop) $ev['stop'] = '🛑 harga menyentuh batas rugi ' . money_fmt($stop, $m) . ' (aturan stop)';
+        if ($target && $p >= $target) $ev['tgt'] = '🎯 target ' . money_fmt($target, $m) . ' tercapai (aturan target' . ($meth === 'canslim' ? " O'Neil" : '') . ')';
+        if (isset($broken[$t])) $ev['brk:' . $day] = '⚠️ harga ditutup di bawah lantai harga (support) hari ini';
         $keys = array_keys($ev);
         $keepSeen[$id] = array_values(array_filter($keys, function ($k) { return strpos($k, 'brk:') !== 0; }));
         $new = array_diff($keys, $seen[$id] ?? []);
@@ -111,7 +111,7 @@ foreach ($db['codes'] as $code => $c) {
     }
     if ($lines) {
         $r = tg('sendMessage', ['chat_id' => $c['tg'], 'parse_mode' => 'HTML', 'disable_web_page_preview' => true,
-            'text' => "💼 <b>Portofolio ChartFlow</b> (" . ($m === 'id' ? 'BEI' : 'AS') . ")\n\n" . implode("\n\n", $lines) . "\n\n<i>Hitungan mekanis aturan metode, bukan saran investasi. Peringatan yang sama tidak dikirim ulang.</i>"]);
+            'text' => "💼 <b>Portofolio ChartFlow</b> (" . ($m === 'id' ? 'BEI' : 'AS') . ")\n\n" . implode("\n\n", $lines) . "\n\n<i>Informasi otomatis dari aturan metode yang Anda pilih, bukan ajakan membeli atau menjual. Keputusan sepenuhnya di tangan Anda. Peringatan yang sama tidak dikirim ulang.</i>"]);
         if (empty($r['ok'])) continue;   // gagal: coba lagi pada pembaruan berikutnya
         $psent++;
     }

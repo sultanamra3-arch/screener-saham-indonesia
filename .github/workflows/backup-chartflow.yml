@@ -1,9 +1,9 @@
-name: Cadangan mingguan ChartFlow ke Telegram
+name: Cadangan harian ChartFlow ke Telegram
 
 on:
   schedule:
-    # 13:07 UTC Minggu = 20:07 WIB
-    - cron: "7 13 * * 0"
+    # 13:07 UTC setiap hari = 20:07 WIB (senyap kecuali Minggu)
+    - cron: "7 13 * * *"
   workflow_dispatch:
 
 permissions:

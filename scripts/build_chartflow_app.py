@@ -113,7 +113,7 @@ BODY_JS = r'''<dialog id="cfDlg"><div class="b"><b style="font-size:18px" id="cf
 </script>
 '''
 # ---- 🔔 alarm harga (hanya ChartFlow; tombol di index.html muncul bila window.CF_ALARM ada)
-ALARM_HEAD = r"""<script>window.CF_ALARM=function(){ if(window.CF_ALARM_OPEN) window.CF_ALARM_OPEN.apply(null,arguments); };</script>
+ALARM_HEAD = r"""<script>window.CF_SAFE=true; window.CF_ALARM=function(){ if(window.CF_ALARM_OPEN) window.CF_ALARM_OPEN.apply(null,arguments); };</script>
 """
 ALARM_CSS = """
 #cfAl{border:none;border-radius:20px;padding:0;width:min(420px,calc(100% - 24px));max-height:90vh;background:var(--surface);color:var(--fg);box-shadow:0 30px 80px rgba(0,0,0,.3)}

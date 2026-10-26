@@ -347,6 +347,9 @@ def morning(d: dict) -> str | None:
         L += support_section(d)
         L += extras_section(d)
         L += track_section(d)
+        _ny = date.today().year + 1
+        if date.today().month == 12 and not any(h.startswith(str(_ny)) for h in HOLIDAYS):
+            L += ["", f"⚠️ <b>Daftar libur bursa BEI {_ny} belum diisi.</b> Jadwal update dan pengingat order bisa jalan di hari libur. Minta Claude memperbarui HOLIDAYS di scripts/notify_telegram.py."]
         dq = [x for x in d.get("dq") or [] if x.get("liq", "L") == "L"]
         if dq:
             L += ["", b(f"🧪 Data janggal ({len(dq)})") + " <i>sinyal terkait tidak dihitung</i>",

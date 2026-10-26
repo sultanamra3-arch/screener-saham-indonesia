@@ -11,10 +11,11 @@ $tmp = tempnam(sys_get_temp_dir(), 'cfb');
 file_put_contents($tmp, gzencode($pack, 9));
 $active = count(array_filter($db['codes'] ?? [], function ($c) { return ($c['status'] ?? '') === 'active' && ($c['exp'] ?? 0) > time(); }));
 $name = 'chartflow-cadangan-' . date('Y-m-d') . '.json.gz';
+$quiet = (new DateTime('now', new DateTimeZone('Asia/Jakarta')))->format('w') !== '0'; // Minggu berbunyi, hari lain senyap
 $ch = curl_init('https://api.telegram.org/bot' . CF_BOT_TOKEN . '/sendDocument');
 curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 60, CURLOPT_POSTFIELDS => [
-    'chat_id' => CF_CHAT_ID, 'parse_mode' => 'HTML',
-    'caption' => "🗄️ <b>Cadangan mingguan ChartFlow</b>\n$active kode aktif · " . count($users) . " akun dengan data.\nSimpan file ini; berisi data pribadi pengguna, jangan dibagikan.",
+    'chat_id' => CF_CHAT_ID, 'parse_mode' => 'HTML', 'disable_notification' => $quiet ? 'true' : 'false',
+    'caption' => "🗄️ <b>Cadangan " . ($quiet ? 'harian' : 'mingguan') . " ChartFlow</b>\n$active kode aktif · " . count($users) . " akun dengan data.\nSimpan file ini; berisi data pribadi pengguna, jangan dibagikan.",
     'document' => new CURLFile($tmp, 'application/gzip', $name)]]);
 $r = curl_exec($ch); curl_close($ch); @unlink($tmp);
 header('Content-Type: application/json');
