@@ -986,11 +986,13 @@ function saranStock(o){
   let c,title;
   if(own){
     const P=porto().open.find(x=>x.code===o.ticker), e=P?posEval(P):null, hot=e?e.acts.filter(a=>a.lv<=1):[];
-    if(hot.length||by.sell.length){ c="o"; title=SAFE?"Aturan jual metode terpenuhi.":pick(["Waktunya mempertimbangkan jual.","Ada tanda untuk menjual.","Sebaiknya ditinjau ulang sekarang."],o.ticker);
+    const pm=P?P.method:"lain", pmN=(MID[pm]||{}).name||"campuran", other=by.sell.filter(m=>m.id!==pm);
+    if(hot.length){ c="o"; title=SAFE?"Aturan jual metode terpenuhi.":pick(["Waktunya mempertimbangkan jual.","Ada tanda untuk menjual.","Sebaiknya ditinjau ulang sekarang."],o.ticker);
+      L.push(`📌 Posisi Anda tercatat dengan metode <b>${esc(pmN)}</b>, jadi aturan ${esc(pmN)} yang dipakai.`);
       hot.forEach(a=>L.push(`${a.ic} ${esc(a.t[0].toUpperCase()+a.t.slice(1))}.`));
-      if(by.sell.length&&!hot.some(a=>/sinyal Jual/.test(a.t))) L.push(`🔴 ${esc(nm(by.sell))} memberi tanda jual.`);
     } else { c="o"; title=SAFE?"Belum ada aturan jual yang terpenuhi.":pick(["Tahan dulu. Belum ada alasan menjual.","Aman, tahan saja.","Masih sesuai rencana. Tahan."],o.ticker);
-      if(e&&e.plp!=null) L.push(`💰 Posisi Anda ${e.plp>=0?"untung":"rugi"} ${nf(Math.abs(e.plp),1)}%.`);
+      if(e&&e.plp!=null) L.push(`💰 Posisi Anda ${e.plp>=0?"untung":"rugi"} ${nf(Math.abs(e.plp),1)}% (tercatat metode <b>${esc(pmN)}</b>).`);
+      if(other.length) L.push(`ℹ️ ${esc(nm(other))} memberi tanda jual, tapi itu aturan untuk yang membeli dengan ${other.length>1?"metode-metode itu":"metode itu"}. ${pm==="lain"?"Karena posisi Anda campuran, boleh jadi bahan pertimbangan.":`Posisi Anda mengikuti aturan ${esc(pmN)}.`}`);
       if(e&&e.stop) L.push(SAFE?`🛑 ${tip("Batas rugi","stop loss")} menurut aturan: ${usd(e.stop)}.`:`🛑 Jual kalau harga turun ke ${usd(e.stop)} (${tip("batas rugi","stop loss")}).`);
       else if(sup) L.push(`🛑 Waspada kalau harga ditutup di bawah ${usd(floorTick(sup.lo*0.99))}: ${tip("lantai harga","support")} terdekat jebol.`);
       if(e&&e.target) L.push(`🎯 Target ${usd(e.target)}${p?` (${pc(e.target,p)} lagi)`:""}.`);
