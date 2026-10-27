@@ -308,9 +308,36 @@ footer{color:var(--muted);font-size:12.5px}
  .tablebox table.cards td .nm,.tablebox table.cards td span:not(.st),.tablebox table.cards td div{white-space:normal!important;overflow-wrap:anywhere}
  .tablebox table.cards tr{gap:6px 14px;padding:10px 14px}
 }
+
+/* menu samping untuk laptop */
+.sidenav{display:none}
+@media (min-width:1100px){
+ body{padding-left:236px;transition:padding-left .2s}
+ body>.wrap{padding-left:28px;padding-right:28px;box-sizing:border-box;max-width:1400px}
+ body.sncol{padding-left:76px}
+ .sidenav{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:236px;box-sizing:border-box;padding:16px 12px 12px;gap:10px;background:var(--surface);border-right:1px solid var(--line);overflow-y:auto;z-index:40;transition:width .2s}
+ body.sncol .sidenav{width:76px}
+ .topbar,.mainnav,#tabs{display:none!important}
+ .sn-top{display:flex;align-items:center;gap:10px;padding:2px 6px 8px}.sn-top .logo{width:34px;height:34px;border-radius:9px}.sn-top b{display:block;font-size:16px}.sn-top .sub{font-size:11.5px;color:var(--muted);display:block}
+ .sn-nav{display:flex;flex-direction:column;gap:2px}
+ .sn-g{display:flex;align-items:center;gap:10px;width:100%;border:none;background:none;border-radius:10px;padding:9px 10px;font-weight:700;font-size:14.5px;color:var(--fg);text-align:left;margin-top:4px;position:relative}
+ .sn-g .ic{font-size:17px;width:22px;text-align:center}.sn-g:hover{background:var(--bg)}
+ .sn-g[aria-current=true]{background:var(--accent);color:var(--accent-ink)}
+ .sn-g .bd{margin-left:auto;background:var(--bad);color:#fff;border-radius:999px;font-size:11px;padding:0 6px;line-height:17px}
+ .sn-s{display:flex;align-items:center;justify-content:space-between;width:100%;border:none;background:none;border-radius:8px;padding:6px 10px 6px 42px;font-size:13.5px;color:var(--muted);text-align:left}
+ .sn-s:hover{background:var(--bg);color:var(--fg)}.sn-s[aria-current=true]{color:var(--fg);font-weight:700;background:var(--bg);box-shadow:inset 3px 0 0 var(--accent)}
+ .sn-s .cn{font-family:var(--f-mono,inherit);font-size:12px;color:var(--good);font-weight:600}
+ .sn-foot{margin-top:auto;border-top:1px solid var(--line);padding-top:10px}
+ .sn-foot .tb-r{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.sn-foot .mkt{width:100%}
+ .sn-col{border:none;background:none;color:var(--muted);font-size:16px;padding:4px;align-self:flex-end;cursor:pointer}
+ body.sncol .sn-top>div,body.sncol .tx,body.sncol .sn-s,body.sncol .sn-foot{display:none}
+ body.sncol .sn-g{justify-content:center;padding:10px 0}body.sncol .sn-g .bd{position:absolute;top:2px;right:6px}
+ body.sncol .sn-top{justify-content:center}body.sncol .sn-col{align-self:center}
+}
 </style>
 </head>
 <body>
+<aside class="sidenav" id="sidenav" aria-label="Menu samping"></aside>
 <div class="wrap">
   <header class="topbar">
     <div class="brand"><img class="logo" src="icons/icon-192.png" alt="" width="34" height="34"><div><b>Screener Saham</b><span class="sub">Bursa Efek Indonesia</span></div></div>
@@ -504,12 +531,8 @@ function renderStatus(){
     ${DATA.started?`<span class="note">Sinyal investor dicatat sejak ${tgl(DATA.started,1)}</span>`:""}
     ${DATA.syariahSource?`<span class="note">Syariah: ${esc(DATA.syariahSource.replace(/\.aspx$/,"").replace(/-/g," "))}</span>`:""}`;
 }
-function renderTabs(){
-  OWN_C=null;
-  const list=filtered();
-  renderNav(); const grp=groupOf(tab); store.set(WP+"g."+grp.id,tab);
-  $("tabs").innerHTML=grp.tabs.length<2?"":TABS.filter(t=>grp.tabs.includes(t.id)).map(t=>{
-    let c="";
+function tabCount(t,list){
+  let c="";
     if(t.id==="summary"){ const n=list.filter(o=>summaryOf(o).by.buy.length).length; c=`<b>${n}</b> saham layak beli`; }
     else if(t.id==="sector") { const S=sectorStats(), t3=S.L.filter(r=>r.n>=5)[0]; c=t3?`Terkuat: <b>${esc(t3.name)}</b>`:"Sektor"; }
     else if(t.id==="calc") c="Lot, untung, rugi";
@@ -520,6 +543,14 @@ function renderTabs(){
     else if(t.id==="watch") { if(CYC&&CYC.watch){ const pl=planList(Object.fromEntries(list.map(o=>[o.ticker,o]))).list, n=pl.filter(x=>x.pl.kind==="now").length; c=SAFE?`<b>${n}</b> di area beli · ${pl.length-n} menunggu`:`<b>${n}</b> beli sekarang · ${pl.length-n} antrean`; } else c="★ dan area support"; }
     else if(t.id==="cycles") { const f=CYC&&Object.values(CYC.indices)[0]; c=f?`<b>${(f.rawan||[]).length}</b> tanggal rawan`:"Analisis"; }
     else { const u=list.map(o=>uv(o,t.id)), b=u.filter(x=>x.s==="buy").length, nw=u.filter(x=>x.s==="buy"&&x.fresh).length; c=`<b>${b}</b> layak beli${nw?` · ${nw} baru`:""}`; }
+  return c;
+}
+function renderTabs(){
+  OWN_C=null;
+  const list=filtered();
+  renderNav(); const grp=groupOf(tab); store.set(WP+"g."+grp.id,tab);
+  $("tabs").innerHTML=grp.tabs.length<2?"":TABS.filter(t=>grp.tabs.includes(t.id)).map(t=>{
+    const c=tabCount(t,list);
     return `<button class="tab" role="tab" type="button" aria-selected="${t.id===tab}" data-id="${t.id}"><span class="k">${esc(t.k)}</span><span class="n">${esc(t.name)}</span><span class="c">${c}</span></button>`;
   }).join("");
 }
@@ -1732,10 +1763,31 @@ function addToPorto(st){ store.set(WP+"porto.pre",JSON.stringify({code:st.code,p
 const GROUPS=[{id:"home",ic:"🏠",name:"Beranda",tabs:["summary"]},{id:"saham",ic:"🔍",name:"Saham",tabs:M.map(m=>m.id).concat(["screen"])},
   {id:"watch",ic:"📍",name:"Watchlist",tabs:["watch"]},{id:"porto",ic:"💼",name:"Portofolio",tabs:["porto"]},{id:"alat",ic:"🧰",name:"Alat",tabs:["calc","cycles","compare","sector","divcal"]}];
 const groupOf=t=>GROUPS.find(g=>g.tabs.includes(t))||GROUPS[0];
+function renderSide(g,nd){
+  const sn=$("sidenav"); if(!sn||!matchMedia("(min-width:1100px)").matches) return;
+  const list=filtered(), br=document.querySelector(".topbar .brand");
+  const num=c=>{ const m=/<b>([^<]*)<\/b>/.exec(c||""); return m&&/^[\d.,]+$/.test(m[1])?m[1]:""; };
+  if(!$("snDyn")){ sn.innerHTML=`<div id="snDyn" style="display:flex;flex-direction:column;gap:10px"></div><div class="sn-foot" id="snFootSlot"></div><button type="button" class="sn-col" id="snCol" title="Kecilkan / lebarkan menu">${document.body.classList.contains("sncol")?"»":"«"}</button>`; }
+  $("snDyn").innerHTML=`<div class="sn-top">${br?br.innerHTML:""}</div><nav class="sn-nav">${GROUPS.map(x=>{ const subs=x.tabs.length>1&&x.id===g.id?TABS.filter(t=>x.tabs.includes(t.id)):[];
+      return `<button type="button" class="sn-g" data-g="${x.id}" aria-current="${x.id===g.id}" title="${esc(x.name)}"><span class="ic" aria-hidden="true">${x.ic}</span><span class="tx">${x.name}</span>${x.id==="porto"&&nd?`<span class="bd">${nd}</span>`:""}</button>
+      ${subs.map(t=>{ const n=num(tabCount(t,list)); return `<button type="button" class="sn-s" data-sub="${t.id}" aria-current="${t.id===tab}"><span class="tx">${esc(t.name)}</span>${n?`<span class="cn">${n}</span>`:""}</button>`; }).join("")}`; }).join("")}</nav>`;
+  const tb=document.querySelector(".tb-r"); if(tb&&tb.parentNode!==$("snFootSlot")) $("snFootSlot").appendChild(tb);
+}
+function placeTb(){ const tb=document.querySelector(".tb-r"), top=document.querySelector(".topbar"); if(!tb||!top) return;
+  if(!matchMedia("(min-width:1100px)").matches&&tb.parentNode!==top) top.appendChild(tb); }
 function renderNav(){
   const g=groupOf(tab), P=porto(), nd=P.open.length?P.open.filter(ps=>posEval(ps).acts.some(a=>a.lv<=1)).length:0;
+  renderSide(g,nd);
   $("mainnav").innerHTML=GROUPS.map(x=>`<button type="button" data-g="${x.id}" aria-current="${x.id===g.id}"><span class="ic" aria-hidden="true">${x.ic}</span><span>${x.name}</span>${x.id==="porto"&&nd?`<span class="bd">${nd}</span>`:""}</button>`).join("");
 }
+(function(){ const sn=$("sidenav"); if(!sn) return;
+  try{ if(localStorage.getItem("sncol")==="1") document.body.classList.add("sncol"); }catch(e){}
+  sn.addEventListener("click",ev=>{
+    const c=ev.target.closest("#snCol"); if(c){ const on=document.body.classList.toggle("sncol"); try{ localStorage.setItem("sncol",on?"1":"0"); }catch(e){} c.textContent=on?"»":"«"; return; }
+    const s=ev.target.closest("[data-sub]"); if(s){ goTab(s.dataset.sub); window.scrollTo({top:0}); return; }
+    const b=ev.target.closest(".sn-g"); if(b){ const g=GROUPS.find(x=>x.id===b.dataset.g), last=store.get(WP+"g."+g.id); goTab(g.tabs.includes(last)?last:g.tabs[0]); window.scrollTo({top:0}); } });
+  matchMedia("(min-width:1100px)").addEventListener("change",()=>{ placeTb(); renderNav(); });
+})();
 function goTab(t){ tab=t; openTicker=null; store.set(WP+"tab",t); store.set(WP+"g."+groupOf(t).id,t); try{history.replaceState(null,"","#"+t)}catch(e){} renderTabs(); renderRail(); renderResults(); }
 function renderDrawer(box){
   const old=document.getElementById("drawer"); if(old) old.remove(); const os=document.getElementById("scrim"); if(os) os.remove();
