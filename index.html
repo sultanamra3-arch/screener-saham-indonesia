@@ -139,6 +139,12 @@ tbody tr:last-child td{border-bottom:none}
 .cl div{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:6px;align-items:baseline}
 .cl .v{font-family:var(--f-mono);font-size:12px;text-align:right;color:var(--muted)}
 .calcbtn{font-size:12.5px;padding:3px 8px;white-space:nowrap}
+.il-lay{position:absolute;inset:0;pointer-events:none;z-index:3}.il-box{position:absolute;pointer-events:auto;background:var(--surface);border:1px solid var(--line);border-left:3px solid;border-radius:8px;padding:5px 24px 5px 8px;font-size:12px;line-height:1.35;box-shadow:0 4px 14px rgba(16,24,40,.15);display:flex;flex-direction:column;white-space:nowrap}
+.il-box.up{border-left-color:#16a34a}.il-box.dn{border-left-color:#dc2626}.il-box.up b{color:#16a34a}.il-box.dn b{color:#dc2626}
+.il-box button{position:absolute;top:2px;right:2px;border:none;background:none;padding:2px 4px;font-size:11px;color:var(--muted);cursor:pointer}
+.il-dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.25)}
+#cyChart.il-on{cursor:crosshair}.il-sep{width:1px;background:var(--line);margin:0 4px;align-self:stretch}
+#ilBtn[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .sv .svh{font-size:16px;font-weight:700;line-height:1.35}.sv-g{color:var(--good)}.sv-r{color:var(--bad)}.sv-y{color:var(--warn)}.sv-o{color:var(--accent)}.sv-n{color:var(--fg)}
 .sv .svh b{font-weight:700}ul.sl{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:5px}ul.sl li{line-height:1.45}
 .frule{display:grid;grid-template-columns:minmax(0,2fr) 64px minmax(0,1fr) auto;gap:6px;margin-bottom:6px}.frule select,.frule input{min-width:0;width:100%;box-sizing:border-box}
@@ -793,6 +799,44 @@ function indRead(on,B,c,hasV,x){
     out.push(`<b>Stoch RSI (14 14 3 3):</b> %K ${nf(k,1)}, %D ${nf(d,1)}. ${cr===1&&Math.min(k,d)<25?"<b class='ok'>%K baru memotong ke atas %D di zona jenuh jual</b>: sinyal pantulan awal; lebih kuat bila harga di zona support.":cr===-1&&Math.max(k,d)>75?"<b class='no'>%K baru memotong ke bawah %D di zona jenuh beli</b>: rawan koreksi.":k<20?"Jenuh jual; tunggu %K memotong ke atas %D.":k>80?"Jenuh beli; hati-hati mengejar.":"Di tengah, belum ada sinyal."}`); } }
   return out;
 }
+// ---------- Garis info (alat ukur di grafik) ----------
+let IL_MODE=false;
+function ilLoad(k){ try{ return JSON.parse(store.get(WP+"il."+k)||"[]"); }catch(e){ return []; } }
+function ilSave(k,a){ store.set(WP+"il."+k,JSON.stringify(a.slice(-12))); }
+function infoLines(ch,s,T,el,key,idr){
+  if(!key) return;
+  el.style.position="relative";
+  const lay=document.createElement("div"); lay.className="il-lay"; el.appendChild(lay);
+  let L=ilLoad(key), pend=null, series=[];
+  const idx=t=>T.indexOf(t);
+  const fmtP=v=>idr?usd(Math.round(v)):usd(v);
+  const draw=()=>{ series.forEach(x=>{ try{ ch.removeSeries(x); }catch(e){} }); series=[];
+    L.forEach(g=>{ const up=g.p2>=g.p1, z=ch.addLineSeries({color:up?"#16a34a":"#dc2626",lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,autoscaleInfoProvider:()=>null});
+      z.setData([{time:g.t1,value:g.p1},{time:g.t2,value:g.p2}]); series.push(z); }); place(); };
+  const place=()=>{ const W=el.clientWidth;
+    lay.innerHTML=L.map((g,i)=>{ const x=ch.timeScale().timeToCoordinate(g.t2), y=s.priceToCoordinate(g.p2); if(x==null||y==null) return "";
+      const d=g.p2-g.p1, pc=(g.p2/g.p1-1)*100, bars=Math.abs(idx(g.t2)-idx(g.t1)), days=Math.round(Math.abs(new Date(g.t2)-new Date(g.t1))/864e5), up=d>=0;
+      const left=Math.min(Math.max(4,x+8),W-190), top=Math.max(4,y+(up?-64:8));
+      return `<div class="il-box ${up?"up":"dn"}" style="left:${left}px;top:${top}px"><b>${up?"+":"−"}${fmtP(Math.abs(d))} (${up?"+":"−"}${nf(Math.abs(pc),2)}%)</b><span>${bars} bar · ${days} hari</span><span class="note">${fmtP(g.p1)} → ${fmtP(g.p2)}</span><button type="button" data-ild="${i}" aria-label="Hapus garis">✕</button></div>`; }).join("")
+      +(pend?(()=>{ const x=ch.timeScale().timeToCoordinate(pend.t), y=s.priceToCoordinate(pend.p); return x==null||y==null?"":`<i class="il-dot" style="left:${x-5}px;top:${y-5}px"></i>`; })():""); };
+  lay.addEventListener("click",ev=>{ const b=ev.target.closest("[data-ild]"); if(!b) return; ev.stopPropagation(); L.splice(+b.dataset.ild,1); ilSave(key,L); draw(); ilBar(); });
+  ch.subscribeClick(param=>{ if(!IL_MODE||!param.point||param.time==null) return;
+    const pr=s.coordinateToPrice(param.point.y); if(pr==null) return; const tt=param.time, t=typeof tt==="string"?tt:typeof tt==="object"&&tt.year?`${tt.year}-${String(tt.month).padStart(2,"0")}-${String(tt.day).padStart(2,"0")}`:typeof tt==="number"?new Date(tt*1000).toISOString().slice(0,10):null; if(!t||idx(t)<0) return;
+    if(!pend){ pend={t,p:pr}; place(); ilHint("Ketuk titik kedua"); return; }
+    if(t===pend.t){ return; }
+    const a=idx(pend.t)<idx(t)?[pend,{t,p:pr}]:[{t,p:pr},pend];
+    L.push({t1:a[0].t,p1:a[0].p,t2:a[1].t,p2:a[1].p}); pend=null; ilSave(key,L); IL_MODE=false; ilBar(); ilHint(""); draw(); });
+  ch.timeScale().subscribeVisibleLogicalRangeChange(()=>requestAnimationFrame(place));
+  const ro=new ResizeObserver(()=>requestAnimationFrame(place)); ro.observe(el); pxObs.push(ro);
+  window.__ilClear=()=>{ L=[]; pend=null; ilSave(key,L); draw(); ilBar(); };
+  window.__ilCancel=()=>{ pend=null; place(); };
+  window.__ilCount=()=>L.length;
+  draw(); ilBar();
+}
+function ilHint(t){ const h=$("ilHint"); if(h) h.textContent=t; }
+function ilBar(){ const b=$("ilBtn"), c=$("ilClr"); if(b){ b.setAttribute("aria-pressed",IL_MODE); b.textContent=IL_MODE?"📏 Batal":"📏 Garis info"; }
+  if(c) c.hidden=!(window.__ilCount&&window.__ilCount()); const el=$("cyChart"); if(el) el.classList.toggle("il-on",IL_MODE);
+  ilHint(IL_MODE?"Ketuk titik pertama di grafik (mis. lembah), lalu titik kedua (mis. puncak).":""); }
 function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   pxObs.forEach(o=>o.disconnect()); pxObs=[];
   pxCharts.forEach(c=>{try{c.remove()}catch(e){}}); pxCharts=[];
@@ -838,6 +882,7 @@ function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   (a.res||[]).forEach((z,i)=>{ s.createPriceLine({price:z.mid,color:bad,lineWidth:z.strength==="kuat"?2:1,lineStyle:2,axisLabelVisible:true,title:`R${i+1} ${z.strength}`}); });
   ch.timeScale().setVisibleLogicalRange({from:Math.max(0,B.length-150),to:B.length+fut.length});
   watchSize(ch,el,pxObs);
+  infoLines(ch,s,T,el,opt.dkey,idr);
   // panel bawah
   const P=opt.panels; const all=[ch];
   if(P){ P.innerHTML="";
@@ -893,7 +938,7 @@ function renderCycles(box){
     <div class="tablebox" style="padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
       <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
       <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
-      <div class="indbar" id="indBar">${(()=>{ const on=indOn(); return IND.map(([k,n,c])=>`<button type="button" data-ind="${k}" aria-pressed="${on.has(k)}"><i style="background:${c}"></i>${n}</button>`).join(""); })()}</div>
+      <div class="indbar" id="indBar">${(()=>{ const on=indOn(); return IND.map(([k,n,c])=>`<button type="button" data-ind="${k}" aria-pressed="${on.has(k)}"><i style="background:${c}"></i>${n}</button>`).join(""); })()}<span class="il-sep"></span><button type="button" id="ilBtn" aria-pressed="false" title="Ukur perubahan harga antara dua titik">📏 Garis info</button><button type="button" id="ilClr" hidden title="Hapus semua garis info">🗑️</button></div><p class="note" id="ilHint" style="margin:0 0 6px;min-height:0"></p>
       <div id="cyChart" style="width:100%;min-height:400px"></div>
       <div id="cyPanels"></div></div>
     <div class="mcard" style="margin-top:12px"><h4><span>📊 Bacaan indikator</span></h4><div id="cyRead"><p class="note">Memuat…</p></div>
@@ -933,8 +978,11 @@ function renderCycles(box){
       :`<p class="note" style="margin-top:8px">Uji ketepatan dan papan skor tersedia di tampilan indeks.</p>`}`;
   box.querySelectorAll("[data-cy]").forEach(bt=>bt.addEventListener("click",()=>{ store.set(WP+"cy.sel",bt.dataset.cy); renderResults(); }));
   $("cyQ").addEventListener("change",ev=>{ const v=ev.target.value.trim().toUpperCase(); if(CYC.stocks[v]){ store.set(WP+"cy.sel",v); renderResults(); } });
-  let bars=null; const draw=()=>drawChart($("cyChart"),SER.dates,vals,a,isIdx?a.rawan:null,CYC.future,!isIdx&&usd(1).startsWith("Rp"),{bars,panels:$("cyPanels"),read:$("cyRead")});
-  $("indBar").addEventListener("click",ev=>{ const bt=ev.target.closest("[data-ind]"); if(!bt) return; const on=indOn(), k=bt.dataset.ind; on.has(k)?on.delete(k):on.add(k); store.set(WP+"ind",JSON.stringify([...on])); bt.setAttribute("aria-pressed",on.has(k)); draw(); });
+  let bars=null; const draw=()=>drawChart($("cyChart"),SER.dates,vals,a,isIdx?a.rawan:null,CYC.future,!isIdx&&usd(1).startsWith("Rp"),{bars,panels:$("cyPanels"),read:$("cyRead"),dkey:sel});
+  IL_MODE=false;
+  $("indBar").addEventListener("click",ev=>{ if(ev.target.closest("#ilBtn")){ IL_MODE=!IL_MODE; if(!IL_MODE&&window.__ilCancel) window.__ilCancel(); ilBar(); return; }
+    if(ev.target.closest("#ilClr")){ if(window.__ilClear) window.__ilClear(); return; }
+    const bt=ev.target.closest("[data-ind]"); if(!bt) return; const on=indOn(), k=bt.dataset.ind; on.has(k)?on.delete(k):on.add(k); store.set(WP+"ind",JSON.stringify([...on])); bt.setAttribute("aria-pressed",on.has(k)); draw(); });
   Promise.all([loadLWC(),loadOhlc(sel)]).then(([,bb])=>{ if(tab!=="cycles") return; bars=bb; draw(); if(b) drawBreadth($("cyBreadth"),b); })
     .catch(()=>{ $("cyChart").innerHTML=`<p class="note">Grafik tidak bisa dimuat (pustaka grafik gagal diunduh).</p>`; });
 }
