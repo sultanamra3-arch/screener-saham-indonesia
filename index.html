@@ -462,7 +462,9 @@ let syrOnly=store.get("si.syr")==="1";
 let openTicker=null;
 
 // ---------- format ----------
-const nf = (v,d=2) => Number(v).toLocaleString("id-ID",{minimumFractionDigits:d,maximumFractionDigits:d});
+const NFC={}; // format angka disimpan: toLocaleString per sel sangat lambat di HP
+const nf = (v,d=2) => (NFC[d]||(NFC[d]=new Intl.NumberFormat("id-ID",{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(v));
+const MORE={}; const moreRow=n=>!MORE[tab]&&n>100?`<tr><td colspan="20" class="empty"><button type="button" data-more>Tampilkan semua ${Math.min(n,600)} saham</button></td></tr>`:"";
 const usd = v => v==null||!isFinite(v) ? "–" : "Rp"+nf(v,0);
 const pct = (v,d=1,sign=true) => v==null||!isFinite(v) ? "–" : (sign&&v>0?"+":"")+nf(v,d)+"%";
 const BLN=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
@@ -632,14 +634,14 @@ function renderSummary(box){
   $("fSel").addEventListener("change",ev=>{ store.set("si.f",ev.target.value); renderResults(); });
   const tb=$("tb");
   if(!list.length){ tb.innerHTML=`<tr><td colspan="6" class="empty">Tidak ada saham yang cocok dengan filter ini.</td></tr>`; return; }
-  tb.innerHTML=list.slice(0,600).map(x=>{ const o=x.o;
+  tb.innerHTML=list.slice(0,MORE[tab]?600:100).map(x=>{ const o=x.o;
     const act=[["buy","Layak beli"],["hold","💼 Tahan"],["sell","Hindari/jual"]].filter(([k])=>x.by[k].length).map(([k,l])=>`<b class="${k==="buy"?"ok":k==="sell"?"no":""}">${l}:</b> ${esc(x.by[k].join(", "))}`).join("<br>");
     let tr=`<tr class="row" data-t="${esc(o.ticker)}" tabindex="0" aria-expanded="${openTicker===o.ticker}">${stockCell(o)}
       <td class="num">${usd(o.price)}</td>
       <td><div class="mcells">${M.map(m=>{const st=uv(o,m.id); return `<span class="mc ${st.s}${st.p?" pass":""}" title="${esc(m.name)}: ${st.s==="sell"&&!st.own?"Hindari":ST[st.s]}">${m.abbr}</span>`}).join("")}</div></td>
       <td style="font-size:13px">${act||'<span class="na">–</span>'}</td>
       <td class="num">${x.pass}/7</td><td class="num">${o.adv!=null?"Rp"+nf(o.adv,1)+" M":"–"}</td></tr>`;
-    return tr; }).join("");
+    return tr; }).join("")+moreRow(list.length);
 }
 
 // ---------- render: method ----------
@@ -659,14 +661,14 @@ function renderMethod(box,m){
   $("sSel").addEventListener("change",ev=>{ store.set("si.s."+m.id,ev.target.value); renderResults(); });
   const tb=$("tb"), span=5+m.cols.length;
   if(!list.length){ tb.innerHTML=`<tr><td colspan="${span}" class="empty">Tidak ada saham dengan status ini saat ini.</td></tr>`; return; }
-  tb.innerHTML=list.slice(0,600).map(o=>{ const st=gu(o), lv=levels(m.id,st);
+  tb.innerHTML=list.slice(0,MORE[tab]?600:100).map(o=>{ const st=gu(o), lv=levels(m.id,st);
     let tr=`<tr class="row" data-t="${esc(o.ticker)}" tabindex="0" aria-expanded="${openTicker===o.ticker}">${stockCell(o)}
       <td class="num">${usd(o.price)}</td>
       <td>${uchip(st)}${lv?`<span class="lvl">${lv}</span>`:""}</td>
       <td class="why">${esc(st.why&&st.s!=="buy"?st.why:st.rs||"")}</td>
       <td><div class="pips">${critStates(st,m.id).filter(c=>c[2]!==2).map(c=>`<span class="pip ${c[2]===1?"y":c[2]==null?"na":""}" title="${esc(c[0])}"></span>`).join("")}</div></td>
       ${m.cols.map(c=>`<td class="num">${fmtCol(c[0],o[c[0]],c[2])}</td>`).join("")}</tr>`;
-    return tr; }).join("");
+    return tr; }).join("")+moreRow(list.length);
 }
 
 // ---------- render: etf ----------
@@ -2024,18 +2026,21 @@ function renderCompare(box){
 // ---------- tabel → kartu di layar kecil ----------
 function cardify(root){
   (root||document).querySelectorAll(".tablebox table:not(.nocard)").forEach(t=>{
-    const hs=[...t.querySelectorAll("thead th")].map(th=>th.innerText.replace(/\s+/g," ").trim());
+    const hs=[...t.querySelectorAll("thead th")].map(th=>th.textContent.replace(/\s+/g," ").trim());
     if(!hs.length) return; t.classList.add("cards");
     t.querySelectorAll("tbody tr, tfoot tr").forEach(tr=>{ if(tr.dataset.cd) return; tr.dataset.cd="1"; let i=0;
       [...tr.children].forEach(td=>{ const sp=+td.getAttribute("colspan")||1, lab=sp>1?"":(hs[i]||"");
         td.setAttribute("data-label",lab);
-        const onlyBtn=td.querySelector("button")&&!td.innerText.replace(/[🧮🔔📈✕\s]|Ubah|Jual|Hitung|Grafik/g,"").length;
-        if(!td.innerText.trim()&&!td.querySelector("button,input,canvas,svg,i")) td.classList.add("cempty");
+        const tx=td.textContent;
+        const onlyBtn=td.querySelector("button")&&!tx.replace(/[🧮🔔📈✕\s]|Ubah|Jual|Hitung|Grafik/g,"").length;
+        if(!tx.trim()&&!td.querySelector("button,input,canvas,svg,i")) td.classList.add("cempty");
         if(onlyBtn&&i>0) td.classList.add("act");
-        else if(sp>1||(!lab&&i>0)||td.classList.contains("why")||td.innerText.length>70) td.classList.add("full");
+        else if(sp>1||(!lab&&i>0)||td.classList.contains("why")||tx.length>70) td.classList.add("full");
         i+=sp; }); }); });
 }
-(function(){ const box=$("results"); let tm=null; new MutationObserver(()=>{ clearTimeout(tm); tm=setTimeout(()=>cardify(box),30); }).observe(box,{childList:true,subtree:true}); })();
+(function(){ const box=$("results"), mq=matchMedia("(max-width:899px)"); let tm=null; // hanya perlu di layar kecil
+  new MutationObserver(()=>{ if(!mq.matches) return; clearTimeout(tm); tm=setTimeout(()=>cardify(box),30); }).observe(box,{childList:true,subtree:true});
+  mq.addEventListener("change",()=>{ if(mq.matches) cardify(box); }); })();
 function renderResults(){
   const box=$("results");
   if(!DATA){ box.innerHTML=`<div class="tablebox"><div class="empty">Belum ada data. Setelah workflow selesai, tabel saham muncul di sini.</div></div>`; return; }
@@ -2055,6 +2060,7 @@ $("results").addEventListener("click",ev=>{
   const cb=ev.target.closest(".calcbtn"); if(cb){ ev.stopPropagation(); openCalc(cb.dataset.calc,cb.dataset.e?{entry:+cb.dataset.e,stop:+cb.dataset.s,target:+cb.dataset.tg||null}:null); return; }
   const sb=ev.target.closest(".star"); if(sb){ ev.stopPropagation(); toggleStar(sb.dataset.star); renderTabs(); renderResults(); return; }
   const wr=ev.target.closest("tr.wrow"); if(wr){ store.set(WP+"cy.sel",wr.dataset.go); tab="cycles"; store.set(WP+"tab","cycles"); try{history.replaceState(null,"","#cycles")}catch(e){} renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0,behavior:"smooth"}); return; }
+  const mo=ev.target.closest("[data-more]"); if(mo){ MORE[tab]=true; renderResults(); return; }
   const dr=ev.target.closest("div.row[data-t]"); if(dr){ openTicker=dr.dataset.t; renderResults(); return; }
   const tr=ev.target.closest("tr.row"); if(tr) toggleRow(tr); });
 $("results").addEventListener("keydown",ev=>{ if(ev.key!=="Enter"&&ev.key!==" ") return; const tr=ev.target.closest("tr.row"); if(!tr) return; ev.preventDefault(); toggleRow(tr); });
