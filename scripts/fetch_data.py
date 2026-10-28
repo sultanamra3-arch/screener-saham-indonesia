@@ -309,6 +309,28 @@ def fundamentals(code: str) -> dict | None:
 
 
 # ---------------------------------------------------------------- teknikal ringkas
+def flow(c, v, last) -> dict:
+    """Untuk tab 'Ramai hari ini': perubahan dari penutupan kemarin, volume hari ini dibanding
+    rata-rata 20 hari bursa sebelumnya, dan nilai transaksi hari ini. Kosong bila tidak ditransaksikan hari itu."""
+    out = {"chg1d": None, "volR": None, "val1d": None}
+    try:
+        c = c.dropna()
+        if len(c) < 2 or c.index[-1] != last:
+            return out
+        p = float(c.iloc[-1])
+        out["chg1d"] = round((p / float(c.iloc[-2]) - 1) * 100, 2)
+        if v is not None:
+            v = v.reindex(c.index).fillna(0)
+            if len(v) >= 21:
+                avg, today = float(v.iloc[-21:-1].mean()), float(v.iloc[-1])
+                if avg > 0:
+                    out["volR"] = round(today / avg, 2)
+                out["val1d"] = round(today * p)
+    except Exception:
+        pass
+    return out
+
+
 def technicals(s) -> dict:
     import pandas as pd
 
@@ -547,6 +569,7 @@ def main():
         f.pop("asOf", None)
         o = {"ticker": c, "company": f.pop("company", None) or names.get(c, c), **f}
         o.update(technicals(close[c]))
+        o.update(flow(close[c], volume[c] if volume is not None and c in volume else None, close.index[-1]))
         a = adv.get(c)
         o["adv"] = round(a, 3) if a is not None and math.isfinite(a) else None
         o["liq"] = "L" if (a or 0) >= LIQ_HI else "K" if (a or 0) >= LIQ_LO else "T"
@@ -668,6 +691,7 @@ def intraday():
             continue
         t = technicals(close[c])
         r.update({k: v for k, v in t.items() if v is not None})
+        r.update(flow(close[c], volume[c] if volume is not None and c in volume else None, close.index[-1]))
         if r.get("price") and r.get("dpsTTM") is not None:
             r["div"] = r["dpsTTM"] / r["price"] * 100
         if r.get("dv") and r.get("price"):

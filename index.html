@@ -443,7 +443,7 @@ const M = [
   cols:[["rsi2","RSI(2)"],["sma200","vs SMA200",1],["perf1m","1 bln",1]]},
 ];
 const MID = Object.fromEntries(M.map(m=>[m.id,m]));
-const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"},{id:"porto",name:"Portofolio",k:"Posisi Anda"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"calc",name:"Kalkulator",k:"Return & risiko"},{id:"divcal",name:"Kalender dividen",k:"Ex-dividen"},{id:"sector",name:"Peta sektor",k:"Arus uang"},{id:"screen",name:"Filter sendiri",k:"Aturan Anda"},{id:"compare",name:"Bandingkan",k:"2–3 saham"}]);
+const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"},{id:"porto",name:"Portofolio",k:"Posisi Anda"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"calc",name:"Kalkulator",k:"Return & risiko"},{id:"divcal",name:"Kalender dividen",k:"Ex-dividen"},{id:"hot",name:"Ramai hari ini",k:"Momentum"},{id:"screen",name:"Filter sendiri",k:"Aturan Anda"}])
 const ST = {buy:"Layak beli",hold:"Tahan",sell:"Jual",late:"Terlambat",wait:"Tunggu",na:"Tidak dinilai"};
 const PRI = {buy:0,sell:1,hold:2,late:3,wait:4,na:5};
 const REASON = {stop:"stop loss −7%",be:"kembali ke harga beli",target:"target +20%","8w":"8 minggu selesai",sma5:"di atas SMA5",rank:"keluar 20% teratas"};
@@ -459,7 +459,7 @@ function loadDetail(){
   return DET_P;
 }
 function critStates(st,mid){ if(st.c) return st.c; const L=((DATA&&DATA.clabels)||{})[mid]||[]; return (st.cs||"").split("").map((ch,i)=>[L[i]||("syarat "+(i+1)),"",ch==="1"?1:ch==="0"?0:ch==="2"?2:null]); }
-let tab=(location.hash||"").slice(1); if(tab==="etf") tab="sector";
+let tab=(location.hash||"").slice(1); if(tab==="etf"||tab==="sector"||tab==="compare"){ tab="hot"; try{history.replaceState(null,"","#hot")}catch(e){} }
 if(!TABS.some(t=>t.id===tab)) tab=store.get("si.tab")||"summary";
 if(!TABS.some(t=>t.id===tab)) tab="summary";
 let ixFilter=store.get("si.liq")||"L";
@@ -551,10 +551,9 @@ function renderStatus(){
 function tabCount(t,list){
   let c="";
     if(t.id==="summary"){ const n=list.filter(o=>summaryOf(o).by.buy.length).length; c=`<b>${n}</b> saham layak beli`; }
-    else if(t.id==="sector") { const S=sectorStats(), t3=S.L.filter(r=>r.n>=5)[0]; c=t3?`Terkuat: <b>${esc(t3.name)}</b>`:"Sektor"; }
+    else if(t.id==="hot") { const n=hotLists(list).spike.length; c=n?`<b>${n}</b> volume melonjak`:"Volume & momentum"; }
     else if(t.id==="calc") c="Lot, untung, rugi";
     else if(t.id==="screen") c=`<b>${fstate().cur.length}</b> aturan · ${fstate().saved.length} favorit`;
-    else if(t.id==="compare") c=esc(cmpList().filter(Boolean).join(" · "));
     else if(t.id==="divcal") { const td=(DATA&&DATA.priceDate)||""; const n=list.filter(o=>o.dv&&o.dv.ex>=td&&o.dv.ex<=new Date(new Date(td).getTime()+14*864e5).toISOString().slice(0,10)).length; c=`<b>${n}</b> dalam 2 minggu`; }
     else if(t.id==="porto") { const P=porto(); if(!P.open.length) c="Catat & pantau"; else { const nd=P.open.filter(ps=>posEval(ps).acts.some(a=>a.lv<=1)).length; c=`<b>${P.open.length}</b> posisi${nd?` · ⚠ ${nd} perlu tindakan`:""}`; } }
     else if(t.id==="watch") { if(CYC&&CYC.watch){ const pl=planList(Object.fromEntries(list.map(o=>[o.ticker,o]))).list, n=pl.filter(x=>x.pl.kind==="now").length; c=SAFE?`<b>${n}</b> di area beli · ${pl.length-n} menunggu`:`<b>${n}</b> beli sekarang · ${pl.length-n} antrean`; } else c="★ dan area support"; }
@@ -1835,7 +1834,7 @@ function addToPorto(st){ store.set(WP+"porto.pre",JSON.stringify({code:st.code,p
 
 // ---------- navigasi v2 ----------
 const GROUPS=[{id:"home",ic:"🏠",name:"Beranda",tabs:["summary"]},{id:"saham",ic:"🔍",name:"Saham",tabs:M.map(m=>m.id).concat(["screen"])},
-  {id:"watch",ic:"📍",name:"Watchlist",tabs:["watch"]},{id:"porto",ic:"💼",name:"Portofolio",tabs:["porto"]},{id:"alat",ic:"🧰",name:"Alat",tabs:["calc","cycles","compare","sector","divcal"]}];
+  {id:"watch",ic:"📍",name:"Watchlist",tabs:["watch"]},{id:"porto",ic:"💼",name:"Portofolio",tabs:["porto"]},{id:"alat",ic:"🧰",name:"Alat",tabs:["calc","cycles","hot","divcal"]}];
 const groupOf=t=>GROUPS.find(g=>g.tabs.includes(t))||GROUPS[0];
 function renderSide(g,nd){
   const sn=$("sidenav"); if(!sn||!matchMedia("(min-width:1100px)").matches) return;
@@ -2053,7 +2052,7 @@ function cardify(root){
 function renderResults(){
   const box=$("results");
   if(!DATA){ box.innerHTML=`<div class="tablebox"><div class="empty">Belum ada data. Setelah workflow selesai, tabel saham muncul di sini.</div></div>`; return; }
-  if(tab==="summary") renderSummary(box); else if(tab==="sector") renderSector(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else if(tab==="calc") renderCalc(box); else if(tab==="divcal") renderDivcal(box); else if(tab==="porto") renderPorto(box); else if(tab==="screen") renderScreen(box); else if(tab==="compare") renderCompare(box); else renderMethod(box,MID[tab]);
+  if(tab==="summary") renderSummary(box); else if(tab==="hot") renderHot(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else if(tab==="calc") renderCalc(box); else if(tab==="divcal") renderDivcal(box); else if(tab==="porto") renderPorto(box); else if(tab==="screen") renderScreen(box); else renderMethod(box,MID[tab]);
   renderDrawer(box);
 }
 function renderAll(){ renderStatus(); renderTabs(); renderRail(); renderResults(); }
@@ -2104,6 +2103,44 @@ $("mainnav").addEventListener("click",ev=>{ const b=ev.target.closest("[data-g]"
     box.prepend(d); window.scrollTo({top:0,behavior:"smooth"});
   });
 })();
+// ---------- Ramai hari ini ----------
+const HOT_MIN = IS_ID ? 1e9 : 20e6; // nilai transaksi minimal hari ini: Rp1 miliar / $20 juta
+function hotLists(list){
+  const L=list.filter(o=>o.chg1d!=null&&(o.val1d||0)>=HOT_MIN);
+  const spike=L.filter(o=>(o.volR||0)>=2).sort((a,b)=>b.volR-a.volR).slice(0,15);
+  const up=L.filter(o=>o.chg1d>0).sort((a,b)=>b.chg1d-a.chg1d).slice(0,10);
+  const down=L.filter(o=>o.chg1d<0).sort((a,b)=>a.chg1d-b.chg1d).slice(0,10);
+  const near=[];
+  if(CYC&&CYC.stocks) L.forEach(o=>{ if(o.chg1d<=0) return; const a=CYC.stocks[o.ticker]; if(!a) return;
+    const z=(a.res||[]).filter(z=>z.strength!=="lemah"&&z.hi>=o.price).sort((x,y)=>x.lo-y.lo)[0]; if(!z) return;
+    const dist=Math.max(0,(z.lo/o.price-1)*100); if(dist<=3) near.push({o,z,dist}); });
+  near.sort((a,b)=>a.dist-b.dist||(b.o.volR||0)-(a.o.volR||0));
+  return {spike,up,down,near:near.slice(0,15),any:list.some(o=>o.chg1d!=null)};
+}
+function renderHot(box){
+  if(!CYC&&!CYC_ERR) loadCycles().then(()=>{ if(tab==="hot") renderResults(); });
+  const H=hotLists(filtered()), d=DATA||{}, live=d.intraday&&d.intraday.date===d.priceDate;
+  const valTx=v=>v==null?"–":IS_ID?"Rp"+nf(v/1e9,v>=1e10?0:1)+" M":"$"+nf(v/1e6,0)+" jt";
+  const volTx=x=>x==null?"–":`<b class="${x>=2?"ok":""}">${nf(x,1)}×</b>`;
+  const chgTx=v=>`<b class="${v>0?"ok":v<0?"no":""}">${pct(v,1)}</b>`;
+  const head=`<th>Saham</th><th class="num">Harga</th><th class="num">Hari ini</th><th class="num">Volume vs biasa</th><th class="num">Nilai transaksi</th>`;
+  const row=(o,extra="")=>`<tr class="row" data-t="${esc(o.ticker)}" tabindex="0">${stockCell(o)}<td class="num">${usd(o.price)}</td><td class="num">${chgTx(o.chg1d)}</td><td class="num">${volTx(o.volR)}</td><td class="num">${valTx(o.val1d)}</td>${extra}<td>${chartBtn(o.ticker)}</td></tr>`;
+  const empty=(n,msg)=>`<tr><td colspan="${n}" class="empty">${msg}</td></tr>`;
+  const tbl=(title,note,rowsHtml,n=6,h=head)=>`<div class="rhead" style="margin-top:16px"><div class="l"><h2>${title}</h2><p class="note">${note}</p></div></div>
+    <div class="tablebox"><table><thead><tr>${h}<th></th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+  const jam=live?(IS_ID?`${esc(d.intraday.wib||"")} WIB`:`${esc(d.intraday.et||"")} ET (${esc(d.intraday.wib||"")} WIB)`):"";
+  const minTx=IS_ID?"Rp1 miliar":"$20 juta";
+  if(!H.any){ box.innerHTML=`<div class="tablebox"><div class="empty">Data volume harian mulai terisi setelah pembaruan data berikutnya.</div></div>`; return; }
+  box.innerHTML=saranBox(`<p>${T("Di sini kelihatan saham yang lagi <b>diserbu</b> hari ini.","Daftar saham dengan aktivitas transaksi paling menonjol hari ini.")} Volume <b>2×</b> artinya transaksinya dua kali lipat dari biasanya (rata-rata 20 hari). Kalau volume melonjak, harga naik, dan posisinya dekat resistance, itu ${T("calon tembus atas","kandidat yang patut dipantau")}. Tetap buka grafiknya dulu: lonjakan tanpa alasan jelas sering turun lagi besoknya.</p>
+    <p class="note">${live?`Harga sementara pukul ${jam}. Volume baru sebagian hari, jadi angka ×-nya masih akan bertambah sampai bursa tutup.`:`Data penutupan ${tgl(d.priceDate,1)}.`} Hanya saham dengan nilai transaksi hari ini minimal ${minTx}, dan mengikuti filter di atas. Diperbarui sendiri tanpa refresh.</p>`)+
+    tbl("🔥 Volume melonjak",`Volume hari ini minimal 2× biasanya, diurutkan dari lonjakan terbesar.`,
+      H.spike.length?H.spike.map(o=>row(o)).join(""):empty(6,"Belum ada lonjakan volume yang menonjol hari ini."))+
+    tbl("🎯 Dekat tembus resistance",`Harga naik hari ini dan tinggal ≤3% dari resistance kuat/sedang (atau sudah menguji zonanya). Kalau ditutup di atas zona dengan volume besar, itu tanda tembus.`,
+      !CYC?empty(7,"Memuat area resistance…"):H.near.length?H.near.map(x=>row(x.o,`<td class="num">${x.dist<=0?'<span class="st buy">menguji zona</span>':nf(x.dist,1)+"%"}<br><span class="note">${zr(x.z)}</span></td>`)).join(""):empty(7,"Tidak ada saham naik yang dekat resistance saat ini."),
+      7, head+`<th class="num">Jarak ke resistance</th>`)+
+    tbl("🚀 Naik terbesar","10 kenaikan terbesar dari penutupan kemarin.",H.up.length?H.up.map(o=>row(o)).join(""):empty(6,"Belum ada saham yang naik."))+
+    tbl("🔻 Turun terbesar","10 penurunan terbesar. Berguna untuk mengecek saham di portofolio atau watchlist Anda.",H.down.length?H.down.map(o=>row(o)).join(""):empty(6,"Belum ada saham yang turun."));
+}
 // ---------- harga otomatis tanpa refresh ----------
 const AUTO={ v:null, last:0, busy:false };
 function verOf(d){ return d?((d.intraday&&d.intraday.at)||"")+"|"+(d.updatedAt||""):null; }
