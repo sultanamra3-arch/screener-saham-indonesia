@@ -344,6 +344,10 @@ footer{color:var(--muted);font-size:12.5px}
  body.sncol .sn-g{justify-content:center;padding:10px 0}body.sncol .sn-g .bd{position:absolute;top:2px;right:6px}
  body.sncol .sn-top{justify-content:center}body.sncol .sn-col{align-self:center}
 }
+#autoUpd{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:90;
+  background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:13.5px;box-shadow:var(--shadow);transition:opacity .25s,transform .25s;max-width:calc(100vw - 32px);text-align:center}
+#autoUpd.on{opacity:.95;transform:translate(-50%,0)}
+@media (max-width:899px){#autoUpd{bottom:calc(76px + env(safe-area-inset-bottom))}}
 </style>
 </head>
 <body>
@@ -447,10 +451,11 @@ const REASON = {stop:"stop loss −7%",be:"kembali ke harga beli",target:"target
 let DATA=null, rows=[];
 let DET=null, DET_P=null;
 const detNeed=()=>!!(DATA&&DATA.hasDetail&&!DET);
+function mergeDet(){ if(!DET) return;
+  rows.forEach(o=>{ const d=DET[o.ticker]; if(!d) return; Object.entries(d).forEach(([k,v])=>{ if(k[0]==="_") o[k.slice(1)]=v; else if(o.m&&o.m[k]) Object.assign(o.m[k],v); }); }); }
 function loadDetail(){
   if(!detNeed()) return Promise.resolve(); if(DET_P) return DET_P;
-  DET_P=fetch("data/detail.json",{cache:"no-cache"}).then(r=>r.ok?r.json():{}).then(j=>{ DET=j||{};
-    rows.forEach(o=>{ const d=DET[o.ticker]; if(!d) return; Object.entries(d).forEach(([k,v])=>{ if(k[0]==="_") o[k.slice(1)]=v; else if(o.m&&o.m[k]) Object.assign(o.m[k],v); }); }); }).catch(()=>{ DET={}; });
+  DET_P=fetch("data/detail.json",{cache:"no-cache"}).then(r=>r.ok?r.json():{}).then(j=>{ DET=j||{}; mergeDet(); }).catch(()=>{ DET={}; });
   return DET_P;
 }
 function critStates(st,mid){ if(st.c) return st.c; const L=((DATA&&DATA.clabels)||{})[mid]||[]; return (st.cs||"").split("").map((ch,i)=>[L[i]||("syarat "+(i+1)),"",ch==="1"?1:ch==="0"?0:ch==="2"?2:null]); }
@@ -2099,6 +2104,45 @@ $("mainnav").addEventListener("click",ev=>{ const b=ev.target.closest("[data-g]"
     box.prepend(d); window.scrollTo({top:0,behavior:"smooth"});
   });
 })();
+// ---------- harga otomatis tanpa refresh ----------
+const AUTO={ v:null, last:0, busy:false };
+function verOf(d){ return d?((d.intraday&&d.intraday.at)||"")+"|"+(d.updatedAt||""):null; }
+function autoToast(msg){ let t=$("autoUpd"); if(!t){ t=document.createElement("div"); t.id="autoUpd"; t.setAttribute("role","status"); document.body.appendChild(t); }
+  t.textContent=msg; t.classList.add("on"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("on"),4500); }
+function autoBlocked(){ const a=document.activeElement; if(a&&(/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)||a.isContentEditable)) return true;
+  if(document.querySelector("dialog[open]")) return true; const sel=window.getSelection&&getSelection(); return !!(sel&&String(sel).length); }
+function autoApply(d){
+  if(autoBlocked()){ setTimeout(()=>autoApply(d),3000); return; }
+  if(verOf(d)===verOf(DATA)) return;
+  const had={det:!!DET, cyc:!!CYC};
+  const jobs=[had.cyc?fetch("data/cycles.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null):null,
+              had.det?fetch("data/detail.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null):null];
+  Promise.all(jobs).then(([c,dt])=>{
+    if(autoBlocked()){ setTimeout(()=>autoApply(d),3000); return; }
+    DATA=d; rows=(d.stocks||[]).filter(s=>s&&s.ticker);
+    if(dt){ DET=dt; DET_P=Promise.resolve(); mergeDet(); } else { DET=null; DET_P=null; }
+    if(c){ CYC=c; CYC_ERR=false; }
+    SER=null; SER_P=null; RSI14=null; OWN_C=null; PLAN_MEMO=null;
+    Object.keys(OHLC).forEach(k=>delete OHLC[k]); Object.keys(OHLCP).forEach(k=>delete OHLCP[k]);
+    const y=window.scrollY;
+    if(tab==="cycles") renderStatus(); // grafik tidak digambar ulang agar zoom & garis tidak hilang
+    else { renderAll(); window.scrollTo(0,y); }
+    const jam=d.intraday&&d.intraday.date===d.priceDate?(d.intraday.wib||"")+" WIB":"penutupan";
+    autoToast(tab==="cycles"?`🔄 Harga diperbarui (${jam}). Buka ulang grafik untuk melihatnya.`:`🔄 Harga diperbarui (${jam})`);
+  });
+}
+function autoCheck(force){
+  if(!DATA||AUTO.busy||document.visibilityState!=="visible"||navigator.onLine===false) return;
+  if(!force&&Date.now()-AUTO.last<110000) return;
+  AUTO.busy=true; AUTO.last=Date.now();
+  fetch("data/ver.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{
+    if(!j||!j.v||j.v===verOf(DATA)) return;
+    return fetch("data/stocks.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{ if(d&&d.stocks&&verOf(d)!==verOf(DATA)) autoApply(d); });
+  }).catch(()=>{}).then(()=>{ AUTO.busy=false; });
+}
+setInterval(()=>autoCheck(false),30000);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") autoCheck(Date.now()-AUTO.last>60000); });
+window.addEventListener("online",()=>autoCheck(true));
 // ---------- boot ----------
 renderAll();
 fetch("data/stocks.json",{cache:"no-cache"}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json() }).then(d=>{

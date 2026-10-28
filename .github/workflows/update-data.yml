@@ -55,6 +55,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python -c "import json;d=json.load(open('data/stocks.json'));i=d.get('intraday') or {};json.dump({'v':(i.get('at') or '')+'|'+(d.get('updatedAt') or ''),'p':d.get('priceDate')},open('data/ver.json','w'))"
           git add data/
           if git diff --cached --quiet; then
             echo "Tidak ada perubahan data"

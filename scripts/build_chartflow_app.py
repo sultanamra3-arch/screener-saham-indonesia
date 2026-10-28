@@ -211,7 +211,7 @@ s = s[:i] + BODY_JS + APK_JS + ALARM_JS + s[i:]
 (out / "index.html").write_text(s, encoding="utf-8")
 shutil.copy(ROOT / "sw.js", out / "sw.js")
 shutil.copytree(ROOT / "icons", out / "icons")
-for f in ("stocks.json", "detail.json", "cycles.json", "series.json", "plan_track.json"):
+for f in ("stocks.json", "detail.json", "cycles.json", "series.json", "plan_track.json", "ver.json"):
     if (ROOT / "data" / f).exists():
         shutil.copy(ROOT / "data" / f, out / "data" / f)
 if (ROOT / "data" / "ohlc").is_dir():
