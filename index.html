@@ -950,7 +950,7 @@ function renderCycles(box){
       <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
       <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
       <div class="indbar" id="indBar">${(()=>{ const on=indOn(); return IND.map(([k,n,c])=>`<button type="button" data-ind="${k}" aria-pressed="${on.has(k)}"><i style="background:${c}"></i>${n}</button>`).join(""); })()}<span class="il-sep"></span><button type="button" id="ilBtn" aria-pressed="false" title="Ukur perubahan harga antara dua titik">📏 Garis info</button><button type="button" id="ilClr" hidden title="Hapus semua garis info">🗑️</button><button type="button" id="tvBtn" title="Grafik TradingView: harga lebih baru (tertunda ±15 menit), alat gambar dan indikator lengkap">📺 TradingView</button></div>
-      <div id="tvBox" hidden></div><p class="note" id="ilHint" style="margin:0 0 6px;min-height:0"></p>
+      <div id="tvBox"></div><p class="note" id="ilHint" style="margin:0 0 6px;min-height:0"></p>
       <div id="cyChart" style="width:100%;min-height:400px"></div>
       <div id="cyPanels"></div></div>
     <div class="mcard" style="margin-top:12px"><h4><span>📊 Bacaan indikator</span></h4><div id="cyRead"><p class="note">Memuat…</p></div>
@@ -995,11 +995,10 @@ function renderCycles(box){
   const tvSym=IS_ID?(isIdx?"IDX:COMPOSITE":"IDX:"+sel):({"S&P 500":"SP:SPX","Nasdaq-100":"NASDAQ:NDX"}[sel]||sel);
   const tvSet=on=>{ $("cyBox").classList.toggle("tv-on",on); $("tvBtn").textContent=on?"📈 Grafik ChartFlow":"📺 TradingView"; $("tvBtn").setAttribute("aria-pressed",on);
     if(on){ IL_MODE=false; ilBar(); tvWidget($("tvBox"),tvSym); } else $("tvBox").innerHTML=""; };
-  if(store.get(WP+"tv")==="1") setTimeout(()=>tvSet(true),0);
   $("indBar").addEventListener("click",ev=>{ if(ev.target.closest("#tvBtn")){ const on=!$("cyBox").classList.contains("tv-on"); store.set(WP+"tv",on?"1":"0"); tvSet(on); return; } if(ev.target.closest("#ilBtn")){ IL_MODE=!IL_MODE; if(!IL_MODE&&window.__ilCancel) window.__ilCancel(); ilBar(); return; }
     if(ev.target.closest("#ilClr")){ if(window.__ilClear) window.__ilClear(); return; }
     const bt=ev.target.closest("[data-ind]"); if(!bt) return; const on=indOn(), k=bt.dataset.ind; on.has(k)?on.delete(k):on.add(k); store.set(WP+"ind",JSON.stringify([...on])); bt.setAttribute("aria-pressed",on.has(k)); draw(); });
-  Promise.all([loadLWC(),loadOhlc(sel)]).then(([,bb])=>{ if(tab!=="cycles") return; bars=bb; draw(); if(b) drawBreadth($("cyBreadth"),b); })
+  Promise.all([loadLWC(),loadOhlc(sel)]).then(([,bb])=>{ if(tab!=="cycles") return; bars=bb; draw(); if(store.get(WP+"tv")==="1") tvSet(true); if(b) drawBreadth($("cyBreadth"),b); })
     .catch(()=>{ $("cyChart").innerHTML=`<p class="note">Grafik tidak bisa dimuat (pustaka grafik gagal diunduh).</p>`; });
 }
 
