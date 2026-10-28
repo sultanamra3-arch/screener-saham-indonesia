@@ -45,6 +45,7 @@ HEAD_JS = r'''<script>
       var j=JSON.parse(x.responseText);
       if(j.ok){
         window.CF_USER=j.user;
+        window.CF_SAFE=!j.user.owner; /* akun pemilik: saran bergaya santai; pengguna lain: bahasa aman */
         var d=j.data||{}, pend={};
         try{ pend=JSON.parse(localStorage.getItem("cf.pending")||"{}"); if(localStorage.getItem("cf.owner")!==j.user.code) pend={}; }catch(e){}
         KEYS.forEach(function(k){ try{
@@ -113,7 +114,7 @@ BODY_JS = r'''<dialog id="cfDlg"><div class="b"><b style="font-size:18px" id="cf
 </script>
 '''
 # ---- 🔔 alarm harga (hanya ChartFlow; tombol di index.html muncul bila window.CF_ALARM ada)
-ALARM_HEAD = r"""<script>window.CF_SAFE=true; window.CF_ALARM=function(){ if(window.CF_ALARM_OPEN) window.CF_ALARM_OPEN.apply(null,arguments); };</script>
+ALARM_HEAD = r"""<script>if(window.CF_SAFE===undefined) window.CF_SAFE=true; window.CF_ALARM=function(){ if(window.CF_ALARM_OPEN) window.CF_ALARM_OPEN.apply(null,arguments); };</script>
 """
 ALARM_CSS = """
 #cfAl{border:none;border-radius:20px;padding:0;width:min(420px,calc(100% - 24px));max-height:90vh;background:var(--surface);color:var(--fg);box-shadow:0 30px 80px rgba(0,0,0,.3)}

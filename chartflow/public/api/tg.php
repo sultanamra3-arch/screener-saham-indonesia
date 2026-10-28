@@ -88,7 +88,7 @@ if ($cmd === '/daftar') {
         $lines[] = ($v['exp'] < $now ? '⌛ ' : '🟢 ') . "<code>$c</code> <b>" . h($v['name'] ?? '') . "</b>\n    s.d. " . fmt_date($v['exp']) . " · $dev/" . ($v['devices'] ?? CF_DEVICES) . " perangkat · $seen · " . (int)($v['npos'] ?? 0) . " posisi portofolio";
     }
     reply($lines ? "<b>Kode aktif</b>\n" . implode("\n", array_slice($lines, 0, 60)) : 'Belum ada kode aktif.');
-} elseif (in_array($cmd, ['/cabut', '/perpanjang', '/reset', '/nama', '/hapus'], true)) {
+} elseif (in_array($cmd, ['/cabut', '/perpanjang', '/reset', '/nama', '/hapus', '/pemilik'], true)) {
     $code = norm_code($a[1] ?? '');
     [$fh, $db] = db_open();
     if (!$code || !isset($db['codes'][$code])) { db_close($fh); reply('Kode tidak ditemukan. Contoh: <code>' . $cmd . ' CF-ABCD-2345</code>'); exit; }
@@ -99,6 +99,12 @@ if ($cmd === '/daftar') {
         unset($db['codes'][$code]);
         foreach ($db['reqs'] as $rid => $rq) if (($rq['code'] ?? '') === $code) unset($db['reqs'][$rid]);
         $msg = "🗑️ Kode <code>$code</code> (" . h($nm) . ") dan seluruh datanya (nama, kontak, portofolio) dihapus permanen.";
+    } elseif ($cmd === '/pemilik') {
+        $on = empty($db['codes'][$code]['owner']);
+        if ($on) foreach ($db['codes'] as $k => $v) unset($db['codes'][$k]['owner']);
+        if ($on) $db['codes'][$code]['owner'] = true; else unset($db['codes'][$code]['owner']);
+        $msg = $on ? "👑 <code>$code</code> (" . h($db['codes'][$code]['name'] ?? '') . ") ditandai sebagai akun pemilik: saran tampil dengan gaya santai. Pengguna lain tetap memakai bahasa aman. Muat ulang halaman di perangkat Anda."
+                   : "Tanda pemilik untuk <code>$code</code> dilepas: saran kembali memakai bahasa aman.";
     } elseif ($cmd === '/nama') {
         $nm = trim(mb_substr(implode(' ', array_slice($a, 2)), 0, 60));
         if ($nm === '') { db_close($fh); reply('Contoh: <code>/nama CF-ABCD-2345 Budi Santoso</code>'); exit; }
@@ -129,5 +135,5 @@ if ($cmd === '/daftar') {
     db_save($fh, $db);
     reply("🔑 Kode baru untuk " . h($name) . ":\n<code>$code</code>\nBerlaku sampai " . fmt_date($exp) . ".\n\n<code>" . h(share_text($code, $exp)) . "</code>");
 } else {
-    reply("<b>Perintah ChartFlow</b>\n/daftar: kode aktif, perangkat, dan aktivitas\n/nama KODE Nama: ganti nama akun\n/kode 30 Nama: buat kode baru (hari, nama)\n/perpanjang KODE 30: tambah masa berlaku\n/reset KODE: keluarkan semua perangkat kode itu\n/cabut KODE: matikan kode (data disimpan 90 hari)\n/hapus KODE: hapus permanen kode + semua datanya (permintaan penghapusan data)\n\nPermintaan dari website datang otomatis dengan tombol Setujui/Tolak.");
+    reply("<b>Perintah ChartFlow</b>\n/daftar: kode aktif, perangkat, dan aktivitas\n/nama KODE Nama: ganti nama akun\n/kode 30 Nama: buat kode baru (hari, nama)\n/perpanjang KODE 30: tambah masa berlaku\n/reset KODE: keluarkan semua perangkat kode itu\n/cabut KODE: matikan kode (data disimpan 90 hari)\n/hapus KODE: hapus permanen kode + semua datanya (permintaan penghapusan data)\n/pemilik KODE: tandai akun Anda sendiri (saran bergaya santai)\n\nPermintaan dari website datang otomatis dengan tombol Setujui/Tolak.");
 }

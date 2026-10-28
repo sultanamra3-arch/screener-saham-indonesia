@@ -16,7 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     db_save($fh, $db);
     json_out(['ok' => true, 'data' => $d['data'] ?? (object)[], 'user' => [
         'name' => $c['name'] ?? '', 'code' => $u['code'], 'exp' => $c['exp'] ?? 0, 'expText' => fmt_date((int)($c['exp'] ?? 0)),
-        'days' => (int)floor((($c['exp'] ?? 0) - now()) / 86400), 'devices' => $used, 'maxDevices' => $c['devices'] ?? CF_DEVICES]]);
+        'days' => (int)floor((($c['exp'] ?? 0) - now()) / 86400), 'devices' => $used, 'maxDevices' => $c['devices'] ?? CF_DEVICES,
+        'owner' => !empty($c['owner']) || (!empty($c['tg']) && (string)$c['tg'] === (string)CF_CHAT_ID)]]);
 }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !same_origin()) json_out(['ok' => false], 400);
 $set = body()['set'] ?? null;
