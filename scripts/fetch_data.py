@@ -683,6 +683,31 @@ def intraday():
     run_cycles(close, {"IHSG": INDEX}, {"ramadan": True, "holidays": set(notify_telegram.HOLIDAYS)},
                liquid, eligible, tick=strategies.tick, persist=False)
     _ohlc(close, volume, liquid)
+    # pesan Telegram: ringkasan siang (sekali, setelah sesi 1) + saham yang baru masuk / hampir sampai area beli
+    try:
+        nf_ = DATA / "intraday_note.json"
+        note = json.loads(nf_.read_text()) if nf_.exists() else {}
+        if note.get("date") != last:
+            note = {"date": last, "sent": [], "midday": None}
+        d = json.loads(OUT_FILE.read_text())
+        wd, hm = now.weekday(), now.hour * 60 + now.minute
+        parts = []
+        if hm >= (11 * 60 + 30 if wd == 4 else 12 * 60) and note.get("midday") != last:
+            note["midday"] = last
+            m = notify_telegram.midday(d)
+            if m:
+                parts.append(m)
+        L, keys = notify_telegram.near_lines(d, set(note.get("sent") or []))
+        if L:
+            note["sent"] = (note.get("sent") or []) + keys
+            parts.append("\n".join([f"⏱️ <b>Harga sementara {now.strftime('%H.%M')} WIB</b> · area beli", *L,
+                                     "<i>Pertimbangkan memasang order limit di harga area beli. Harga tertunda beberapa menit.</i>"]))
+        note["msg"] = "\n\n".join(parts) or None
+        note["at"] = prev["intraday"]["at"]
+        nf_.write_text(json.dumps(note, ensure_ascii=False))
+        log(f"Catatan siang: {len(L)} saham area beli baru/hampir sampai, ringkasan siang {'ya' if note['midday'] == last and parts and parts[0].startswith('⏱️ <b>Update') else 'tidak'}")
+    except Exception as e:
+        log(f"  catatan siang gagal: {e}")
     summary(f"### Update siang berhasil\n- {n} saham, harga sementara {last} pukul {prev['intraday']['wib']} WIB\n- Lama proses: {(time.time() - t0) / 60:.1f} menit")
 
 if __name__ == "__main__":

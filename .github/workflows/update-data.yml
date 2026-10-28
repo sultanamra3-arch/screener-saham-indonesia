@@ -4,10 +4,9 @@ on:
   schedule:
     # 10:43 UTC Senin–Jumat = 17:43 WIB, setelah BEI tutup pukul 16.00.
     - cron: "43 10 * * 1-5"
-    # Update siang (harga sementara, istirahat sesi 1): 05:15 UTC Senin–Kamis = 12:15 WIB,
-    # 04:45 UTC Jumat = 11:45 WIB.
-    - cron: "15 5 * * 1-4"
-    - cron: "45 4 * * 5"
+    # Update harga tiap 30 menit selama jam bursa: 02:00–08:30 UTC = 09.00–15.30 WIB Senin–Jumat.
+    # Jam istirahat dilewati (scripts/intraday_gate.py), kecuali sekali untuk ringkasan siang.
+    - cron: "*/30 2-8 * * 1-5"
   workflow_dispatch:
     inputs:
       siang:
@@ -30,7 +29,7 @@ jobs:
       FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
       FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
       FTP_DIR: ${{ secrets.FTP_DIR }}
-      INTRADAY: ${{ (github.event.schedule == '15 5 * * 1-4' || github.event.schedule == '45 4 * * 5' || inputs.siang) && '1' || '0' }}
+      INTRADAY: ${{ (github.event.schedule == '*/30 2-8 * * 1-5' || inputs.siang) && '1' || '0' }}
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v5
@@ -43,10 +42,16 @@ jobs:
       - name: Pasang paket
         run: pip install -r requirements.txt
 
+      - name: Cek jam bursa (update 30 menit)
+        if: env.INTRADAY == '1'
+        run: python scripts/intraday_gate.py | tee -a "$GITHUB_ENV"
+
       - name: Ambil data dan hitung 7 metode
+        if: env.SKIP != '1'
         run: python scripts/fetch_data.py
 
       - name: Simpan ke repository
+        if: env.SKIP != '1'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -60,7 +65,7 @@ jobs:
           fi
 
       - name: Kirim salinan ke chartflow.my.id (bila FTP sudah diatur)
-        if: success() && env.FTP_SERVER != ''
+        if: success() && env.SKIP != '1' && env.FTP_SERVER != ''
         continue-on-error: true
         run: |
           python scripts/build_chartflow_app.py id out_app
@@ -71,7 +76,7 @@ jobs:
           echo "Salinan id terkirim ke chartflow.my.id/app/id/" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Cek alarm harga pengguna ChartFlow
-        if: success() && env.FTP_SERVER != ''
+        if: success() && env.SKIP != '1' && env.FTP_SERVER != ''
         continue-on-error: true
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -82,7 +87,7 @@ jobs:
           echo "$r"; echo "- Alarm harga: $r" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Kirim ringkasan ke Telegram
-        if: success()
+        if: success() && env.SKIP != '1'
         continue-on-error: true
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

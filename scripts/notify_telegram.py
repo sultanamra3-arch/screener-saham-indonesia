@@ -482,6 +482,56 @@ def send(msg: str):
 
 
 
+def _allow_methods(d: dict, c: dict) -> list[str]:
+    st = d.get("stats") or {}
+    bad = {m for m in ("canslim", "momentum", "swing") if (st.get(m) or {}).get("n", 0) >= 10 and (st.get(m) or {}).get("avg", 0) < 0}
+    return INV if market_regime(d, c) == "tertekan" else [m for m in ORDER if m not in bad]
+
+
+def near_lines(d: dict, sent: set) -> tuple[list[str], list[str]]:
+    """Saham Area beli yang baru masuk area beli, atau tinggal ≤1% lagi dari harga antrean (sekali per hari)."""
+    import plan_track
+    f = ROOT / "data" / "cycles.json"
+    if not f.exists():
+        return [], []
+    c = json.loads(f.read_text())
+    by = {o["ticker"]: o for o in d.get("stocks", [])}
+    L, keys = [], []
+    for p in plan_track.plans(d, c, _allow_methods(d, c), layak, idr=True, liquid_only=True):
+        o = by.get(p["t"]) or {}
+        price = o.get("price")
+        if not price:
+            continue
+        tgt = f" · target {usd(p['g'])}" if p.get("g") else ""
+        if p["k"] == "now":
+            key = "now:" + p["t"]
+            txt = f"✅ {b(p['t'])} {usd(price)} <b>masuk area beli</b> · stop &lt; {usd(p['s'])}{tgt}"
+        else:
+            gap = (price / p["e"] - 1) * 100
+            if not 0 < gap <= 1.0:
+                continue
+            key = "near:" + p["t"]
+            txt = f"🔔 {b(p['t'])} {usd(price)} tinggal <b>{str(round(gap, 1)).replace('.', ',')}%</b> lagi ke area beli {usd(p['e'])} · stop &lt; {usd(p['s'])}{tgt}"
+        if key in sent:
+            continue
+        keys.append(key)
+        L.append(txt)
+    return L, keys
+
+
+def intraday_msg(d: dict) -> str | None:
+    """Pesan update 30 menit: disiapkan oleh fetch_data.py di data/intraday_note.json."""
+    try:
+        note = json.loads((ROOT / "data" / "intraday_note.json").read_text())
+    except Exception:
+        return None
+    it = d.get("intraday") or {}
+    if note.get("at") != it.get("at") or not note.get("msg"):
+        print("Update 30 menit: tidak ada hal penting, pesan tidak dikirim.")
+        return None
+    return note["msg"]
+
+
 def midday(d: dict) -> str | None:
     """Pesan siang: hanya bila ada saham layak beli yang baru masuk area support, atau support jebol."""
     it = d.get("intraday") or {}
@@ -500,7 +550,7 @@ def main():
         msg = failed_message()
     else:
         d = json.loads(DATA_FILE.read_text())
-        msg = weekly() if "--weekly" in sys.argv else reminder(d) if "--reminder" in sys.argv else midday(d) if os.environ.get("INTRADAY") == "1" else morning(d)
+        msg = weekly() if "--weekly" in sys.argv else reminder(d) if "--reminder" in sys.argv else intraday_msg(d) if os.environ.get("INTRADAY") == "1" else morning(d)
     if not msg:
         return
     if "--dry-run" in sys.argv:

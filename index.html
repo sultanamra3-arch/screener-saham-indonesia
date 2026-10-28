@@ -139,6 +139,10 @@ tbody tr:last-child td{border-bottom:none}
 .cl div{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:6px;align-items:baseline}
 .cl .v{font-family:var(--f-mono);font-size:12px;text-align:right;color:var(--muted)}
 .calcbtn{font-size:12.5px;padding:3px 8px;white-space:nowrap}
+#tvBox{height:600px}#cyBox:not(.tv-on) #tvBox{display:none}#cyBox.tv-on #tvBox{display:block}
+#cyBox.tv-on #cyChart,#cyBox.tv-on #cyPanels,#cyBox.tv-on #ilHint,#cyBox.tv-on .indbar [data-ind],#cyBox.tv-on #ilBtn,#cyBox.tv-on #ilClr,#cyBox.tv-on .il-sep,#cyBox.tv-on .legend{display:none!important}
+#tvBtn[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+@media (max-width:760px){#tvBox{height:480px}}
 .il-lay{position:absolute;inset:0;pointer-events:none;z-index:3}.il-box{position:absolute;pointer-events:auto;background:var(--surface);border:1px solid var(--line);border-left:3px solid;border-radius:8px;padding:5px 24px 5px 8px;font-size:12px;line-height:1.35;box-shadow:0 4px 14px rgba(16,24,40,.15);display:flex;flex-direction:column;white-space:nowrap}
 .il-box.up{border-left-color:#16a34a}.il-box.dn{border-left-color:#dc2626}.il-box.up b{color:#16a34a}.il-box.dn b{color:#dc2626}
 .il-box button{position:absolute;top:2px;right:2px;border:none;background:none;padding:2px 4px;font-size:11px;color:var(--muted);cursor:pointer}
@@ -833,6 +837,13 @@ function infoLines(ch,s,T,el,key,idr){
   window.__ilCount=()=>L.length;
   draw(); ilBar();
 }
+function tvWidget(box,sym){
+  const dark=(document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))==="dark";
+  box.innerHTML=`<div class="tradingview-widget-container" style="height:100%;width:100%"><div class="tradingview-widget-container__widget" style="height:calc(100% - 28px);width:100%"></div><div class="tradingview-widget-copyright" style="font-size:12px;padding-top:6px"><a href="https://id.tradingview.com/symbols/${encodeURIComponent(sym.replace(":","-"))}/" rel="noopener nofollow" target="_blank">Grafik ${esc(sym)} oleh TradingView</a> <span class="note">· harga BEI tertunda ±15 menit</span></div></div>`;
+  const sc=document.createElement("script"); sc.src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js"; sc.async=true; sc.type="text/javascript";
+  sc.text=JSON.stringify({autosize:true,symbol:sym,interval:"D",timezone:"Asia/Jakarta",theme:dark?"dark":"light",style:"1",locale:"id",allow_symbol_change:false,hide_side_toolbar:false,withdateranges:true,calendar:false,save_image:false,support_host:"https://www.tradingview.com"});
+  box.querySelector(".tradingview-widget-container").appendChild(sc);
+}
 function ilHint(t){ const h=$("ilHint"); if(h) h.textContent=t; }
 function ilBar(){ const b=$("ilBtn"), c=$("ilClr"); if(b){ b.setAttribute("aria-pressed",IL_MODE); b.textContent=IL_MODE?"📏 Batal":"📏 Garis info"; }
   if(c) c.hidden=!(window.__ilCount&&window.__ilCount()); const el=$("cyChart"); if(el) el.classList.toggle("il-on",IL_MODE);
@@ -935,10 +946,11 @@ function renderCycles(box){
         <input type="search" id="cyQ" list="cyList" placeholder="Kode saham" aria-label="Pilih saham" value="${isIdx?"":esc(sel)}" style="width:130px">
         <datalist id="cyList">${Object.keys(CYC.stocks).map(t=>`<option value="${esc(t)}">`).join("")}</datalist></div></div>
     ${cycleGuide(idxName)}${saranBox(isIdx?saranMarket({cyc:true}).html:`${o?saranStock(o)+`<p style="margin:6px 0 10px">${calcBtn(o.ticker)}</p>`:""}`+saranMarket({cyc:true}).head)}<div style="height:12px"></div>
-    <div class="tablebox" style="padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+    <div class="tablebox" id="cyBox" style="padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
       <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
       <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
-      <div class="indbar" id="indBar">${(()=>{ const on=indOn(); return IND.map(([k,n,c])=>`<button type="button" data-ind="${k}" aria-pressed="${on.has(k)}"><i style="background:${c}"></i>${n}</button>`).join(""); })()}<span class="il-sep"></span><button type="button" id="ilBtn" aria-pressed="false" title="Ukur perubahan harga antara dua titik">📏 Garis info</button><button type="button" id="ilClr" hidden title="Hapus semua garis info">🗑️</button></div><p class="note" id="ilHint" style="margin:0 0 6px;min-height:0"></p>
+      <div class="indbar" id="indBar">${(()=>{ const on=indOn(); return IND.map(([k,n,c])=>`<button type="button" data-ind="${k}" aria-pressed="${on.has(k)}"><i style="background:${c}"></i>${n}</button>`).join(""); })()}<span class="il-sep"></span><button type="button" id="ilBtn" aria-pressed="false" title="Ukur perubahan harga antara dua titik">📏 Garis info</button><button type="button" id="ilClr" hidden title="Hapus semua garis info">🗑️</button><button type="button" id="tvBtn" title="Grafik TradingView: harga lebih baru (tertunda ±15 menit), alat gambar dan indikator lengkap">📺 TradingView</button></div>
+      <div id="tvBox" hidden></div><p class="note" id="ilHint" style="margin:0 0 6px;min-height:0"></p>
       <div id="cyChart" style="width:100%;min-height:400px"></div>
       <div id="cyPanels"></div></div>
     <div class="mcard" style="margin-top:12px"><h4><span>📊 Bacaan indikator</span></h4><div id="cyRead"><p class="note">Memuat…</p></div>
@@ -980,7 +992,11 @@ function renderCycles(box){
   $("cyQ").addEventListener("change",ev=>{ const v=ev.target.value.trim().toUpperCase(); if(CYC.stocks[v]){ store.set(WP+"cy.sel",v); renderResults(); } });
   let bars=null; const draw=()=>drawChart($("cyChart"),SER.dates,vals,a,isIdx?a.rawan:null,CYC.future,!isIdx&&usd(1).startsWith("Rp"),{bars,panels:$("cyPanels"),read:$("cyRead"),dkey:sel});
   IL_MODE=false;
-  $("indBar").addEventListener("click",ev=>{ if(ev.target.closest("#ilBtn")){ IL_MODE=!IL_MODE; if(!IL_MODE&&window.__ilCancel) window.__ilCancel(); ilBar(); return; }
+  const tvSym=IS_ID?(isIdx?"IDX:COMPOSITE":"IDX:"+sel):({"S&P 500":"SP:SPX","Nasdaq-100":"NASDAQ:NDX"}[sel]||sel);
+  const tvSet=on=>{ $("cyBox").classList.toggle("tv-on",on); $("tvBtn").textContent=on?"📈 Grafik ChartFlow":"📺 TradingView"; $("tvBtn").setAttribute("aria-pressed",on);
+    if(on){ IL_MODE=false; ilBar(); tvWidget($("tvBox"),tvSym); } else $("tvBox").innerHTML=""; };
+  if(store.get(WP+"tv")==="1") setTimeout(()=>tvSet(true),0);
+  $("indBar").addEventListener("click",ev=>{ if(ev.target.closest("#tvBtn")){ const on=!$("cyBox").classList.contains("tv-on"); store.set(WP+"tv",on?"1":"0"); tvSet(on); return; } if(ev.target.closest("#ilBtn")){ IL_MODE=!IL_MODE; if(!IL_MODE&&window.__ilCancel) window.__ilCancel(); ilBar(); return; }
     if(ev.target.closest("#ilClr")){ if(window.__ilClear) window.__ilClear(); return; }
     const bt=ev.target.closest("[data-ind]"); if(!bt) return; const on=indOn(), k=bt.dataset.ind; on.has(k)?on.delete(k):on.add(k); store.set(WP+"ind",JSON.stringify([...on])); bt.setAttribute("aria-pressed",on.has(k)); draw(); });
   Promise.all([loadLWC(),loadOhlc(sel)]).then(([,bb])=>{ if(tab!=="cycles") return; bars=bb; draw(); if(b) drawBreadth($("cyBreadth"),b); })
