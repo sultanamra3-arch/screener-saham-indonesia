@@ -784,8 +784,12 @@ const IND=[["ma20","MA20","#f59e0b",1],["ma50","MA50","#0ea5e9",1],["ma200","MA2
   ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0]];
 function indOn(){ let s=null; try{ s=JSON.parse(store.get(WP+"ind")||"null"); }catch(e){} return new Set(s||IND.filter(x=>x[3]).map(x=>x[0])); }
 const OHLC={};
+const OHLCP={};
+function warmCharts(ts){ const go=()=>{ try{ loadSer(); loadLWC().catch(()=>{}); (ts||[]).slice(0,12).forEach(t=>loadOhlc(t)); }catch(e){} };
+  if(window.requestIdleCallback) requestIdleCallback(go,{timeout:2500}); else setTimeout(go,1200); }
 function loadOhlc(name){ const k=String(name).replace(/[^A-Za-z0-9.]/g,"_"); if(k in OHLC) return Promise.resolve(OHLC[k]);
-  return fetch("data/ohlc/"+encodeURIComponent(k)+".json?v="+encodeURIComponent((CYC&&CYC.date)||""),{cache:"no-cache"}).then(r=>r.ok?r.json():null).then(j=>(OHLC[k]=j&&j.b&&j.b.length?j.b:null)).catch(()=>(OHLC[k]=null)); }
+  if(OHLCP[k]) return OHLCP[k];
+  return OHLCP[k]=fetch("data/ohlc/"+encodeURIComponent(k)+".json?v="+encodeURIComponent((CYC&&CYC.date)||""),{cache:"no-cache"}).then(r=>r.ok?r.json():null).then(j=>(OHLC[k]=j&&j.b&&j.b.length?j.b:null)).catch(()=>(OHLC[k]=null)); }
 function indRead(on,B,c,hasV,x){
   const out=[], p=c[c.length-1], f=v=>usd(v);
   const st=k=>{ const [v]=lastOf(x[k]); return v; };
@@ -1202,8 +1206,8 @@ function trkScore(D){ const n=D.length; if(!n) return null; const r=D.map(x=>x.r
   return {n,tg:D.filter(x=>x.res==="target").length,sl:D.filter(x=>x.res==="stop").length,tm:D.filter(x=>x.res==="time").length,
     avg:r.reduce((a,b)=>a+b,0)/n,win:r.filter(x=>x>0).length,days:D.map(x=>Math.round((new Date(x.xd)-new Date(x.in))/864e5)).reduce((a,b)=>a+b,0)/n}; }
 function trackCard(){
-  const T=TRK||{}; if(!T.start) return `<p class="note">Pencatatan dimulai pada pembaruan sore berikutnya. Setiap rencana beli dicatat lalu dinilai otomatis: kena target, kena stop, atau waktu habis.</p>`;
-  const done=(T.done||[]), fin=done.filter(x=>x.res!=="nofill"), nof=done.length-fin.length, open=(T.open||[]);
+  const TK=TRK||{}; if(!TK.start) return `<p class="note">Pencatatan dimulai pada pembaruan sore berikutnya. Setiap rencana beli dicatat lalu dinilai otomatis: kena target, kena stop, atau waktu habis.</p>`;
+  const done=(TK.done||[]), fin=done.filter(x=>x.res!=="nofill"), nof=done.length-fin.length, open=(TK.open||[]);
   const run=open.filter(x=>x.in), wait=open.filter(x=>!x.in);
   const line=(lbl,s)=>s?`<div><span>${lbl}</span><span class="num"><b>${s.n}</b> selesai · <span class="ok">🎯 ${s.tg}</span> · <span class="no">🛑 ${s.sl}</span> · ⏰ ${s.tm} · rata-rata <b class="${s.avg>=0?"ok":"no"}">${s.avg>=0?"+":""}${nf(s.avg,2)}%</b></span></div>`:`<div><span>${lbl}</span><span class="note">belum ada yang selesai</span></div>`;
   const all=trkScore(fin);
@@ -1222,7 +1226,7 @@ function trackCard(){
       ${all?`<div><span>Lama rata-rata · menang</span><span class="num">${nf(all.days,0)} hari · ${all.win}/${all.n} (${nf(all.win/all.n*100,0)}%)</span></div>`:""}</div>
     ${fin.length<20?`<p class="note">Baru ${fin.length} transaksi selesai. Angka mulai bisa dipercaya setelah sekitar 20 transaksi (3–4 minggu).</p>`:""}
     ${rowsO||rowsD?`<div class="tablebox" style="margin-top:8px"><table><thead><tr><th>Saham</th><th class="num">Beli</th><th class="num">Keluar / batas</th><th>Hasil</th><th class="num">Untung/rugi</th></tr></thead><tbody>${rowsO}${rowsD}</tbody></table></div>`:""}
-    <p class="note">Dicatat sejak ${tgl(T.start,1)} dari Rencana beli setiap sore. 🎯 = harga tertinggi menyentuh target R1; 🛑 = harga ditutup di bawah stop; ⏰ = 40 hari bursa tanpa keduanya (dinilai di harga penutupan). Antrean dianggap terisi bila harga terendah menyentuh harga antrean; tidak tersentuh 10 hari bursa = tidak terisi.${IS_ID?" Sudah dipotong biaya beli 0,15% dan jual 0,25%.":""}</p>`;
+    <p class="note">Dicatat sejak ${tgl(TK.start,1)} dari Rencana beli setiap sore. 🎯 = harga tertinggi menyentuh target R1; 🛑 = harga ditutup di bawah stop; ⏰ = 40 hari bursa tanpa keduanya (dinilai di harga penutupan). Antrean dianggap terisi bila harga terendah menyentuh harga antrean; tidak tersentuh 10 hari bursa = tidak terisi.${IS_ID?" Sudah dipotong biaya beli 0,15% dan jual 0,25%.":""}</p>`;
 }
 // ---------- Rencana beli (Watchlist) ----------
 function planOf(x){
@@ -1289,7 +1293,7 @@ function renderWatch(box){
     ${broken.length?`<div class="rhead" style="margin-top:16px"><div class="l"><h2>⚠️ Support jebol hari ini</h2><p class="note">Kemarin di area support, hari ini ditutup di bawah batas jebol. Batalkan antrean dan evaluasi ulang.</p></div></div>
       <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Zona yang jebol</th><th class="num">Di bawah zona</th></tr></thead><tbody>
       ${broken.map(b=>`<tr class="row wrow" data-go="${esc(b.t)}" tabindex="0">${stockCell(byT[b.t])}<td class="num">${usd(b.price)}</td><td class="num">${zr(b)} (${b.strength})</td><td class="num no">${pct(b.drop)}</td></tr>`).join("")}</tbody></table></div>`:""}
-    <p class="note" style="margin-top:8px">Klik baris untuk membuka grafik di tab Siklus. Zona support dan resistance adalah area kemungkinan, bukan jaminan.</p>`;  if(!TRK) loadTrk().then(()=>{ const el=$("trk"); if(el) el.innerHTML=trackCard(); });
+    <p class="note" style="margin-top:8px">Klik baris untuk membuka grafik di tab Siklus. Zona support dan resistance adalah area kemungkinan, bukan jaminan.</p>`;  warmCharts(list.map(x=>x.t));  if(!TRK) loadTrk().then(()=>{ const el=$("trk"); if(el) el.innerHTML=trackCard(); });
 }
 
 // ---------- Kalkulator ----------
@@ -2059,7 +2063,7 @@ $("results").addEventListener("click",ev=>{
   const chb=ev.target.closest(".chartbtn"); if(chb){ ev.stopPropagation(); openChart(chb.dataset.chart); return; }
   const cb=ev.target.closest(".calcbtn"); if(cb){ ev.stopPropagation(); openCalc(cb.dataset.calc,cb.dataset.e?{entry:+cb.dataset.e,stop:+cb.dataset.s,target:+cb.dataset.tg||null}:null); return; }
   const sb=ev.target.closest(".star"); if(sb){ ev.stopPropagation(); toggleStar(sb.dataset.star); renderTabs(); renderResults(); return; }
-  const wr=ev.target.closest("tr.wrow"); if(wr){ store.set(WP+"cy.sel",wr.dataset.go); tab="cycles"; store.set(WP+"tab","cycles"); try{history.replaceState(null,"","#cycles")}catch(e){} renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0,behavior:"smooth"}); return; }
+  const wr=ev.target.closest("tr.wrow"); if(wr){ store.set(WP+"cy.sel",wr.dataset.go); tab="cycles"; store.set(WP+"tab","cycles"); try{history.replaceState(null,"","#cycles")}catch(e){} renderTabs(); renderRail(); renderResults(); window.scrollTo({top:0}); return; }
   const mo=ev.target.closest("[data-more]"); if(mo){ MORE[tab]=true; renderResults(); return; }
   const dr=ev.target.closest("div.row[data-t]"); if(dr){ openTicker=dr.dataset.t; renderResults(); return; }
   const tr=ev.target.closest("tr.row"); if(tr) toggleRow(tr); });
