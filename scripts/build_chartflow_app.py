@@ -29,10 +29,12 @@ rep = [
     ('  set(k,v){try{localStorage.setItem(k,v)}catch(e){}}',
      '  set(k,v){try{localStorage.setItem(k,v)}catch(e){} if(window.CF_SYNC) window.CF_SYNC(k,v);}'),
 ]
+s = s.replace(f"{GH}/screener-saham/kripto/", "@@KRIPTO@@")  # screener kripto tetap di GitHub Pages
 for a, b in rep:
     if a not in s:
         sys.exit(f"Pola tidak ditemukan di index.html: {a[:60]}")
     s = s.replace(a, b)
+s = s.replace("@@KRIPTO@@", f"{GH}/screener-saham/kripto/")
 HEAD_JS = r'''<script>
 /* ChartFlow: muat data akun dari server sebelum aplikasi berjalan */
 (function(){
