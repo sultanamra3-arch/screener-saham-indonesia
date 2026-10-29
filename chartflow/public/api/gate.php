@@ -4,8 +4,8 @@ require __DIR__ . '/lib.php';
 $p = (string)($_GET['p'] ?? '');
 $p = ltrim(str_replace(['\\', "\0"], '', $p), '/');
 if ($p === '' ) $p = 'id/';
-if (!preg_match('#^(id|us)(/.*)?$#', $p)) { http_response_code(404); exit; }
-if (substr($p, -1) === '/' || preg_match('#^(id|us)$#', $p)) $p = rtrim($p, '/') . '/index.html';
+if (!preg_match('#^(id|us|kripto)(/.*)?$#', $p)) { http_response_code(404); exit; }
+if (substr($p, -1) === '/' || preg_match('#^(id|us|kripto)$#', $p)) $p = rtrim($p, '/') . '/index.html';
 $root = realpath(__DIR__ . '/../_appfiles');
 $f = realpath($root . '/' . $p);
 if (!$f || strpos($f, $root . DIRECTORY_SEPARATOR) !== 0 || !is_file($f)) { http_response_code(404); exit; }

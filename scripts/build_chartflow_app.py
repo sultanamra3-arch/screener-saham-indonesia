@@ -15,7 +15,9 @@ if Path(str(out) + "_pub").exists():
     shutil.rmtree(Path(str(out) + "_pub"))
 (out / "data").mkdir(parents=True)
 
-s = (ROOT / "index.html").read_text(encoding="utf-8")
+KR = market == "kripto"  # screener kripto: halaman & data di folder kripto/
+SRC = ROOT / "kripto" if KR else ROOT
+s = (SRC / "index.html").read_text(encoding="utf-8")
 rep = [
     ('<link rel="manifest" href="/screener-saham/manifest.webmanifest">', '<link rel="manifest" href="/app.webmanifest">'),
     (f"{GH}/screener-saham-indonesia/", "/app/id/"),
@@ -29,16 +31,20 @@ rep = [
     ('  set(k,v){try{localStorage.setItem(k,v)}catch(e){}}',
      '  set(k,v){try{localStorage.setItem(k,v)}catch(e){} if(window.CF_SYNC) window.CF_SYNC(k,v);}'),
 ]
-s = s.replace(f"{GH}/screener-saham/kripto/", "@@KRIPTO@@")  # screener kripto tetap di GitHub Pages
+s = s.replace(f"{GH}/screener-saham/kripto/", "/app/kripto/")
 for a, b in rep:
     if a not in s:
+        if KR:
+            continue
         sys.exit(f"Pola tidak ditemukan di index.html: {a[:60]}")
     s = s.replace(a, b)
-s = s.replace("@@KRIPTO@@", f"{GH}/screener-saham/kripto/")
+if KR:
+    s = (s.replace("<b>Screener Kripto</b>", "<b>ChartFlow</b>").replace('href="../icons/', 'href="icons/')
+         .replace('src="../icons/', 'src="icons/').replace('register("../sw.js")', 'register("sw.js")'))
 HEAD_JS = r'''<script>
 /* ChartFlow: muat data akun dari server sebelum aplikasi berjalan */
 (function(){
-  var KEYS=["si.porto","ss.porto","si.star","ss.star","si.calc","ss.calc","si.flt","ss.flt","si.cmp","ss.cmp"];
+  var KEYS=["si.porto","ss.porto","si.star","ss.star","si.calc","ss.calc","si.flt","ss.flt","si.cmp","ss.cmp","kr.porto","kr.star","kr.calc","kr.fee"];
   window.CF_KEYS=KEYS;
   try{
     var x=new XMLHttpRequest(); x.open("GET","/api/store.php",false); x.send();
@@ -189,7 +195,10 @@ ALARM_JS = r"""<dialog id="cfAl"><div class="b">
 })();
 </script>
 """
-s = s.replace("<style>", HEAD_JS + ALARM_HEAD + "<style>", 1).replace("</style>", CSS + ALARM_CSS + "</style>", 1)
+if KR:  # alarm harga belum untuk kripto
+    s = s.replace("<style>", HEAD_JS + "<script>if(window.CF_SAFE===undefined) window.CF_SAFE=true;</script>\n<style>", 1).replace("</style>", CSS + "</style>", 1)
+else:
+    s = s.replace("<style>", HEAD_JS + ALARM_HEAD + "<style>", 1).replace("</style>", CSS + ALARM_CSS + "</style>", 1)
 # ---- tombol "Pasang aplikasi": di Android langsung unduh APK
 APK_JS = r"""<dialog id="cfApk"><div class="b"><b style="font-size:17px">📲 Mengunduh ChartFlow.apk…</b>
 <ol style="margin:10px 0 0;padding-left:20px;line-height:1.6;font-size:14px"><li>Tunggu unduhan selesai, lalu ketuk <b>ChartFlow.apk</b> di notifikasi atau folder <b>Download</b>.</li>
@@ -209,15 +218,18 @@ APK_JS = r"""<dialog id="cfApk"><div class="b"><b style="font-size:17px">📲 Me
 })();</script>
 """
 i = s.rindex("</body>")
-s = s[:i] + BODY_JS + APK_JS + ALARM_JS + s[i:]
+s = s[:i] + BODY_JS + APK_JS + ("" if KR else ALARM_JS) + s[i:]
 (out / "index.html").write_text(s, encoding="utf-8")
 shutil.copy(ROOT / "sw.js", out / "sw.js")
 shutil.copytree(ROOT / "icons", out / "icons")
 for f in ("stocks.json", "detail.json", "cycles.json", "series.json", "plan_track.json", "ver.json"):
-    if (ROOT / "data" / f).exists():
-        shutil.copy(ROOT / "data" / f, out / "data" / f)
-if (ROOT / "data" / "ohlc").is_dir():
-    shutil.copytree(ROOT / "data" / "ohlc", out / "data" / "ohlc")
+    if (SRC / "data" / f).exists():
+        shutil.copy(SRC / "data" / f, out / "data" / f)
+if (SRC / "data" / "ohlc").is_dir():
+    shutil.copytree(SRC / "data" / "ohlc", out / "data" / "ohlc")
+if KR:
+    print(f"Salinan kripto siap di {out}: {sum(1 for _ in out.rglob('*') if _.is_file())} file")
+    sys.exit(0)
 # ---- ringkasan publik untuk pita berjalan di beranda (tanpa sinyal per saham)
 import json as _json
 _d = _json.loads((ROOT / "data" / "stocks.json").read_text())

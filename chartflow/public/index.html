@@ -352,7 +352,7 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
 <script>
 const $=id=>document.getElementById(id);
 async function post(url,data){ const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data),credentials:"same-origin"}); let j={}; try{ j=await r.json(); }catch(e){} return j; }
-function goApp(){ const q=new URLSearchParams(location.search), n=q.get("next"); let m="id"; try{ m=localStorage.getItem("lastMarket")==="us"?"us":"id"; }catch(e){} location.href=(n&&/^\/app\//.test(n))?n:"/app/"+m+"/"; }
+function goApp(){ const q=new URLSearchParams(location.search), n=q.get("next"); let m="id"; try{ const lm=localStorage.getItem("lastMarket"); m=lm==="us"||lm==="kripto"?lm:"id"; }catch(e){} location.href=(n&&/^\/app\//.test(n))?n:"/app/"+m+"/"; }
 async function doLogin(b,kick){ const m=$("mLogin"); b.disabled=true; m.className="msg"; m.textContent=kick?"Mengeluarkan perangkat lama…":"Memeriksa…";
   const j=await post("/api/login.php",{code:$("code").value,kick:!!kick}); b.disabled=false;
   $("kickBox").hidden=!(j.full&&j.canKick);

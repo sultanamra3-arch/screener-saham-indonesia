@@ -5,7 +5,7 @@ const CF_USER_MAX = 500000; // byte per akun
 $u = session_user();
 if (!$u) json_out(['ok' => false, 'msg' => 'login'], 401);
 $file = user_file($u['code']);
-$KEY = '/^(si|ss)\.(porto|star|calc|flt|cmp)$/';
+$KEY = '/^((si|ss)\.(porto|star|calc|flt|cmp)|kr\.(porto|star|calc|fee))$/';
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $d = is_file($file) ? (json_decode((string)file_get_contents($file), true) ?: []) : [];
@@ -35,7 +35,7 @@ if (strlen($out) > CF_USER_MAX) { flock($fh, LOCK_UN); fclose($fh); json_out(['o
 ftruncate($fh, 0); rewind($fh); fwrite($fh, $out); fflush($fh); flock($fh, LOCK_UN); fclose($fh);
 // ringkasan untuk /daftar pengelola (jumlah posisi, tanpa isi)
 $npos = 0;
-foreach (['si.porto', 'ss.porto'] as $k) { $p = json_decode($data[$k] ?? '{}', true); $npos += count($p['open'] ?? []); }
+foreach (['si.porto', 'ss.porto', 'kr.porto'] as $k) { $p = json_decode($data[$k] ?? '{}', true); $npos += count($p['open'] ?? []); }
 [$fh, $db] = db_open();
 if (isset($db['codes'][$u['code']])) { $db['codes'][$u['code']]['seen'] = now(); $db['codes'][$u['code']]['npos'] = $npos; }
 db_save($fh, $db);
