@@ -146,7 +146,7 @@ ALARM_JS = r"""<dialog id="cfAl"><div class="b">
     <p class="note" id="alMsg" style="margin:6px 0 0"></p></div>
   <div><b style="font-size:14px">Alarm aktif</b> <span class="note" id="alCnt"></span><div id="alList"></div></div>
   <div id="alFired"></div>
-  <p class="note" style="margin:0">Dicek saat data diperbarui (BEI ±12.15 dan ±17.45 WIB, AS ±05.45 WIB) memakai harga tertinggi/terendah hari itu. Bukan real-time. Alarm mati sendiri setelah terkirim.</p>
+  <p class="note" style="margin:0">Dicek setiap kali data diperbarui (BEI tiap 30 menit saat bursa buka, AS tiap jam) memakai harga tertinggi/terendah hari itu. Bukan real-time. Alarm mati sendiri setelah terkirim.</p>
 </div></dialog>
 <script>
 (function(){

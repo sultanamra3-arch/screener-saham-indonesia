@@ -2121,7 +2121,7 @@ function hotLists(list){
 }
 function renderHot(box){
   if(!CYC&&!CYC_ERR) loadCycles().then(()=>{ if(tab==="hot") renderResults(); });
-  const H=hotLists(filtered()), d=DATA||{}, live=d.intraday&&d.intraday.date===d.priceDate;
+  const H=hotLists(filtered()), d=DATA||{}, live=d.intraday&&d.intraday.date>=d.priceDate;
   const valTx=v=>v==null?"–":IS_ID?"Rp"+nf(v/1e9,v>=1e10?0:1)+" M":"$"+nf(v/1e6,0)+" jt";
   const volTx=x=>x==null?"–":`<b class="${x>=2?"ok":""}">${nf(x,1)}×</b>`;
   const chgTx=v=>`<b class="${v>0?"ok":v<0?"no":""}">${pct(v,1)}</b>`;
@@ -2166,7 +2166,7 @@ function autoApply(d){
     const y=window.scrollY;
     if(tab==="cycles") renderStatus(); // grafik tidak digambar ulang agar zoom & garis tidak hilang
     else { renderAll(); window.scrollTo(0,y); }
-    const jam=d.intraday&&d.intraday.date===d.priceDate?(d.intraday.wib||"")+" WIB":"penutupan";
+    const jam=d.intraday&&d.intraday.date>=d.priceDate?(d.intraday.wib||"")+" WIB":"penutupan";
     autoToast(tab==="cycles"?`🔄 Harga diperbarui (${jam}). Buka ulang grafik untuk melihatnya.`:`🔄 Harga diperbarui (${jam})`);
   });
 }

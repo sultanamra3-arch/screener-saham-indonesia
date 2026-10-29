@@ -3,7 +3,7 @@ name: Pasang beranda & login chartflow.my.id
 on:
   push:
     branches: [main]
-    paths: ["chartflow/**", ".github/workflows/deploy-chartflow.yml"]
+    paths: ["chartflow/**", "scripts/check_landing.py", ".github/workflows/deploy-chartflow.yml"]
   workflow_dispatch:
 
 permissions:
@@ -27,6 +27,18 @@ jobs:
       SITE: https://chartflow.my.id
     steps:
       - uses: actions/checkout@v5
+
+      - name: Cek halaman depan sesuai fitur terbaru
+        run: |
+          if ! out=$(python3 scripts/check_landing.py); then
+            echo "$out"; echo "### ⛔ Halaman depan belum sesuai fitur terbaru" >> "$GITHUB_STEP_SUMMARY"; echo "$out" >> "$GITHUB_STEP_SUMMARY"
+            if [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ]; then
+              curl -s -m 30 -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" --data-urlencode "chat_id=$TG_CHAT" \
+                --data-urlencode "text=⛔ Pengiriman halaman depan ChartFlow ditahan: $out" > /dev/null || true
+            fi
+            exit 1
+          fi
+          echo "$out"
 
       - name: Cek pengaturan
         id: chk
