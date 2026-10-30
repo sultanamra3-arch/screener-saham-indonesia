@@ -36,6 +36,8 @@ def plans(d: dict, c: dict, allow: list[str], layak, idr: bool, liquid_only: boo
                 continue
             if liquid_only and o.get("liq", "L") != "L":
                 continue
+            if idr and o.get("sma200") is not None and o["sma200"] <= 0:  # BEI: hanya saham di atas rata-rata 200 hari (uji 2018–2026)
+                continue
             if not any(layak(o, m) for m in allow):
                 continue
             p = o["price"]
