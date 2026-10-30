@@ -574,7 +574,14 @@ function renderTabs(){
   }).join("");
 }
 const ltYrs=()=>LT&&LT.from?`${LT.from.slice(0,4)}–${LT.to.slice(0,4)}`:"";
-function ltBlock(mid){ const L=LT&&LT.methods&&LT.methods[mid]; if(!L) return "";
+function ltInv(mid){ if(!LT||!["value","growth","quality","dividend"].includes(mid)) return "";
+  const D=LT.div;
+  if(mid==="dividend"&&D) return `<div class="rules"><h3>Uji mundur ${D.from}–${D.to} (aturan utama)</h3><div class="statgrid">
+    <div>Per tahun<b class="ok">${pct(D.cagr,1)}</b></div><div>Rata-rata saham likuid<b>${pct(D.bench,1)}</b></div>
+    <div>Turun terdalam 2021–26<b class="no">${nf(D.dd2[0],0)}%</b></div><div>Saham likuid 2021–26<b class="no">${nf(D.dd2[1],0)}%</b></div></div>
+    <p class="note">Yield ≥4%, dividen naik 5 tahun, dan Chowder, dicek tiap awal bulan (rata-rata ${D.npos} saham), termasuk dividen dan biaya. Syarat payout dan laba tidak ikut diuji karena riwayatnya tidak tersedia. Hasilnya: kira-kira sama dengan rata-rata saham, tetapi lebih tahan saat pasar jatuh (2026: ${pct(D.y2026[0],0)} dibanding ${pct(D.y2026[1],0)}).</p></div>`;
+  return `<div class="rules"><h3>Uji mundur jangka panjang</h3><p class="note">Belum bisa diuji: metode ini butuh riwayat laporan keuangan (utang, arus kas, margin, nilai buku) yang hanya tersedia ±4 tahun. Sinyalnya dicatat maju sejak ${DATA&&DATA.started?tgl(DATA.started,1):"Oktober 2026"} supaya hasilnya bisa dinilai nanti.</p></div>`; }
+function ltBlock(mid){ const L=LT&&LT.methods&&LT.methods[mid]; if(!L) return IS_ID?ltInv(mid):"";
   const bad=L.avg<0, yrs=ltYrs();
   return `<div class="rules"${bad?' style="border-left:4px solid var(--bad);padding-left:10px"':""}><h3>Uji mundur ${yrs} (${nf(LT.n,0)} saham)</h3>${bad?`<p><b class="no">⚠️ Tidak lolos uji ${yrs}.</b> ${T("Rata-rata rugi setelah biaya, jadi metode ini tidak dipakai di Saran dan Area beli.","Rata-rata hasil negatif setelah biaya; tidak dipakai di Keterangan dan Area beli.")}</p>`:""}<div class="statgrid">
     <div>Transaksi<b>${nf(L.n,0)}</b></div><div>Untung<b>${nf(L.win,0)}%</b></div>
@@ -600,7 +607,7 @@ function renderRail(){
     <div class="rules"><h3>Kapan beli</h3><ul>${m.entry.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
     <div class="rules"><h3>Kapan jual</h3><ul>${m.exit.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
     <div class="rules"><h3>Kenapa aturan ini</h3><p class="note" style="font-size:13.5px">${esc(m.why)}</p></div>
-    ${m.kind==="tr"?statBlock(m.id):`<p class="note">Posisi investor dicatat maju sejak ${tgl(DATA&&DATA.started,1)}, karena aturan jualnya butuh riwayat (misalnya 2 tahun Graham).</p>`}
+    ${m.kind==="tr"?statBlock(m.id):(IS_ID?ltInv(m.id):"")+`<p class="note">Posisi investor dicatat maju sejak ${tgl(DATA&&DATA.started,1)}, karena aturan jualnya butuh riwayat (misalnya 2 tahun Graham).</p>`}
     ${m.id==="momentum"&&DATA&&DATA.nextRebalance?`<p class="note">Pengecekan berikutnya: pembaruan pertama setelah ${tgl(DATA.nextRebalance,1)}.</p>`:""}`;
 }
 
@@ -2072,7 +2079,7 @@ function renderDivcal(box){
   L.sort((a,b)=>(b.own-a.own)||a.d.ex.localeCompare(b.d.ex)||((b.d.y||0)-(a.d.y||0)));
   const cumOf=s=>{ const c=new Date(s); do{ c.setDate(c.getDate()-1); }while(c.getDay()===0||c.getDay()===6); return c.toISOString().slice(0,10); };
   const seg=`<div class="seg" role="group" aria-label="Saring">${[["all","Semua",cnt.all],["div","Layak beli (Dividen)",cnt.div],["own","Portofolio saya",cnt.own],["sure","Tanggal pasti",cnt.sure]].map(([k,l,n])=>`<button type="button" data-dc="${k}" aria-pressed="${f===k}">${l} (${n})</button>`).join("")}</div>`;
-  box.innerHTML=saranBox(`<p><b>Cara memakai:</b> supaya berhak menerima dividen, saham harus sudah Anda miliki <b>paling lambat pada tanggal cum</b> (satu hari bursa sebelum ex-dividen). Pada tanggal ex, harga biasanya turun kira-kira sebesar dividennya, jadi membeli hanya demi dividen jarang menguntungkan. Yang paling cocok: saham yang memang <b>layak beli menurut metode Dividen</b> dan kebetulan dekat tanggal ex.</p>
+  box.innerHTML=saranBox(`<p><b>Cara memakai:</b> supaya berhak menerima dividen, saham harus sudah Anda miliki <b>paling lambat pada tanggal cum</b> (satu hari bursa sebelum ex-dividen). Pada tanggal ex, harga biasanya turun kira-kira sebesar dividennya, jadi membeli hanya demi dividen untungnya tipis.${LT&&LT.cum?` 📏 Uji ${LT.cum.years}: beli di harga penutupan tanggal cum lalu jual di tanggal ex rata-rata hanya <b>${pct(LT.cum.avg,2)}</b> per transaksi setelah pajak dividen 10% dan biaya (${LT.cum.win}% untung, ${nf(LT.cum.n,0)} kali); kalau dipegang 5–10 hari setelah ex, kelebihannya hilang.`:""} Yang paling cocok: saham yang memang <b>layak beli menurut metode Dividen</b> dan kebetulan dekat tanggal ex.</p>
       <p class="note">${IS_ID?"Untuk saham Indonesia, tanggal resmi baru tersedia setelah diumumkan; sebagian besar di sini adalah <b>perkiraan</b> dari pola tahun-tahun sebelumnya.":"Sebagian besar tanggal sudah diumumkan (pasti); sisanya perkiraan dari pola pembayaran kuartalan."} Rentang: ${75} hari ke depan.</p>`)+`
     <div class="rhead" style="margin-top:12px"><div class="l"><h2>Kalender ex-dividen</h2><p class="note">Mengikuti filter di atas. 💼 = ada di Portofolio Anda (ditampilkan paling atas).</p></div>${seg}</div>
     <div class="tablebox"><table><thead><tr><th class="num">Ex-dividen</th><th class="num">Beli paling lambat</th><th>Saham</th><th class="num">Harga</th><th class="num">Dividen/lembar</th><th class="num">Yield</th><th>Status</th><th>Metode Dividen</th><th></th></tr></thead><tbody>

@@ -32,11 +32,15 @@ NAMES = {"value": "Value", "growth": "Growth", "quality": "Quality", "dividend":
 ORDER = ["canslim", "value", "growth", "quality", "dividend", "momentum", "swing"]
 HARI = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"]
 BULAN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
-# Hari libur Bursa Efek Indonesia 2026 (termasuk cuti bersama). Perbarui tiap akhir tahun.
+# Hari libur Bursa Efek Indonesia (termasuk cuti bersama). Perbarui tiap akhir tahun.
+# 2027: Pengumuman BEI No. Peng-00169/BEI.POP/09-2026 (241 hari bursa), cuti bersama sesuai SKB 3 Menteri 2027.
 HOLIDAYS = {
     "2026-01-01", "2026-01-16", "2026-02-16", "2026-02-17", "2026-03-18", "2026-03-19", "2026-03-20",
     "2026-03-23", "2026-03-24", "2026-04-03", "2026-05-01", "2026-05-14", "2026-05-15", "2026-05-27",
     "2026-05-28", "2026-06-01", "2026-06-16", "2026-08-17", "2026-08-25", "2026-12-24", "2026-12-25", "2026-12-31",
+    "2027-01-01", "2027-01-05", "2027-02-05", "2027-03-08", "2027-03-09", "2027-03-10", "2027-03-11",
+    "2027-03-12", "2027-03-15", "2027-03-25", "2027-03-26", "2027-05-06", "2027-05-17", "2027-05-18",
+    "2027-05-19", "2027-05-20", "2027-06-01", "2027-08-17", "2027-12-24", "2027-12-31",
 }
 
 

@@ -1,6 +1,21 @@
 [
  {
   "d": "2026-10-30",
+  "t": "💸 Hasil uji metode Dividen & tanggal cum",
+  "x": "Halaman Dividen dan Kalender dividen kini menampilkan hasil uji 2010–2026, termasuk hasil beli di tanggal cum lalu jual di tanggal ex setelah pajak dan biaya."
+ },
+ {
+  "d": "2026-10-30",
+  "t": "⚠️ Risiko Momentum kripto lebih jelas",
+  "x": "Halaman Momentum 90 hari kini menampilkan hasil uji 2018–2026 saat Bitcoin jatuh dan penurunan terdalamnya; kripto berisiko sangat tinggi."
+ },
+ {
+  "d": "2026-10-30",
+  "t": "📅 Kalender libur BEI 2027",
+  "x": "Jadwal pembaruan data, pengingat, dan tanggal di grafik kini memakai 20 hari libur bursa 2027 sesuai pengumuman BEI."
+ },
+ {
+  "d": "2026-10-30",
   "t": "📍 Area beli hanya untuk saham bertren naik (BEI)",
   "x": "Area beli BEI kini hanya untuk saham di atas rata-rata 200 hari, sesuai uji 2018–2026 dengan aturan yang sama, dan hasil uji itu ditampilkan di halaman Watchlist."
  },
