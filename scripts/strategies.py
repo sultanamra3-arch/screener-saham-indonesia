@@ -162,7 +162,8 @@ def market(close: pd.DataFrame, volume: pd.DataFrame | None) -> dict:
     last = s.index[-1]
     text = (f"IHSG {num(s[last], 0)}, {'di atas' if s[last] > s50[last] else 'di bawah'} SMA50 {num(s50[last], 0)}, "
             f"SMA50 {'di atas' if s50[last] > s200[last] else 'di bawah'} SMA200, {int(dist[last])} distribution days (25 hari)")
-    return {"ok": bool(okser[last]), "series": okser, "text": text, "dist": int(dist[last])}
+    a200 = bool(s[last] > s200[last]) if s200[last] == s200[last] else None  # dipakai Saringan teruji (BEI: keluar saat indeks di bawah MA200)
+    return {"ok": bool(okser[last]), "series": okser, "text": text, "dist": int(dist[last]), "above200": a200}
 
 
 def tt_series(close, ind, t):
