@@ -325,14 +325,16 @@ def cone_stats(data: dict, skip=(), M: int = 300) -> dict:
     return {"n": n, "c80": {str(h): round(h80[h] / n * 100, 1) for h in CONE_H}, "c50": {str(h): round(h50[h] / n * 100, 1) for h in CONE_H}}
 
 
-def run(data_dir: Path, cost: float, skip=(), skip_last: bool = False, log=print):
-    """Dipanggil dari fetch_data.py / fetch_kripto.py setelah data candlestick ditulis."""
+def run(data_dir: Path, cost: float, skip=(), skip_last: bool = False, log=print, data=None):
+    """Dipanggil dari fetch_data.py / fetch_kripto.py setelah data candlestick ditulis.
+    data (opsional) = {nama: (tanggal, array [high, low, close])} dengan riwayat lebih panjang dari file grafik."""
     try:
-        data = load_ohlc(data_dir / "ohlc", skip_last)
+        data = data or load_ohlc(data_dir / "ohlc", skip_last)
         if not data:
             return
         st = stats(data, cost, skip)
         st["date"] = max(v[0][-1] for v in data.values())
+        st["from"] = min(v[0][WARM] for v in data.values() if len(v[0]) > WARM)
         st["path"] = path_stats(data, skip)
         st["cone"] = cone_stats(data, skip)
         (data_dir / "trend_stats.json").write_text(json.dumps(st, separators=(",", ":")))

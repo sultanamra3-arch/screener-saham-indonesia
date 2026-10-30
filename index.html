@@ -897,36 +897,49 @@ function projDraw(ch,B,T,fut,a,pf,pt,key,good,bad){
   g.setMarkers([{time:pr.ghost[pr.ghost.length-1][0],position:"aboveBar",color:"#64748b",shape:"circle",text:"contoh"}]);
   return pr; }
 function projTxt(pr,f){ if(!pr) return ""; const e=pr.band[pr.H-1], C=(TRS||{}).cone;
-  return `<b>🔮 Proyeksi ${pr.H} hari bursa (gambaran, bukan ramalan):</b> sekitar ${tgl(pr.end)}, harga kemungkinan besar (80%) di antara <b>${f(e[0])} – ${f(e[4])}</b>, dan separuh kemungkinan (50%) di antara ${f(e[1])} – ${f(e[3])}.${pr.R1&&pr.pUp!=null?` Peluang di atas R1 ${f(pr.R1.lo)}: <b>${nf(pr.pUp,0)}%</b>.`:""}${pr.S1&&pr.pDn!=null?` Peluang di bawah S1 ${f(pr.S1.hi)}: <b>${nf(pr.pDn,0)}%</b>.`:""} Candle transparan hanyalah <b>satu contoh</b> dari 1.000 jalur acak yang disusun dari candle asli grafik ini${pr.ghost?"":""}.${C&&C.c80?` Di uji mundur (${nf(C.n,0)} kali), harga asli 20 hari kemudian jatuh di dalam pita 80% sebanyak <b>${nf(C.c80["20"],0)}%</b> dan di dalam pita 50% sebanyak <b>${nf(C.c50["20"],0)}%</b> (idealnya 80% dan 50%).`:""}`; }
-function pathTxt(pt,f){ if(!pt) return "";
-  const RN={mom10:"dengan menganggap arah 10 hari terakhir berlanjut",rev10:"dengan menganggap arah 10 hari terakhir berbalik",rsi_ch:"dari RSI dan posisi harga di saluran",pos_ch:"dari posisi harga di saluran garis tren"}[pt.rule]||"";
-  return `<b>〰️ Jalur (gambaran, bukan ramalan pasti):</b> ${pt.dir>0?"naik":"turun"} dulu ke ${f(pt.main[1][1])} sekitar ${tgl(pt.main[1][0])}, lalu ${pt.dir>0?"turun":"naik"} ke ${f(pt.main[2][1])} sekitar ${tgl(pt.main[2][0])} (±${pt.D} hari bursa per gelombang, dari kebiasaan grafik ini). Arah pertama dipilih ${RN}.${pt.acc!=null?` Di uji mundur (${nf(pt.n,0)} kejadian) arah pertama seperti ini tepat <b>${nf(pt.acc,1)}%</b>, sedangkan lempar koin 50%${pt.acc<55?`: <b class="no">praktis sama dengan menebak</b>`:""}.`:""} Garis ungu tipis = jalur sebaliknya, yang hampir sama mungkinnya.`; }
-const TRN={brk_up:"Tembus garis turun ke atas",brk_dn:"Tembus garis naik ke bawah",touch_up:"Memantul di garis naik",touch_dn:"Tertolak di garis turun"};
-function trVerdict(e){ if(!e||e.diff==null) return '<span class="note">data belum cukup</span>'; return e.p<5?(e.diff>0?'<b class="ok">lebih baik dari biasa</b>':'<b class="no">lebih buruk dari biasa</b>'):"tidak berbeda dari kebetulan"; }
-function trStat(k){ const e=((TRS||{}).ev||{})[k]; if(!e||e.diff==null) return ""; return ` Di masa lalu (${nf(e.n,0)} kejadian), ${TRS.h} hari bursa sesudahnya rata-rata ${e.diff>=0?"+":""}${nf(e.diff,2)} poin dibanding hari biasa: ${trVerdict(e)}.`; }
+  return `<b>🔮 Perkiraan ${pr.H} hari bursa ke depan</b> (sampai sekitar ${tgl(pr.end)}):<br>
+    • <b>Hampir pasti</b> (8 dari 10 kemungkinan) harga ada di antara <b>${f(e[0])}</b> dan <b>${f(e[4])}</b>.<br>
+    • <b>Paling mungkin</b> (5 dari 10) di antara ${f(e[1])} dan ${f(e[3])}.${pr.R1&&pr.pUp!=null?`<br>• Peluang naik melewati R1 ${f(pr.R1.lo)}: <b>${nf(pr.pUp,0)} dari 100</b>.`:""}${pr.S1&&pr.pDn!=null?`<br>• Peluang turun di bawah S1 ${f(pr.S1.hi)}: <b>${nf(pr.pDn,0)} dari 100</b>.`:""}
+    <br>Candle samar di grafik hanya <b>contoh gerakan</b>, bukan tebakan pasti.${C&&C.c80?` ✔️ Perkiraan seperti ini sudah dicek ke masa lalu: sekitar <b>${Math.round(C.c80["20"]/10)} dari 10</b> kali harga memang berakhir di rentang “hampir pasti”.`:""}`; }
+function pathTxt(pt,f){ if(!pt) return ""; const P=(TRS||{}).path;
+  return `<b>〰️ Jalur:</b> gambaran kalau harga <b>${pt.dir>0?"naik":"turun"} dulu ke ${f(pt.main[1][1])}</b> (sekitar ${tgl(pt.main[1][0])}), lalu <b>${pt.dir>0?"turun":"naik"} ke ${f(pt.main[2][1])}</b> (sekitar ${tgl(pt.main[2][0])}). Garis ungu tipis = kemungkinan sebaliknya.${pt.acc!=null?` ⚠️ Arah “${pt.dir>0?"naik":"turun"} dulu” ini hanya tebakan: di masa lalu tebakan seperti ini benar <b>${nf(pt.acc,0)} dari 100</b> kali, hampir sama dengan lempar koin.`:""}`; }
+const TRN={brk_up:"⬆️ Harga menembus garis atas (merah) yang sedang turun",brk_dn:"⬇️ Harga jebol garis bawah (hijau) yang sedang naik",touch_up:"↩️ Harga memantul di garis bawah (hijau)",touch_dn:"✋ Harga tertolak di garis atas (merah)"};
+function trVerdict(e){ if(!e||e.diff==null) return '<span class="note">datanya belum cukup</span>'; return e.p<5?(e.diff>0?'🟢 <b class="ok">lebih bagus dari asal beli</b>':'🔴 <b class="no">lebih jelek dari asal beli</b>'):"😐 sama saja dengan asal beli"; }
+const trKind=e=>!e||e.diff==null?"na":e.p<5?(e.diff>0?"up":"dn"):"eq";
+const TRA={brk_up:{up:"Tanda bagus, layak diperhatikan.",eq:"Jangan buru-buru beli hanya karena harga tembus garis.",dn:"Jangan buru-buru beli hanya karena harga tembus garis."},
+  brk_dn:{dn:"Tanda waspada. Kalau punya sahamnya, pertimbangkan dikurangi.",eq:"Tidak perlu panik hanya karena ini.",up:"Justru sering memantul lagi; jangan panik."},
+  touch_up:{dn:"Jangan beli hanya karena harga “sudah di garis bawah”.",eq:"Memantul saja belum cukup jadi alasan beli.",up:"Pantulan di garis bawah cenderung berlanjut naik."},
+  touch_dn:{dn:"Harga sedang susah naik; lebih baik tunggu.",eq:"Tidak berarti apa-apa.",up:"Penolakan seperti ini sering tidak bertahan lama."}};
+function trAdvice(k,e){ const v=trKind(e); if(v==="na") return ""; return SAFE?(v==="up"?"Secara historis hasilnya lebih baik dari rata-rata.":v==="dn"?"Secara historis hasilnya lebih buruk dari rata-rata.":"Secara historis tidak berbeda dari rata-rata."):TRA[k][v]; }
+function trStat(k){ const e=((TRS||{}).ev||{})[k]; if(!e||e.diff==null) return ""; const S=TRS;
+  return ` Di masa lalu ini terjadi ${nf(e.n,0)} kali: ${S.h} hari bursa kemudian rata-rata <b>${pct(e.avg,1)}</b>, sedangkan kalau beli di hari sembarang <b>${pct(S.base.avg,1)}</b>. ${trVerdict(e)}. ${trAdvice(k,e)}`; }
 function trendTxt(tr,c,f){
-  const p=c[c.length-1], L=[];
-  if(!tr.up&&!tr.dn) return `<b>Garis tren:</b> titik balik belum cukup untuk menarik garis tren.`;
-  const U=tr.up, D=tr.dn, shape=U&&D?(U.rising&&D.rising?"<b>saluran naik</b> (lembah dan puncak makin tinggi)":!U.rising&&!D.rising?"<b>saluran turun</b> (lembah dan puncak makin rendah)":U.rising?"<b>menyempit</b> (lembah makin tinggi, puncak makin rendah; biasanya disusul gerakan besar)":"<b>melebar</b> (lembah makin rendah, puncak makin tinggi; gejolak sedang besar)"):"";
-  if(U){ const v=U.at(c.length-1); L.push(`garis bawah (hijau, lembah ${tgl(U.p1.d)} → ${tgl(U.p2.d)}, ${U.rising?"naik":"turun"}) sekarang di ${f(v)}, harga ${nf(Math.abs((p/v-1)*100),1)}% ${p>=v?"di atasnya":"di bawahnya"}`); }
-  if(D){ const v=D.at(c.length-1); L.push(`garis atas (merah, puncak ${tgl(D.p1.d)} → ${tgl(D.p2.d)}, ${D.rising?"naik":"turun"}) di ${f(v)}, harga ${nf(Math.abs((p/v-1)*100),1)}% ${p>=v?"di atasnya":"di bawahnya"}`); }
-  let s=`<b>Garis tren:</b> ${shape?shape+". ":""}${L.join("; ")}.`;
-  if(tr.brkUp!=null) s+=` <b class="ok">${tr.brkUp?tr.brkUp+" hari lalu harga":"Hari ini harga"} menembus garis atas yang turun.</b>`+trStat("brk_up");
-  if(tr.brkDn!=null) s+=` <b class="no">${tr.brkDn?tr.brkDn+" hari lalu harga":"Hari ini harga"} menembus garis bawah yang naik.</b>`+trStat("brk_dn");
+  const p=c[c.length-1], U=tr.up, D=tr.dn, L=[];
+  if(!U&&!D) return `<b>📐 Garis tren:</b> belum bisa ditarik, karena titik puncak dan lembahnya belum cukup.`;
+  const shape=U&&D?(U.rising&&D.rising?"Puncak dan lembahnya makin tinggi: <b>tren sedang naik</b>.":!U.rising&&!D.rising?"Puncak dan lembahnya makin rendah: <b>tren sedang turun</b>.":U.rising?"Lembahnya makin tinggi tapi puncaknya makin rendah: harga <b>makin menyempit</b>, biasanya sebentar lagi bergerak besar (arahnya belum tahu).":"Lembahnya makin rendah tapi puncaknya makin tinggi: harga sedang <b>bergejolak besar</b>."):"";
+  if(U){ const v=U.at(c.length-1); L.push(`Garis bawah (hijau) sekarang di <b>${f(v)}</b>; harga ${nf(Math.abs((p/v-1)*100),1)}% ${p>=v?"di atasnya":"<b>di bawahnya</b>"}.`); }
+  if(D){ const v=D.at(c.length-1); L.push(`Garis atas (merah) sekarang di <b>${f(v)}</b>; harga ${nf(Math.abs((p/v-1)*100),1)}% ${p>=v?"<b>di atasnya</b>":"di bawahnya"}.`); }
+  let s=`<b>📐 Garis tren:</b> ${shape} ${L.join(" ")}`;
+  if(tr.brkUp!=null) s+=`<br>🟢 <b>${tr.brkUp?tr.brkUp+" hari lalu":"Hari ini"} harga menembus garis atas.</b>`+trStat("brk_up");
+  if(tr.brkDn!=null) s+=`<br>🔴 <b>${tr.brkDn?tr.brkDn+" hari lalu":"Hari ini"} harga jebol garis bawah.</b>`+trStat("brk_dn");
   const sc=(TRS||{}).scen;
-  if(tr.tu!=null||tr.td!=null) s+=`<br><b>Dua skenario</b> (bukan ramalan): ${tr.tu!=null?`🟢 naik ke ${f(tr.tu)} (${pct((tr.tu/p-1)*100)})`:""}${tr.tu!=null&&tr.td!=null?" · ":""}${tr.td!=null?`🔴 turun ke ${f(tr.td)} (${pct((tr.td/p-1)*100)})`:""}.${sc?` Sebagai gambaran: dari ${nf(sc.n,0)} pantulan di garis bawah yang naik pada masa lalu, hanya ${sc.up}% yang sampai ke garis atas dalam 30 hari, sedangkan ${sc.dn}% malah menembus garis ke bawah.`:""}`;
+  if(tr.tu!=null||tr.td!=null) s+=`<br><b>Dua kemungkinan:</b> ${tr.tu!=null?`🟢 naik ke ${f(tr.tu)} (${pct((tr.tu/p-1)*100)})`:""}${tr.tu!=null&&tr.td!=null?" atau ":""}${tr.td!=null?`🔴 turun ke ${f(tr.td)} (${pct((tr.td/p-1)*100)})`:""}.${sc?` Sebagai gambaran: dari 100 kali harga memantul di garis bawah, hanya <b>${sc.up}</b> yang sampai ke garis atas dalam 30 hari, dan <b>${sc.dn}</b> justru jebol ke bawah.`:""}`;
   return s; }
 function trendCard(){
   const S=TRS||{}, E=S.ev||{}, K=TRK2||{}, D=(K.done||[]);
-  if(!S.ev) return `<p class="note">Statistik garis tren mulai tersedia setelah pembaruan data berikutnya.</p>`;
-  const by=k=>{ const r=D.filter(x=>x.k===k); if(!r.length) return '<span class="note">belum ada</span>'; const a=r.reduce((s,x)=>s+x.ret,0)/r.length, e=r.reduce((s,x)=>s+x.ex,0)/r.length; return `${r.length}× · rata-rata <b class="${a>=0?"ok":"no"}">${pct(a,1)}</b> · vs pasar <b class="${e>=0?"ok":"no"}">${e>=0?"+":""}${nf(e,1)} poin</b>`; };
-  return `<p class="note" style="margin:0 0 8px">Garis tren otomatis memakai titik balik ZigZag yang sama dengan grafik. Diuji pada ${nf(S.n_sym||0,0)} grafik (±1,5 tahun data), dinilai ${S.h} hari bursa sesudah kejadian${S.cost?`, setelah biaya ${nf(S.cost,2)}%`:""}. Pembanding: rata-rata semua hari (${S.base?pct(S.base.avg,2):"–"}).</p>
-    <div class="tablebox"><table class="nocard" style="min-width:0"><thead><tr><th>Kejadian</th><th class="num">Jumlah</th><th class="num">vs biasa</th><th>Kesimpulan uji</th><th>Sejak dipasang (${K.start?tgl(K.start,1):"–"})</th></tr></thead><tbody>
-    ${Object.keys(TRN).map(k=>{ const e=E[k]||{}; return `<tr><td>${TRN[k]}</td><td class="num">${e.n!=null?nf(e.n,0):"–"}</td><td class="num">${e.diff!=null?`<span class="${e.diff>=0?"ok":"no"}">${e.diff>=0?"+":""}${nf(e.diff,2)}</span>`:"–"}</td><td>${trVerdict(e)}</td><td style="font-size:13px">${by(k)}</td></tr>`; }).join("")}</tbody></table></div>
-    ${S.path&&S.path.acc?`<p style="margin:8px 0 0">〰️ <b>Jalur zigzag</b>: arah gelombang pertama ${esc(S.path.rule)}, tepat <b>${nf(S.path.acc[S.path.best],1)}%</b> dari ${nf(S.path.n,0)} kejadian (lempar koin 50%; aturan lain: ${Object.entries(S.path.acc).filter(([k])=>k!==S.path.best&&k!=="always_up").map(([k,v])=>nf(v,1)+"%").join(", ")}).${TRP&&TRP.n?` Sejak dipasang: ${TRP.ok} dari ${TRP.n} tepat (${nf(TRP.ok/TRP.n*100,0)}%).`:" Rekam jejak sejak dipasang mulai terisi beberapa minggu lagi."}</p>`:""}
-    ${S.cone&&S.cone.c80?`<p style="margin:8px 0 0">🔮 <b>Pita proyeksi</b>: harga asli jatuh di dalam pita 80% sebanyak ${["5","10","20"].map(h=>`<b>${nf(S.cone.c80[h],0)}%</b> (${h} hari)`).join(", ")}; pita 50%: ${["5","10","20"].map(h=>nf(S.cone.c50[h],0)+"%").join(", ")}. Makin dekat ke 80% dan 50%, makin jujur pitanya.</p>`:""}
-    ${S.scen?`<p class="note">Pantulan di garis naik: ${S.scen.up}% sampai garis atas dalam 30 hari, ${S.scen.dn}% menembus ke bawah, ${S.scen.none}% belum keduanya (${nf(S.scen.n,0)} kejadian).</p>`:""}
-    <p class="note">“vs biasa” = selisih rata-rata hasil ${S.h} hari dibanding hari acak. “Lebih baik/buruk dari biasa” hanya bila peluang kebetulannya di bawah 5%. Garis tren menggambarkan arah yang sudah terjadi; ke depannya tetap tidak pasti.</p>`; }
+  if(!S.ev) return `<p class="note">Hasil pengecekan garis tren muncul setelah pembaruan data berikutnya.</p>`;
+  const since=k=>{ const r=D.filter(x=>x.k===k); if(!r.length) return `Sejak dipasang${K.start?" ("+tgl(K.start,1)+")":""}: belum ada yang bisa dinilai.`;
+    const a=r.reduce((s,x)=>s+x.ret,0)/r.length, e=r.reduce((s,x)=>s+x.ex,0)/r.length; return `Sejak dipasang: ${r.length} kali, rata-rata <b class="${a>=0?"ok":"no"}">${pct(a,1)}</b> (${e>=0?"lebih bagus":"lebih jelek"} ${nf(Math.abs(e),1)}% dari rata-rata semua saham).`; };
+  const card=k=>{ const e=E[k]||{}; if(e.avg==null) return "";
+    return `<div class="mcard" style="gap:4px"><b>${TRN[k]}</b><span class="note">terjadi ${nf(e.n,0)} kali</span>
+      <span>${S.h} hari bursa kemudian rata-rata <b class="${e.avg>=0?"ok":"no"}">${pct(e.avg,1)}</b> · kalau beli di hari sembarang <b>${pct(S.base.avg,1)}</b></span>
+      <span>${trVerdict(e)}</span>${trAdvice(k,e)?`<span>👉 ${trAdvice(k,e)}</span>`:""}<span class="note">${since(k)}</span></div>`; };
+  const P=S.path, C=S.cone;
+  return `<p style="margin:0 0 8px">Kami cek <b>${nf(S.n_sym||0,0)} grafik selama ±${S.from?nf((new Date(S.date)-new Date(S.from))/31557600000,1):"1,5"} tahun</b>. Setiap kali kejadian di bawah muncul, kami lihat hasilnya ${S.h} hari bursa kemudian, lalu dibandingkan dengan beli di hari sembarang${S.cost?` (sudah dipotong biaya ${nf(S.cost,2)}%)`:""}.</p>
+    <div class="dgrid">${Object.keys(TRN).map(card).join("")}</div>
+    ${P&&P.acc?`<p style="margin:10px 0 0">〰️ <b>Jalur</b>: tebakan “ke mana dulu” benar <b>${nf(P.acc[P.best],0)} dari 100</b> kali (lempar koin: 50 dari 100). 👉 Pakai untuk membayangkan rencana, bukan untuk menebak arah.${TRP&&TRP.n?` Sejak dipasang: ${TRP.ok} dari ${TRP.n} benar.`:""}</p>`:""}
+    ${C&&C.c80?`<p style="margin:6px 0 0">🔮 <b>Proyeksi</b>: rentang “hampir pasti” memang kena sekitar <b>${Math.round(C.c80["10"]/10)} dari 10</b> kali (seharusnya 8 dari 10). 👉 Rentang ini bisa dipakai untuk memasang target dan batas rugi yang masuk akal.</p>`:""}
+    <p class="note" style="margin-top:8px">Garis tren hanya menggambarkan arah yang sudah terjadi. Ke depannya tetap tidak pasti.</p>`; }
 // ---------- Garis info (alat ukur di grafik) ----------
 let IL_MODE=false;
 function ilLoad(k){ try{ return JSON.parse(store.get(WP+"il."+k)||"[]"); }catch(e){ return []; } }
@@ -1045,7 +1058,7 @@ function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   if(all.length>1){ let busy=false; all.forEach(src=>src.timeScale().subscribeVisibleLogicalRangeChange(r=>{ if(busy||!r) return; busy=true; all.forEach(d=>{ if(d!==src) try{ d.timeScale().setVisibleLogicalRange(r); }catch(e){} }); busy=false; }));
     const r0=ch.timeScale().getVisibleLogicalRange(); all.slice(1).forEach(d=>d.timeScale().setVisibleLogicalRange(r0)); }
   if(opt.read){ if(!x.macd&&on.has("macd")) x.macd=macdA(C); const lines=indRead(on,B,C,hasV,x);
-    opt.read.innerHTML=lines.length?`<div class="dl" style="font-size:14px;gap:6px">${lines.map(l=>`<div><span>${l}</span></div>`).join("")}</div><p class="note">Bacaan otomatis dari harga penutupan terakhir${candle?"":" (grafik garis: data candlestick saham ini belum tersedia)"}. Indikator adalah alat bantu; keputusan tetap dari sinyal metode dan zona support.</p>`:`<p class="note">Pilih indikator di atas grafik.</p>`; }
+    opt.read.innerHTML=lines.length?`<div class="dl" style="font-size:14px;gap:6px">${lines.map(l=>`<div><span>${l}</span></div>`).join("")}</div><p class="note">Dibaca otomatis dari harga terakhir${candle?"":" (grafik garis: data candle saham ini belum tersedia)"}. Semua ini hanya alat bantu; keputusan beli tetap dari sinyal metode dan area support.</p>`:`<p class="note">Pilih indikator di atas grafik.</p>`; }
 }
 function drawBreadth(el,b){
   const L=window.LightweightCharts; if(!L||!b||!b.series) return;
@@ -1085,7 +1098,7 @@ function renderCycles(box){
       <div id="tvBox"></div><p class="note" id="ilHint" style="margin:0 0 6px;min-height:0"></p>
       <div id="cyChart" style="width:100%;min-height:400px"></div>
       <div id="cyPanels"></div></div>
-    <div class="mcard" style="margin-top:12px"><h4><span>📐 Garis tren: seberapa bisa dipercaya?</span></h4><div id="trBox"><p class="note">Memuat…</p></div></div>
+    <div class="mcard" style="margin-top:12px"><h4><span>📐 Garis tren, jalur, dan proyeksi: bisa dipercaya atau tidak?</span></h4><div id="trBox"><p class="note">Memuat…</p></div></div>
     <div class="mcard" style="margin-top:12px"><h4><span>📊 Bacaan indikator</span></h4><div id="cyRead"><p class="note">Memuat…</p></div>
       <details style="margin-top:8px"><summary class="note" style="cursor:pointer">Penjelasan singkat tiap indikator</summary><div class="dl" style="font-size:13.5px;margin-top:6px;gap:6px">
       <div><span><b>Candlestick</b>: satu batang = satu hari. Hijau = ditutup lebih tinggi dari pembukaan, merah = lebih rendah. Sumbu tipis = harga tertinggi dan terendah hari itu.</span></div>
