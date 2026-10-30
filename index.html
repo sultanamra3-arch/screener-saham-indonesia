@@ -890,8 +890,8 @@ function projCalc(B,T,fut,a,pt,key){
 function projDraw(ch,B,T,fut,a,pf,pt,key,good,bad){
   const pr=projCalc(B,T,fut,a,pt,key); if(!pr) return null; const n=T.length, p=B[n-1][4];
   const base={priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat:pf,autoscaleInfoProvider:()=>null};
-  const ln=(k,color,w,st)=>ch.addLineSeries({...base,color,lineWidth:w,lineStyle:st}).setData([{time:T[n-1],value:p}].concat(pr.band.map((b,h)=>({time:fut[h],value:b[k]}))));
-  ln(0,"#cbd5e1",1,2); ln(4,"#cbd5e1",1,2); ln(1,"#94a3b8",1,0); ln(3,"#94a3b8",1,0);
+  const ln=(k,color,w,st,title)=>ch.addLineSeries({...base,color,lineWidth:w,lineStyle:st,lastValueVisible:true,title}).setData([{time:T[n-1],value:p}].concat(pr.band.map((b,h)=>({time:fut[h],value:b[k]}))));
+  ln(0,"#94a3b8",1,2,"bawah 8/10"); ln(4,"#94a3b8",1,2,"atas 8/10"); ln(1,"#64748b",1,0,"bawah 5/10"); ln(3,"#64748b",1,0,"atas 5/10");
   const g=ch.addCandlestickSeries({...base,upColor:good+"80",downColor:bad+"80",borderUpColor:good+"cc",borderDownColor:bad+"cc",wickUpColor:good+"cc",wickDownColor:bad+"cc"});
   g.setData(pr.ghost.map(x=>({time:x[0],open:x[1],high:x[2],low:x[3],close:x[4]})));
   g.setMarkers([{time:pr.ghost[pr.ghost.length-1][0],position:"aboveBar",color:"#64748b",shape:"circle",text:"contoh"}]);

@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-10-30",
+  "t": "🔮 Angka harga di garis proyeksi",
+  "x": "Garis proyeksi kini punya label harga di sisi kanan grafik (atas/bawah 8 dari 10 dan 5 dari 10), jadi rentangnya langsung terbaca."
+ },
+ {
+  "d": "2026-10-30",
   "t": "💬 Penjelasan grafik lebih mudah dipahami",
   "x": "Bacaan garis tren, jalur, dan proyeksi kini memakai kalimat sehari-hari, misalnya “8 dari 10 kemungkinan” dan “dibanding beli di hari sembarang”."
  },
