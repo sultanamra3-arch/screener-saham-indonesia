@@ -495,6 +495,8 @@ def near_lines(d: dict, sent: set) -> tuple[list[str], list[str]]:
     if not f.exists():
         return [], []
     c = json.loads(f.read_text())
+    if market_regime(d, c) == "tertekan":  # pasar lesu: pembelian baru ditunda, tidak ada pesan "masuk area beli"
+        return [], []
     by = {o["ticker"]: o for o in d.get("stocks", [])}
     L, keys = [], []
     for p in plan_track.plans(d, c, _allow_methods(d, c), layak, idr=True, liquid_only=True):

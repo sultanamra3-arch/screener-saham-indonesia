@@ -413,8 +413,10 @@ def _track(idr: bool, fees):
         c = json.loads(CYC_FILE.read_text())
         st = d.get("stats") or {}
         bad = {m for m in ("canslim", "momentum", "swing") if (st.get(m) or {}).get("n", 0) >= 10 and (st.get(m) or {}).get("avg", 0) < 0}
-        allow = nt.INV if nt.market_regime(d, c) == "tertekan" else [m for m in nt.ORDER if m not in bad]
-        pl = plan_track.plans(d, c, allow, nt.layak, idr=idr, liquid_only=idr)
+        reg = nt.market_regime(d, c)
+        allow = nt.INV if reg == "tertekan" else [m for m in nt.ORDER if m not in bad]
+        # pasar lesu: pembelian baru ditunda (sama dengan website); yang sudah berjalan tetap dinilai
+        pl = [] if reg == "tertekan" else plan_track.plans(d, c, allow, nt.layak, idr=idr, liquid_only=idr)
         s = plan_track.update(DATA / "plan_track.json", DATA / "ohlc", d["priceDate"], pl, fees)
         sc = plan_track.score(s)
         log(f"Rekam jejak: {len(pl)} rencana hari ini, {len(s['open'])} berjalan, {sc.get('n', 0)} selesai")

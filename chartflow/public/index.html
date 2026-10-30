@@ -248,7 +248,7 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
   </div>
   <h3 class="grp">🎯 Menentukan harga</h3>
   <div class="grid">
-    <div class="card"><div class="e">📍</div><h3>Area beli</h3><p>Harga beli, batas rugi, dan target menurut aturan, dari zona support terdekat. Hanya yang calon untungnya minimal 2× calon rugi.</p></div>
+    <div class="card"><div class="e">📍</div><h3>Area beli</h3><p>Harga beli, batas rugi, dan target menurut aturan, dari zona support terdekat. Hanya yang calon untungnya minimal 2× calon rugi. Saat pasar lesu, area beli hanya jadi pantauan sampai pasar membaik.</p></div>
     <div class="card"><div class="e">🕯️</div><h3>Grafik & 8 indikator</h3><p>Candlestick dan volume dengan MA 20/50/200, EMA, Bollinger, VWAP, RSI, MACD, dan Stochastic RSI, masing-masing dengan bacaan otomatis. Ada garis tren otomatis dengan dua skenario arah (naik dan turun), dan jalur zigzag ke depan (ke mana dulu, lalu ke mana), beserta catatan seberapa sering tebakan itu benar, alat untuk menarik garis tren dan Garis info sendiri, serta tombol TradingView.</p></div>
     <div class="card"><div class="e">📈</div><h3>Zona support & resistance</h3><p>Dari Fibonacci, titik balik, rata-rata bergerak, dan angka bulat. Setiap unsur diuji: mana yang terbukti, mana yang tidak.</p></div>
     <div class="card"><div class="e">🧮</div><h3>Kalkulator lot</h3><p>Berapa lot, rugi bila kena batas rugi, untung di target, dan harga impas setelah biaya.</p></div>
@@ -314,7 +314,7 @@ input.code{font-size:22px;letter-spacing:.18em;text-align:center;text-transform:
 </div></section>
 
 <section id="jejak" style="padding-top:20px"><div class="wrap">
-  <div class="sh"><span class="k">Rekam jejak terbuka</span><h2>Kami catat hasilnya, menang atau kalah</h2><p>Setiap saham yang masuk Area beli dicatat otomatis, lalu dinilai: menyentuh target, menyentuh batas rugi, atau habis waktu 40 hari bursa. Tidak ada yang dihapus.</p></div>
+  <div class="sh"><span class="k">Rekam jejak terbuka</span><h2>Kami catat hasilnya, menang atau kalah</h2><p>Setiap saham yang masuk Area beli dicatat otomatis, lalu ditunggu mana yang terjadi lebih dulu: harga naik ke target, turun ke batas rugi, atau 40 hari bursa lewat. Semua hasil dicatat, termasuk yang rugi. Saat pasar lesu, pembelian baru ditunda.</p></div>
   <div class="jgrid" id="jejakBox"><div class="jcard"><p class="note">Memuat rekam jejak…</p></div></div>
   <p class="note" style="text-align:center;margin-top:12px">Hasil masa lalu tidak menjamin hasil berikutnya. Sudah termasuk perkiraan biaya transaksi untuk BEI.</p>
 </div></section>
@@ -445,9 +445,10 @@ const RM=matchMedia("(prefers-reduced-motion: reduce)").matches;
     const RS={target:"🎯 target",stop:"🛑 batas rugi",time:"⏰ waktu habis"};
     const card=(d,f,nm)=>{ const t=d&&d.trk; if(!t) return `<div class="jcard"><h3>${f} ${nm}</h3><p class="note">Pencatatan dimulai pada pembaruan data berikutnya.</p></div>`;
       const pc=v=>v==null?"–":(v>=0?"+":"")+String(v.toFixed(2)).replace(".",",")+"%";
-      return `<div class="jcard"><h3>${f} ${nm} <span class="note" style="font-weight:400">sejak ${tg(t.start)}</span></h3>
-        <div class="jnum"><div><b>${t.n}</b><span>selesai</span></div><div><b style="color:var(--good)">${t.tg}</b><span>🎯 target</span></div><div><b style="color:var(--bad)">${t.sl}</b><span>🛑 batas rugi</span></div><div><b style="color:${t.avg==null?"inherit":t.avg>=0?"var(--good)":"var(--bad)"}">${pc(t.avg)}</b><span>rata-rata</span></div></div>
-        <p class="note" style="margin:0 0 8px">${t.run} sedang berjalan · ${t.wait} menunggu area beli${t.n&&t.n<20?` · angka mulai bermakna setelah ±20 transaksi`:""}</p>
+      const age=Math.max(0,Math.round((Date.now()-new Date(t.start+"T00:00:00"))/864e5));
+      return `<div class="jcard"><h3>${f} ${nm}</h3><p class="note" style="margin:-4px 0 8px">Mulai dicatat ${tg(t.start)}${age<60?` (${age} hari lalu)`:""}</p>
+        <div class="jnum"><div><b>${t.n}</b><span>sudah ada hasil</span></div><div><b style="color:var(--good)">${t.tg}</b><span>🎯 kena target</span></div><div><b style="color:var(--bad)">${t.sl}</b><span>🛑 kena batas rugi</span></div><div><b style="color:${t.avg==null?"inherit":t.avg>=0?"var(--good)":"var(--bad)"}">${pc(t.avg)}</b><span>rata-rata hasil</span></div></div>
+        <p class="note" style="margin:0 0 8px">${t.run} sudah masuk area beli, hasilnya belum ada · ${t.wait} menunggu harga turun ke area beli${t.n<20?`<br>Baru ${t.n} hasil; angka ini baru bisa dinilai setelah sekitar 20 hasil.`:""}${d.regime==="tertekan"?`<br>⏸️ Pasar sedang lesu: pembelian baru ditunda sampai pasar membaik.`:""}</p>
         ${t.last&&t.last.length?`<div class="jlast">${t.last.map(x=>`<div><span><b>${x.t}</b> · ${RS[x.res]||x.res}</span><span style="color:${x.ret>=0?"var(--good)":"var(--bad)"}">${pc(x.ret)}</span></div>`).join("")}</div>`:`<p class="note" style="margin:0">Belum ada transaksi yang selesai.</p>`}</div>`; };
     box.innerHTML=card(a,"🇮🇩","Bursa Efek Indonesia")+card(b,"🇺🇸","Wall Street"); });
 })();
