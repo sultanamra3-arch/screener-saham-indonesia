@@ -446,7 +446,7 @@ const M = [
   cols:[["rsi2","RSI(2)"],["sma200","vs SMA200",1],["perf1m","1 bln",1]]},
 ];
 const MID = Object.fromEntries(M.map(m=>[m.id,m]));
-const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"},{id:"porto",name:"Portofolio",k:"Posisi Anda"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"teruji",name:"✅ Saringan teruji",k:"Lolos uji 9 tahun"},{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"calc",name:"Kalkulator",k:"Return & risiko"},{id:"divcal",name:"Kalender dividen",k:"Ex-dividen"},{id:"hot",name:"Ramai hari ini",k:"Momentum"},{id:"screen",name:"Filter sendiri",k:"Aturan Anda"}])
+const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"},{id:"porto",name:"Portofolio",k:"Posisi Anda"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"calc",name:"Kalkulator",k:"Return & risiko"},{id:"divcal",name:"Kalender dividen",k:"Ex-dividen"},{id:"hot",name:"Ramai hari ini",k:"Momentum"},{id:"screen",name:"Filter sendiri",k:"Aturan Anda"}])
 const ST = {buy:"Layak beli",hold:"Tahan",sell:"Jual",late:"Terlambat",wait:"Tunggu",na:"Tidak dinilai"};
 const PRI = {buy:0,sell:1,hold:2,late:3,wait:4,na:5};
 const REASON = {stop:"stop loss −7%",be:"kembali ke harga beli",target:"target +20%","8w":"8 minggu selesai",sma5:"di atas SMA5",rank:"keluar 20% teratas"};
@@ -554,7 +554,6 @@ function renderStatus(){
 function tabCount(t,list){
   let c="";
     if(t.id==="summary"){ const n=list.filter(o=>summaryOf(o).by.buy.length).length; c=`<b>${n}</b> saham layak beli`; }
-    else if(t.id==="teruji") { const r=terujiList(list); c=r.na?"Lolos uji":r.pause?T(`⏸️ tunggu · ${r.list.length} dipantau`,`⏸️ ditunda · ${r.list.length} dipantau`):`<b>${r.list.length}</b> saham lolos`; }
     else if(t.id==="hot") { const n=hotLists(list).spike.length; c=n?`<b>${n}</b> volume melonjak`:"Volume & momentum"; }
     else if(t.id==="calc") c="Lot, untung, rugi";
     else if(t.id==="screen") c=`<b>${fstate().cur.length}</b> aturan · ${fstate().saved.length} favorit`;
@@ -577,10 +576,10 @@ function renderTabs(){
 const ltYrs=()=>LT&&LT.from?`${LT.from.slice(0,4)}–${LT.to.slice(0,4)}`:"";
 function ltBlock(mid){ const L=LT&&LT.methods&&LT.methods[mid]; if(!L) return "";
   const bad=L.avg<0, yrs=ltYrs();
-  return `<div class="rules"${bad?' style="border-left:4px solid var(--bad);padding-left:10px"':""}><h3>Uji mundur ${yrs} (${nf(LT.n,0)} saham)</h3>${bad?`<p><b class="no">⚠️ Tidak lolos uji ${yrs}.</b> ${T("Rata-rata rugi setelah biaya, jadi metode ini tidak dipakai di Saran, Area beli, dan Saringan teruji.","Rata-rata hasil negatif setelah biaya; tidak dipakai di Keterangan, Area beli, dan Saringan teruji.")}</p>`:""}<div class="statgrid">
+  return `<div class="rules"${bad?' style="border-left:4px solid var(--bad);padding-left:10px"':""}><h3>Uji mundur ${yrs} (${nf(LT.n,0)} saham)</h3>${bad?`<p><b class="no">⚠️ Tidak lolos uji ${yrs}.</b> ${T("Rata-rata rugi setelah biaya, jadi metode ini tidak dipakai di Saran dan Area beli.","Rata-rata hasil negatif setelah biaya; tidak dipakai di Keterangan dan Area beli.")}</p>`:""}<div class="statgrid">
     <div>Transaksi<b>${nf(L.n,0)}</b></div><div>Untung<b>${nf(L.win,0)}%</b></div>
     <div>Rata-rata hasil<b class="${L.avg>=0?"ok":"no"}">${pct(L.avg,2)}</b></div><div>Tahun yang untung<b>${L.yp} dari ${L.y}</b></div></div>
-    <p class="note">Semua transaksi sejak ${tgl(LT.from,1)}, hanya saham likuid, sudah dipotong biaya. Uji memakai saham yang masih tercatat hari ini, jadi hasil sebenarnya sedikit lebih rendah.</p>${mid==="momentum"&&LT.screen?`<p class="note">👉 Versi yang lolos uji di dua periode (${LT.screen.rule==="ma200_exit"?"dengan rem saat indeks di bawah rata-rata 200 hari":"hanya beli saat lampu pasar hijau"}) ada di <b>✅ Saringan teruji</b>.</p>`:""}</div>`; }
+    <p class="note">Semua transaksi sejak ${tgl(LT.from,1)}, hanya saham likuid, sudah dipotong biaya. Uji memakai saham yang masih tercatat hari ini, jadi hasil sebenarnya sedikit lebih rendah.</p></div>`; }
 function methodWarn(mid){ const L=LT&&LT.methods&&LT.methods[mid]; if(!L||L.avg>=0) return "";
   return `<div class="mcard" style="border-left:4px solid var(--bad);margin-bottom:10px;font-size:14px;gap:4px"><b class="no">⚠️ Metode ini tidak lolos uji ${ltYrs()} di ${IS_ID?"BEI":"pasar ini"}</b><span>Dari ${nf(L.n,0)} transaksi, ${nf(L.win,0)}% untung, tetapi rata-rata hasilnya <b class="no">${pct(L.avg,2)}</b> per transaksi setelah biaya. ${T("Untungnya sering tapi kecil, ruginya jarang tapi besar. Sinyalnya tetap ditampilkan untuk dipelajari, tapi tidak dipakai di Saran dan Area beli.","Sinyal tetap ditampilkan untuk dipelajari, tetapi tidak dipakai di Keterangan dan Area beli.")}</span></div>`; }
 function statBlock(mid){
@@ -1981,7 +1980,7 @@ function addToPorto(st){ store.set(WP+"porto.pre",JSON.stringify({code:st.code,p
 
 
 // ---------- navigasi v2 ----------
-const GROUPS=[{id:"home",ic:"🏠",name:"Beranda",tabs:["summary"]},{id:"saham",ic:"🔍",name:"Saham",tabs:["teruji"].concat(M.map(m=>m.id)).concat(["screen"])},
+const GROUPS=[{id:"home",ic:"🏠",name:"Beranda",tabs:["summary"]},{id:"saham",ic:"🔍",name:"Saham",tabs:M.map(m=>m.id).concat(["screen"])},
   {id:"watch",ic:"📍",name:"Watchlist",tabs:["watch"]},{id:"porto",ic:"💼",name:"Portofolio",tabs:["porto"]},{id:"alat",ic:"🧰",name:"Alat",tabs:["calc","cycles","hot","divcal"]}];
 const groupOf=t=>GROUPS.find(g=>g.tabs.includes(t))||GROUPS[0];
 function renderSide(g,nd){
@@ -2200,7 +2199,7 @@ function cardify(root){
 function renderResults(){
   const box=$("results");
   if(!DATA){ box.innerHTML=`<div class="tablebox"><div class="empty">Belum ada data. Setelah workflow selesai, tabel saham muncul di sini.</div></div>`; return; }
-  if(tab==="summary") renderSummary(box); else if(tab==="teruji") renderTeruji(box); else if(tab==="hot") renderHot(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else if(tab==="calc") renderCalc(box); else if(tab==="divcal") renderDivcal(box); else if(tab==="porto") renderPorto(box); else if(tab==="screen") renderScreen(box); else renderMethod(box,MID[tab]);
+  if(tab==="summary") renderSummary(box); else if(tab==="hot") renderHot(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else if(tab==="calc") renderCalc(box); else if(tab==="divcal") renderDivcal(box); else if(tab==="porto") renderPorto(box); else if(tab==="screen") renderScreen(box); else renderMethod(box,MID[tab]);
   renderDrawer(box);
 }
 function renderAll(){ renderStatus(); renderTabs(); renderRail(); renderResults(); }
@@ -2264,33 +2263,6 @@ function hotLists(list){
     const dist=Math.max(0,(z.lo/o.price-1)*100); if(dist<=3) near.push({o,z,dist}); });
   near.sort((a,b)=>a.dist-b.dist||(b.o.volR||0)-(a.o.volR||0));
   return {spike,up,down,near:near.slice(0,15),any:list.some(o=>o.chg1d!=null)};
-}
-// ---------- ✅ Saringan teruji: hanya aturan yang lolos uji 9 tahun (data/longtest.json) ----------
-function idxAbove200(){ const m=(DATA&&DATA.market)||{}; if(typeof m.above200==="boolean") return m.above200;
-  if(!SER){ loadSer().then(()=>{ if(tab==="teruji") renderResults(); }); return null; }
-  const v=(Object.values(SER.idx||{})[0]||[]).filter(x=>x!=null); if(v.length<200) return null;
-  return v[v.length-1]>v.slice(-200).reduce((s,x)=>s+x,0)/200; }
-function terujiList(list){ const S=LT&&LT.screen; if(!S) return {list:[],pause:false,na:true};
-  const ma=S.rule==="ma200_exit";
-  const L=list.filter(o=>o.momRank!=null&&o.momRank>=90&&(!IS_ID||o.liq==="L")&&(!ma||(o.sma200!=null&&o.sma200>0))).sort((a,b)=>b.momRank-a.momRank);
-  return {list:L,pause:ma?idxAbove200()===false:(DATA&&DATA.market||{}).ok===false,rule:S.rule}; }
-function renderTeruji(box){
-  const S=LT&&LT.screen; if(!S){ box.innerHTML=`<div class="tablebox"><div class="empty">Hasil uji belum tersedia.</div></div>`; return; }
-  const {list,pause}=terujiList(filtered()), p=S.pick, b=S.base, ix=S.index, yrs=ltYrs(), idx=IS_ID?"IHSG":"S&P 500", ma=S.rule==="ma200_exit";
-  const rules=[`📈 <b>Momentum kuat</b>: kenaikan 12 bulan terakhir (tanpa bulan terakhir) masuk <b>10% teratas</b>.`].concat(ma?[`📊 <b>Tren masih naik</b>: harga di atas rata-rata 200 hari.`,`💧 <b>Likuid</b>: rata-rata transaksi minimal Rp5 miliar per hari.`,`🛑 <b>Rem pasar</b>: saat ${idx} di bawah rata-rata 200 hari, ${T("jual semua dan pegang uang tunai","aturan keluar dari semua posisi")} sampai ${idx} kembali di atasnya.`]:[`🚦 <b>Lampu pasar</b>: beli baru hanya saat lampu ${idx} hijau. ${T("Yang sudah dipegang boleh tetap, karena menjual saat lampu merah justru menurunkan hasil di uji.","Posisi yang sudah ada tetap dipegang (menjual saat lampu merah menurunkan hasil di uji).")}`]);
-  const how=T(`<b>Cara pakai:</b> setiap awal bulan, beli saham di daftar ini dengan porsi uang yang sama. Jual kalau peringkat momentumnya turun di bawah 80${ma?` atau ${idx} jatuh di bawah rata-rata 200 hari`:""}.`,`<b>Aturan dalam uji:</b> setiap awal bulan, saham di daftar dibeli dengan porsi sama dan dijual bila peringkat momentum turun di bawah 80${ma?` atau ${idx} di bawah rata-rata 200 hari`:""}.`);
-  const tr=(lab,x,bold)=>`<tr><td>${bold?`<b>${lab}</b>`:lab}</td><td class="num ${x.cagr>=0?"ok":"no"}">${bold?"<b>":""}${pct(x.cagr,1)}${bold?"</b>":""}</td><td class="num no">${nf(x.dd,0)}%</td><td class="num ${x.h1>=0?"ok":"no"}">${pct(x.h1,1)}</td><td class="num ${x.h2>=0?"ok":"no"}">${pct(x.h2,1)}</td><td class="num">${x.yr&&x.yr["2026"]!=null?pct(x.yr["2026"],0):"–"}</td></tr>`;
-  const row=o=>`<tr class="row wrow" data-go="${esc(o.ticker)}" tabindex="0">${stockCell(o)}<td class="num">${usd(o.price)}</td><td class="num"><b>${nf(o.momRank,0)}</b></td><td class="num ${o.perf1y>=0?"ok":"no"}">${o.perf1y!=null?pct(o.perf1y,0):"–"}</td><td class="num ${o.sma200>=0?"ok":"no"}">${o.sma200!=null?pct(o.sma200,1):"–"}</td><td style="font-size:13px">${sigCell(sigOf(o,allowedMethods()))}</td></tr>`;
-  box.innerHTML=`<div class="rhead"><div class="l"><h2>${pause?T(`Saringan teruji: tunggu dulu · ${list.length} dipantau`,`Saringan teruji: ditunda · ${list.length} dipantau`):`Saringan teruji: ${list.length} saham lolos`}</h2>
-      <p class="note">Hanya memakai aturan yang <b>terbukti</b> di uji ${yrs} (bagus di 2017–2021 <b>dan</b> 2022–2026). Swing, pola candle, garis tren, Jalur, dan Fibonacci tidak dipakai karena tidak lolos uji.</p></div></div>
-    ${pause?`<div class="mcard" style="border-left:4px solid var(--warn);font-size:14px;gap:4px"><b>⏸️ ${ma?`${idx} sedang di bawah rata-rata 200 hari.`:`Lampu pasar ${idx} sedang merah.`}</b><span>${ma?T("Menurut aturan yang lolos uji, sekarang waktunya pegang uang tunai. Daftar di bawah hanya pantauan; aktif lagi saat "+idx+" kembali di atas rata-rata 200 hari.","Aturan uji: tidak memegang saham selama kondisi ini. Daftar di bawah hanya pantauan."):T("Jangan beli baru dulu. Yang sudah dipegang boleh tetap.","Aturan uji: tidak ada pembelian baru selama lampu merah; posisi yang ada tetap dipegang.")}</span></div>`:""}
-    <div class="mcard" style="gap:6px;font-size:14px;margin-top:10px"><h4><span>Aturannya</span></h4>${rules.map(x=>`<div>${x}</div>`).join("")}<div class="note" style="margin-top:4px">${how}</div></div>
-    <div class="tablebox" style="margin-top:12px"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Peringkat momentum</th><th class="num">Kinerja 1 thn</th><th class="num">vs rata-rata 200 hari</th><th>Sinyal metode</th></tr></thead><tbody>
-      ${list.length?list.slice(0,60).map(row).join(""):`<tr><td colspan="6" class="empty">Belum ada saham yang lolos semua aturan hari ini.</td></tr>`}</tbody></table></div>
-    <div class="mcard" style="margin-top:12px"><h4><span>📊 Hasil uji ${yrs} (${nf(LT.n,0)} saham)</span></h4>
-      <div class="tablebox"><table class="nocard"><thead><tr><th></th><th class="num">Per tahun</th><th class="num">Turun terdalam</th><th class="num">${LT.from.slice(0,4)}–2021</th><th class="num">2022–${LT.to.slice(0,4)}</th><th class="num">2026</th></tr></thead><tbody>
-        ${tr("✅ Saringan teruji",p,1)}${tr("Momentum biasa",b)}${tr(idx,ix)}</tbody></table></div>
-      <p class="note">Hasil masa lalu, sudah dipotong biaya. Uji memakai saham yang masih tercatat hari ini, jadi hasil sebenarnya sedikit lebih rendah. Hasil masa lalu tidak menjamin hasil berikutnya.</p></div>`;
 }
 function renderHot(box){
   if(!CYC&&!CYC_ERR) loadCycles().then(()=>{ if(tab==="hot") renderResults(); });
