@@ -193,6 +193,111 @@ def track(data: dict, file: Path, today: str, cost: float, skip=()):
     return len(still), len(done)
 
 
+# ---------------------------------------------------------------- jalur zigzag ke depan: "ke mana dulu"
+PATH_N = 30   # bar maksimal untuk menilai gelombang pertama
+RULES = {"mom10": "arah 10 hari terakhir berlanjut dulu", "rev10": "arah 10 hari terakhir berbalik dulu",
+         "rsi_ch": "RSI tinggi atau dekat garis atas: turun dulu; RSI rendah atau dekat garis bawah: naik dulu",
+         "pos_ch": "dekat garis atas: turun dulu; dekat garis bawah: naik dulu", "always_up": "selalu naik dulu"}
+
+
+def rsi14(c: np.ndarray) -> np.ndarray:
+    n, out = 14, np.full(len(c), np.nan)
+    if len(c) < n + 2:
+        return out
+    d = np.diff(c); up = np.where(d > 0, d, 0.0); dn = np.where(d < 0, -d, 0.0)
+    ag, al = up[:n].mean(), dn[:n].mean()
+    for i in range(n, len(d)):
+        ag = (ag * (n - 1) + up[i]) / n; al = (al * (n - 1) + dn[i]) / n
+        out[i + 1] = 100.0 if al == 0 else 100 - 100 / (1 + ag / al)
+    return out
+
+
+def chan_pos(piv, c, t):
+    P = [p for p in piv if p[3] <= t]
+    lo = [p for p in P if p[2] == "L"][-2:]; hi = [p for p in P if p[2] == "H"][-2:]
+    if len(lo) < 2 or len(hi) < 2:
+        return None
+    f = lambda a: (a[0][0], math.log(a[0][1]), a[1][0], math.log(a[1][1]))
+    vl, vh = val(f(lo), t), val(f(hi), t)
+    return (c[t] - vl) / (vh - vl) if vh > vl else None
+
+
+def path_dirs(c, r, piv, t) -> dict:
+    """Ramalan arah gelombang pertama (+1 naik dulu, -1 turun dulu) menurut tiap aturan, hanya data sampai t."""
+    m = 1 if c[t] > c[t - 10] else -1
+    pos = chan_pos(piv, c, t)
+    pc = (-1 if pos > 0.5 else 1) if pos is not None else m
+    rr = r[t]
+    rc = -1 if rr >= 60 else 1 if rr <= 40 else pc
+    return {"mom10": m, "rev10": -m, "rsi_ch": rc, "pos_ch": pc, "always_up": 1}
+
+
+def first_hit(h, l, c, t, thr, N=PATH_N):
+    up, dn = c[t] * (1 + thr), c[t] / (1 + thr)
+    for j in range(t + 1, min(len(c), t + N + 1)):
+        u, d = h[j] >= up, l[j] <= dn
+        if u and d:
+            return 0
+        if u:
+            return 1
+        if d:
+            return -1
+    return None if t + N >= len(c) else 0
+
+
+def path_stats(data: dict, skip=()) -> dict:
+    ok, n = {k: 0 for k in RULES}, 0
+    for k, (dates, a) in data.items():
+        if k in skip:
+            continue
+        h, l, c = a.T
+        thr = zz_threshold(c); piv = zigzag(c, thr); r = rsi14(c)
+        for t in range(WARM, len(c) - PATH_N - 1, 2):
+            y = first_hit(h, l, c, t, thr)
+            if not y:
+                continue
+            n += 1
+            for rule, v in path_dirs(c, r, piv, t).items():
+                ok[rule] += v == y
+    if not n:
+        return {}
+    acc = {k: round(v / n * 100, 1) for k, v in ok.items()}
+    best = max((k for k in acc if k != "always_up"), key=acc.get)  # "selalu naik" hanya cermin pasar yang sedang naik, bukan aturan
+    return {"n": n, "acc": acc, "best": best, "rule": RULES[best], "N": PATH_N, "up": acc["always_up"]}
+
+
+def path_track(data: dict, file: Path, today: str, best: str, skip=()):
+    """Catat arah pertama jalur hari ini per grafik, nilai yang sudah terjawab (naik/turun sejauh ambang ZigZag lebih dulu)."""
+    T = json.loads(file.read_text()) if file.exists() else {}
+    T.setdefault("start", today); T.setdefault("ok", 0); T.setdefault("n", 0)
+    days = [d for d in T.get("days", []) if d.get("p")]
+    idx = {k: {d: i for i, d in enumerate(v[0])} for k, v in data.items()}
+    for day in days:
+        keep = {}
+        for sym, dirc in day["p"].items():
+            if sym not in data or day["d"] not in idx[sym]:
+                continue
+            dates, a = data[sym]; h, l, c = a.T; i = idx[sym][day["d"]]
+            y = first_hit(h, l, c, i, zz_threshold(c[:i + 1]))
+            if y is None:
+                keep[sym] = dirc; continue
+            if y:
+                T["n"] += 1; T["ok"] += int((y > 0) == (dirc == "u"))
+        day["p"] = keep
+    days = [d for d in days if d["p"] and d["d"] != today]
+    pred = {}
+    for sym, (dates, a) in data.items():
+        if sym in skip or dates[-1] != today:
+            continue
+        h, l, c = a.T
+        piv = zigzag(c, zz_threshold(c)); r = rsi14(c)
+        pred[sym] = "u" if path_dirs(c, r, piv, len(c) - 1)[best] > 0 else "d"
+    days.append({"d": today, "rule": best, "p": pred})
+    T["days"] = days[-45:]
+    T["today"] = today
+    file.write_text(json.dumps(T, separators=(",", ":")))
+
+
 def run(data_dir: Path, cost: float, skip=(), skip_last: bool = False, log=print):
     """Dipanggil dari fetch_data.py / fetch_kripto.py setelah data candlestick ditulis."""
     try:
@@ -201,8 +306,11 @@ def run(data_dir: Path, cost: float, skip=(), skip_last: bool = False, log=print
             return
         st = stats(data, cost, skip)
         st["date"] = max(v[0][-1] for v in data.values())
+        st["path"] = path_stats(data, skip)
         (data_dir / "trend_stats.json").write_text(json.dumps(st, separators=(",", ":")))
         o, dn = track(data, data_dir / "trend_track.json", st["date"], cost, skip)
+        if st["path"]:
+            path_track(data, data_dir / "trend_path.json", st["date"], st["path"]["best"], skip)
         log(f"Garis tren: {st['n_sym']} grafik, sinyal berjalan {o}, selesai {dn}")
     except Exception as e:  # tidak boleh menggagalkan pembaruan utama
         log(f"Garis tren gagal: {e}")

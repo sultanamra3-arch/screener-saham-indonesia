@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-10-30",
+  "t": "〰️ Jalur zigzag ke depan",
+  "x": "Tombol Jalur menggambar perkiraan gelombang (turun dulu lalu naik, atau sebaliknya) ke zona support/resistance, lengkap dengan seberapa sering arah pertamanya benar di uji mundur."
+ },
+ {
+  "d": "2026-10-30",
   "t": "📐 Garis tren & dua skenario arah",
   "x": "Grafik menarik garis tren otomatis dari titik balik dan memperpanjangnya ke depan, dengan skenario naik dan turun beserta hasil ujinya; garis tren juga bisa ditarik sendiri."
  },
