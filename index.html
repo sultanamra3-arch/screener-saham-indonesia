@@ -788,7 +788,7 @@ function crossed(a,b,k=3){ // 1 = a memotong ke atas b dalam k bar terakhir, -1 
   const n=a.length; for(let i=n-1;i>=Math.max(1,n-k);i--){ if([a[i],b[i],a[i-1],b[i-1]].some(x=>x==null)) continue;
     if(a[i-1]<=b[i-1]&&a[i]>b[i]) return 1; if(a[i-1]>=b[i-1]&&a[i]<b[i]) return -1; } return 0; }
 const IND=[["ma20","MA20","#f59e0b",1],["ma50","MA50","#0ea5e9",1],["ma200","MA200","#e11d48",1],["ema9","EMA9","#14b8a6",0],["bb","Bollinger","#64748b",0],["vwap","VWAP 20","#a855f7",0],
-  ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1],["path","〰️ Jalur","#7c3aed",0],["proj","🔮 Proyeksi","#94a3b8",0]];
+  ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1],["path","〰️ Jalur","#7c3aed",0]];
 function indOn(){ let s=null; try{ s=JSON.parse(store.get(WP+"ind")||"null"); }catch(e){}
   if(Array.isArray(s)&&!store.get(WP+"ind.tr")){ if(!s.includes("trend")) s.push("trend"); store.set(WP+"ind",JSON.stringify(s)); store.set(WP+"ind.tr","1"); }
   return new Set(s||IND.filter(x=>x[3]).map(x=>x[0])); }
@@ -818,7 +818,6 @@ function indRead(on,B,c,hasV,x){
     out.push(`<b>Stoch RSI (14 14 3 3):</b> %K ${nf(k,1)}, %D ${nf(d,1)}. ${cr===1&&Math.min(k,d)<25?"<b class='ok'>%K baru memotong ke atas %D di zona jenuh jual</b>: sinyal pantulan awal; lebih kuat bila harga di zona support.":cr===-1&&Math.max(k,d)>75?"<b class='no'>%K baru memotong ke bawah %D di zona jenuh beli</b>: rawan koreksi.":k<20?"Jenuh jual; tunggu %K memotong ke atas %D.":k>80?"Jenuh beli; hati-hati mengejar.":"Di tengah, belum ada sinyal."}`); } }
   if(on.has("trend")&&x.trend) out.push(trendTxt(x.trend,c,f));
   if(on.has("path")&&x.path) out.push(pathTxt(x.path,f));
-  if(on.has("proj")&&x.proj) out.push(projTxt(x.proj,f));
   return out;
 }
 // ---------- Garis tren otomatis & skenario ----------
@@ -832,7 +831,7 @@ function tlFrom(piv,T,typ){ // garis lurus (skala log) lewat 2 titik balik terak
   const k=(Math.log(p2.v)-Math.log(p1.v))/(p2.i-p1.i);
   return {p1,p2,rising:p2.v>p1.v,at:i=>Math.exp(Math.log(p1.v)+k*(i-p1.i))}; }
 function trendDraw(ch,T,C,fut,a,good,bad,pf){
-  const n=T.length, F=fut.slice(0,5), out={up:tlFrom(a.piv,T,"L"),dn:tlFrom(a.piv,T,"H")};
+  const n=T.length, F=fut.slice(0,30), out={up:tlFrom(a.piv,T,"L"),dn:tlFrom(a.piv,T,"H")};
   const opt={lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat:pf,autoscaleInfoProvider:()=>null};
   const seg=(ln,color)=>{ if(!ln) return;
     ch.addLineSeries({...opt,color}).setData(T.slice(ln.p1.i).map((t,j)=>({time:t,value:ln.at(ln.p1.i+j)})));
@@ -840,11 +839,13 @@ function trendDraw(ch,T,C,fut,a,good,bad,pf){
   seg(out.up,"#0f9d58"); seg(out.dn,"#d93025");
   const cross=(ln,dir)=>{ if(!ln) return null; for(let i=n-1;i>=Math.max(1,n-3);i--){ const a0=ln.at(i-1),a1=ln.at(i); if(dir>0?(C[i-1]<=a0&&C[i]>a1):(C[i-1]>=a0&&C[i]<a1)) return n-1-i; } return null; };
   out.brkUp=out.dn&&!out.dn.rising?cross(out.dn,1):null; out.brkDn=out.up&&out.up.rising?cross(out.up,-1):null; // sama dengan yang diuji
-  const p=C[n-1], h=Math.min(15,fut.length);
+  const p=C[n-1], h=Math.min(15,F.length);
   if(h>=3){ const R1=(a.res||[]).find(z=>z.strength!=="lemah"&&z.lo>p*1.005), S1=(a.sup||[]).find(z=>z.hi<p*0.995);
     let tu=out.dn&&out.dn.at(n-1+h)>p*1.01?out.dn.at(n-1+h):null; if(R1&&(!tu||R1.lo<tu)) tu=R1.lo;
     let td=out.up&&out.up.at(n-1+h)<p*0.99?out.up.at(n-1+h):null; if(S1&&(!td||S1.hi>td)) td=S1.hi;
-    out.tu=tu; out.td=td; }
+    const arrow=(v,color,up,txt)=>{ if(v==null) return; const z=ch.addLineSeries({...opt,color,lineStyle:1});
+      z.setData([{time:T[n-1],value:p},{time:F[h-1],value:v}]); z.setMarkers([{time:F[h-1],position:up?"aboveBar":"belowBar",color,shape:up?"arrowUp":"arrowDown",text:txt}]); };
+    arrow(tu,good,true,"skenario naik"); arrow(td,bad,false,"skenario turun"); out.tu=tu; out.td=td; }
   return out; }
 function pathCalc(T,C,fut,a,rs){
   const P=(TRS||{}).path, n=T.length, p=C[n-1]; if(fut.length<10) return null;
@@ -866,43 +867,6 @@ function pathDraw(ch,T,C,fut,a,pf,rs){
   const z=ch.addLineSeries({...base,color:"#7c3aed",lineWidth:3,lineStyle:2}); z.setData(main.map(([t,v])=>({time:t,value:v})));
   z.setMarkers(main.slice(1).map(([t,v],i)=>({time:t,position:v>=main[i][1]?"aboveBar":"belowBar",color:"#7c3aed",shape:"circle",text:usd(v)})));
   return pt; }
-// ---------- 🔮 Proyeksi: 1.000 jalur acak dari kebiasaan grafik ini ----------
-function rngOf(str){ let h=1779033703^str.length; for(let i=0;i<str.length;i++){ h=Math.imul(h^str.charCodeAt(i),3432918353); h=h<<13|h>>>19; }
-  return ()=>{ h=Math.imul(h^h>>>16,2246822507); h=Math.imul(h^h>>>13,3266489909); h^=h>>>16; return (h>>>0)/4294967296; }; }
-function projCalc(B,T,fut,a,pt,key){
-  const n=B.length, H=Math.min(20,fut.length); if(n<120||H<5) return null;
-  const C=B.map(b=>b[4]), lr=[]; for(let i=Math.max(1,n-250);i<n;i++) lr.push([Math.log(C[i]/C[i-1]),i]);
-  const mu=lr.reduce((s,x)=>s+x[0],0)/lr.length, rnd=rngOf(key+"|"+T[n-1]), M=1000, p=C[n-1];
-  const paths=[], ends=[]; for(let m=0;m<M;m++){ let v=0; const ix=[], cum=[]; for(let h=0;h<H;h++){ const j=Math.floor(rnd()*lr.length); v+=lr[j][0]-mu; ix.push(lr[j][1]); cum.push(v); } paths.push({ix,cum}); }
-  const q=(arr,f)=>{ const s=arr.slice().sort((x,y)=>x-y); return s[Math.min(s.length-1,Math.floor(f*s.length))]; };
-  const band=[]; for(let h=0;h<H;h++){ const col=paths.map(x=>x.cum[h]); band.push([.1,.25,.5,.75,.9].map(f=>p*Math.exp(q(col,f)))); }
-  const endP=paths.map(x=>p*Math.exp(x.cum[H-1])), R1=(a.res||[]).find(z=>z.strength!=="lemah"&&z.lo>p), S1=(a.sup||[]).find(z=>z.strength!=="lemah"&&z.hi<p);
-  return {H,band,end:fut[H-1],pUp:R1?endP.filter(v=>v>=R1.lo).length/M*100:null,R1,pDn:S1?endP.filter(v=>v<=S1.hi).length/M*100:null,S1}; }
-function projDraw(ch,el,B,T,fut,a,pf,key){
-  const pr=projCalc(B,T,fut,a,null,key); if(!pr) return null; const n=T.length, p=B[n-1][4];
-  const base={priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat:pf,autoscaleInfoProvider:()=>null};
-  const pts=[[T[n-1],[p,p,p,p,p]]].concat(pr.band.map((b,h)=>[fut[h],b]));
-  const ln=(k,title)=>{ const z=ch.addLineSeries({...base,color:"#94a3b8",lineWidth:1,lastValueVisible:true,title}); z.setData(pts.map(([t,b])=>({time:t,value:b[k]}))); return z; };
-  const s=ln(0,"bawah 8/10"); ln(4,"atas 8/10");
-  // pita: terang = 8 dari 10, gelap = 5 dari 10
-  el.querySelectorAll(".pj-cv").forEach(x=>x.remove()); el.style.position="relative";
-  const cv=document.createElement("canvas"); cv.className="pj-cv"; cv.style.cssText="position:absolute;left:0;top:0;pointer-events:none;z-index:2"; el.appendChild(cv);
-  let sig=""; const ts=ch.timeScale();
-  const paint=()=>{ if(!cv.isConnected) return; requestAnimationFrame(paint);
-    let xy; try{ xy=pts.map(([t,b])=>[ts.timeToCoordinate(t),b.map(v=>s.priceToCoordinate(v))]); }catch(e){ return; }
-    const w=ts.width(), hgt=el.clientHeight, k=w+"|"+hgt+"|"+xy.map(q=>q[0]+","+q[1][0]+","+q[1][4]).join(";"); if(k===sig) return; sig=k;
-    const dpr=window.devicePixelRatio||1; cv.width=w*dpr; cv.height=hgt*dpr; cv.style.width=w+"px"; cv.style.height=hgt+"px";
-    const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,hgt);
-    const ok=xy.filter(q=>q[0]!=null&&q[1].every(v=>v!=null)); if(ok.length<2) return;
-    const poly=(lo,hi,col)=>{ g.beginPath(); ok.forEach((q,i)=>g[i?"lineTo":"moveTo"](q[0],q[1][hi])); ok.slice().reverse().forEach(q=>g.lineTo(q[0],q[1][lo])); g.closePath(); g.fillStyle=col; g.fill(); };
-    poly(0,4,"rgba(100,116,139,.13)"); poly(1,3,"rgba(100,116,139,.22)"); };
-  paint();
-  return pr; }
-function projTxt(pr,f){ if(!pr) return ""; const e=pr.band[pr.H-1], C=(TRS||{}).cone;
-  return `<b>🔮 Perkiraan ${pr.H} hari bursa ke depan</b> (sampai sekitar ${tgl(pr.end)}):<br>
-    • <b>Hampir pasti</b> (8 dari 10 kemungkinan) harga ada di antara <b>${f(e[0])}</b> dan <b>${f(e[4])}</b>.<br>
-    • <b>Paling mungkin</b> (5 dari 10) di antara ${f(e[1])} dan ${f(e[3])}.${pr.R1&&pr.pUp!=null?`<br>• Peluang naik melewati R1 ${f(pr.R1.lo)}: <b>${nf(pr.pUp,0)} dari 100</b>.`:""}${pr.S1&&pr.pDn!=null?`<br>• Peluang turun di bawah S1 ${f(pr.S1.hi)}: <b>${nf(pr.pDn,0)} dari 100</b>.`:""}
-    <br>Di grafik: <b>area abu-abu terang</b> = rentang “hampir pasti”, <b>area lebih gelap</b> = rentang “paling mungkin”. Proyeksi tidak menebak arah naik atau turun.${C&&C.c80?` ✔️ Perkiraan seperti ini sudah dicek ke masa lalu: sekitar <b>${Math.round(C.c80["20"]/10)} dari 10</b> kali harga memang berakhir di rentang “hampir pasti”.`:""}`; }
 function pathTxt(pt,f){ if(!pt) return ""; const P=(TRS||{}).path;
   return `<b>〰️ Jalur:</b> gambaran kalau harga <b>${pt.dir>0?"naik":"turun"} dulu ke ${f(pt.main[1][1])}</b> (sekitar ${tgl(pt.main[1][0])}), lalu <b>${pt.dir>0?"turun":"naik"} ke ${f(pt.main[2][1])}</b> (sekitar ${tgl(pt.main[2][0])}). Garis ungu tipis = kemungkinan sebaliknya.${pt.acc!=null?` ⚠️ Arah “${pt.dir>0?"naik":"turun"} dulu” ini hanya tebakan: di masa lalu tebakan seperti ini benar <b>${nf(pt.acc,0)} dari 100</b> kali, hampir sama dengan lempar koin.`:""}`; }
 const TRN={brk_up:"⬆️ Harga menembus garis atas (merah) yang sedang turun",brk_dn:"⬇️ Harga jebol garis bawah (hijau) yang sedang naik",touch_up:"↩️ Harga memantul di garis bawah (hijau)",touch_dn:"✋ Harga tertolak di garis atas (merah)"};
@@ -936,11 +900,10 @@ function trendCard(){
     return `<div class="mcard" style="gap:4px"><b>${TRN[k]}</b><span class="note">terjadi ${nf(e.n,0)} kali</span>
       <span>${S.h} hari bursa kemudian rata-rata <b class="${e.avg>=0?"ok":"no"}">${pct(e.avg,1)}</b> · kalau beli di hari sembarang <b>${pct(S.base.avg,1)}</b></span>
       <span>${trVerdict(e)}</span>${trAdvice(k,e)?`<span>👉 ${trAdvice(k,e)}</span>`:""}<span class="note">${since(k)}</span></div>`; };
-  const P=S.path, C=S.cone;
+  const P=S.path;
   return `<p style="margin:0 0 8px">Kami cek <b>${nf(S.n_sym||0,0)} grafik selama ±${S.from?nf((new Date(S.date)-new Date(S.from))/31557600000,1):"1,5"} tahun</b>. Setiap kali kejadian di bawah muncul, kami lihat hasilnya ${S.h} hari bursa kemudian, lalu dibandingkan dengan beli di hari sembarang${S.cost?` (sudah dipotong biaya ${nf(S.cost,2)}%)`:""}.</p>
     <div class="dgrid">${Object.keys(TRN).map(card).join("")}</div>
     ${P&&P.acc?`<p style="margin:10px 0 0">〰️ <b>Jalur</b>: tebakan “ke mana dulu” benar <b>${nf(P.acc[P.best],0)} dari 100</b> kali (lempar koin: 50 dari 100). 👉 Pakai untuk membayangkan rencana, bukan untuk menebak arah.${TRP&&TRP.n?` Sejak dipasang: ${TRP.ok} dari ${TRP.n} benar.`:""}</p>`:""}
-    ${C&&C.c80?`<p style="margin:6px 0 0">🔮 <b>Proyeksi</b>: rentang “hampir pasti” memang kena sekitar <b>${Math.round(C.c80["10"]/10)} dari 10</b> kali (seharusnya 8 dari 10). 👉 Rentang ini bisa dipakai untuk memasang target dan batas rugi yang masuk akal.</p>`:""}
     <p class="note" style="margin-top:8px">Garis tren hanya menggambarkan arah yang sudah terjadi. Ke depannya tetap tidak pasti.</p>`; }
 // ---------- Garis info (alat ukur di grafik) ----------
 let IL_MODE=false;
@@ -995,7 +958,6 @@ function ilBar(){ const b=$("ilBtn"), c=$("ilClr"), tb=$("tlBtn"); if(b){ b.setA
 function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   pxObs.forEach(o=>o.disconnect()); pxObs=[];
   pxCharts.forEach(c=>{try{c.remove()}catch(e){}}); pxCharts=[];
-  if(el) el.querySelectorAll(".pj-cv").forEach(x=>x.remove());
   const L=window.LightweightCharts; if(!L||!vals) return;
   opt=opt||{};
   const muted=cssVar("--muted"), line=cssVar("--line"), acc=cssVar("--accent"), good=cssVar("--good"), bad=cssVar("--bad"), warn=cssVar("--warn");
@@ -1038,7 +1000,6 @@ function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   (a.res||[]).forEach((z,i)=>{ s.createPriceLine({price:z.mid,color:bad,lineWidth:z.strength==="kuat"?2:1,lineStyle:2,axisLabelVisible:true,title:`R${i+1} ${z.strength}`}); });
   if(on.has("trend")) x.trend=trendDraw(ch,T,C,fut,a,good,bad,pf);
   if(on.has("path")) x.path=pathDraw(ch,T,C,fut,a,pf,x.rsi);
-  if(on.has("proj")&&candle) x.proj=projDraw(ch,el,B,T,fut,a,pf,opt.dkey||"");
   ch.timeScale().setVisibleLogicalRange({from:Math.max(0,B.length-150),to:B.length+fut.length});
   watchSize(ch,el,pxObs);
   infoLines(ch,s,T.concat(fut),el,opt.dkey,idr);
@@ -1101,7 +1062,7 @@ function renderCycles(box){
       <div id="tvBox"></div><p class="note" id="ilHint" style="margin:0 0 6px;min-height:0"></p>
       <div id="cyChart" style="width:100%;min-height:400px"></div>
       <div id="cyPanels"></div></div>
-    <div class="mcard" style="margin-top:12px"><h4><span>📐 Garis tren, jalur, dan proyeksi: bisa dipercaya atau tidak?</span></h4><div id="trBox"><p class="note">Memuat…</p></div></div>
+    <div class="mcard" style="margin-top:12px"><h4><span>📐 Garis tren dan jalur: bisa dipercaya atau tidak?</span></h4><div id="trBox"><p class="note">Memuat…</p></div></div>
     <div class="mcard" style="margin-top:12px"><h4><span>📊 Bacaan indikator</span></h4><div id="cyRead"><p class="note">Memuat…</p></div>
       <details style="margin-top:8px"><summary class="note" style="cursor:pointer">Penjelasan singkat tiap indikator</summary><div class="dl" style="font-size:13.5px;margin-top:6px;gap:6px">
       <div><span><b>Candlestick</b>: satu batang = satu hari. Hijau = ditutup lebih tinggi dari pembukaan, merah = lebih rendah. Sumbu tipis = harga tertinggi dan terendah hari itu.</span></div>

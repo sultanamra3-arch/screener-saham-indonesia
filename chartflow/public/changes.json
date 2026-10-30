@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-10-30",
+  "t": "📐 Garis tren kembali seperti semula",
+  "x": "Garis tren kembali diperpanjang ke depan lengkap dengan dua skenario arah, dan fitur Proyeksi dihapus dari grafik."
+ },
+ {
+  "d": "2026-10-30",
   "t": "🧹 Grafik ke depan lebih rapi",
   "x": "Proyeksi kini berupa pita abu-abu tanpa candle contoh, garis tren lebih pendek ke depan, dan tulisan yang saling menimpa dihapus; Garis tren, Jalur, dan Proyeksi tetap bisa dinyalakan bersamaan."
  },

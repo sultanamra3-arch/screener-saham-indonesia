@@ -51,13 +51,6 @@
    ]
   },
   {
-   "name": "Proyeksi harga",
-   "mention": [
-    "proyeksi harga",
-    "pita kemungkinan"
-   ]
-  },
-  {
    "name": "Garis info",
    "mention": [
     "Garis info"
@@ -147,10 +140,12 @@
    ]
   },
   {
-   "name": "Candle contoh proyeksi",
+   "name": "Proyeksi harga",
    "forbid": [
+    "proyeksi harga",
+    "pita kemungkinan",
     "proyeksi candle",
-    "candle contoh"
+    "🔮"
    ]
   }
  ]
