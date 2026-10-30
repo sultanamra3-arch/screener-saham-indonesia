@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-10-30",
+  "t": "📏 Halaman Hasil uji",
+  "x": "Menu Alat kini punya halaman Hasil uji yang merangkum apa saja yang terbukti, tidak terbukti, dan perlu dihindari dari uji mundur 9–10 tahun."
+ },
+ {
+  "d": "2026-10-30",
   "t": "💸 Hasil uji metode Dividen & tanggal cum",
   "x": "Halaman Dividen dan Kalender dividen kini menampilkan hasil uji 2010–2026, termasuk hasil beli di tanggal cum lalu jual di tanggal ex setelah pajak dan biaya."
  },

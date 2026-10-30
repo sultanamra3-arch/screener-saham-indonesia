@@ -446,7 +446,7 @@ const M = [
   cols:[["rsi2","RSI(2)"],["sma200","vs SMA200",1],["perf1m","1 bln",1]]},
 ];
 const MID = Object.fromEntries(M.map(m=>[m.id,m]));
-const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"},{id:"porto",name:"Portofolio",k:"Posisi Anda"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"calc",name:"Kalkulator",k:"Return & risiko"},{id:"divcal",name:"Kalender dividen",k:"Ex-dividen"},{id:"hot",name:"Ramai hari ini",k:"Momentum"},{id:"screen",name:"Filter sendiri",k:"Aturan Anda"}])
+const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"},{id:"porto",name:"Portofolio",k:"Posisi Anda"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"calc",name:"Kalkulator",k:"Return & risiko"},{id:"divcal",name:"Kalender dividen",k:"Ex-dividen"},{id:"hot",name:"Ramai hari ini",k:"Momentum"},{id:"uji",name:"📏 Hasil uji",k:"Apa yang terbukti"},{id:"screen",name:"Filter sendiri",k:"Aturan Anda"}])
 const ST = {buy:"Layak beli",hold:"Tahan",sell:"Jual",late:"Terlambat",wait:"Tunggu",na:"Tidak dinilai"};
 const PRI = {buy:0,sell:1,hold:2,late:3,wait:4,na:5};
 const REASON = {stop:"stop loss −7%",be:"kembali ke harga beli",target:"target +20%","8w":"8 minggu selesai",sma5:"di atas SMA5",rank:"keluar 20% teratas"};
@@ -554,6 +554,7 @@ function renderStatus(){
 function tabCount(t,list){
   let c="";
     if(t.id==="summary"){ const n=list.filter(o=>summaryOf(o).by.buy.length).length; c=`<b>${n}</b> saham layak beli`; }
+    else if(t.id==="uji") c="Terbukti / tidak";
     else if(t.id==="hot") { const n=hotLists(list).spike.length; c=n?`<b>${n}</b> volume melonjak`:"Volume & momentum"; }
     else if(t.id==="calc") c="Lot, untung, rugi";
     else if(t.id==="screen") c=`<b>${fstate().cur.length}</b> aturan · ${fstate().saved.length} favorit`;
@@ -1995,7 +1996,7 @@ function addToPorto(st){ store.set(WP+"porto.pre",JSON.stringify({code:st.code,p
 
 // ---------- navigasi v2 ----------
 const GROUPS=[{id:"home",ic:"🏠",name:"Beranda",tabs:["summary"]},{id:"saham",ic:"🔍",name:"Saham",tabs:M.map(m=>m.id).concat(["screen"])},
-  {id:"watch",ic:"📍",name:"Watchlist",tabs:["watch"]},{id:"porto",ic:"💼",name:"Portofolio",tabs:["porto"]},{id:"alat",ic:"🧰",name:"Alat",tabs:["calc","cycles","hot","divcal"]}];
+  {id:"watch",ic:"📍",name:"Watchlist",tabs:["watch"]},{id:"porto",ic:"💼",name:"Portofolio",tabs:["porto"]},{id:"alat",ic:"🧰",name:"Alat",tabs:["calc","cycles","hot","divcal","uji"]}];
 const groupOf=t=>GROUPS.find(g=>g.tabs.includes(t))||GROUPS[0];
 function renderSide(g,nd){
   const sn=$("sidenav"); if(!sn||!matchMedia("(min-width:1100px)").matches) return;
@@ -2070,6 +2071,41 @@ function flowCards(o){
       <div><span>Dividen per lembar</span><span class="num">±${usd(d.amt)}${d.y!=null?` (${nf(d.y,2)}%)`:""}</span></div></div>
       <p class="note">${d.sure?"Tanggal sudah diumumkan.":"Perkiraan dari pola pembayaran sebelumnya; tunggu pengumuman resmi."} Pada tanggal ex, harga biasanya turun kira-kira sebesar dividen.</p></div>`); }
   return out.join("");
+}
+// ---------- 📏 Hasil uji: rangkuman semua uji jangka panjang (data/longtest.json) ----------
+function renderUji(box){
+  if(!LT){ box.innerHTML=`<div class="tablebox"><div class="empty">Memuat hasil uji…</div></div>`; return; }
+  const M_=LT.methods||{}, D=LT.div, C=LT.cum, A=LT.area, Tt=LT.trend, yrs=ltYrs(), idx=IS_ID?"IHSG":"S&P 500";
+  const nm={canslim:"CAN SLIM",momentum:"Momentum",swing:"Swing"};
+  const verd=(ok,txt)=>`<span class="st ${ok===1?"buy":ok===0?"hold":"wait"}">${ok===1?"✅ terbukti":ok===0?"😐 tidak terbukti":"⚠️ hindari"}</span>${txt?` <span class="note">${txt}</span>`:""}`;
+  const row=(name,res,v)=>`<div class="mcard" style="gap:4px"><b>${name}</b><span>${v}</span><span style="font-size:13.5px">${res}</span></div>`;
+  const tv=Tt?Object.keys(TRN).map(k=>ltVerd(k)).filter(Boolean):[], tvUp=tv.some(x=>x.v==="up"), jb=Tt&&Tt.jalur&&Tt.jalur[Tt.jalur_best];
+  const meth=Object.keys(nm).filter(k=>M_[k]).map(k=>{ const x=M_[k], good=x.avg>0&&x.yp/x.y>=0.5;
+    const note=x.avg<0?"rugi setelah biaya":!good?"":k==="momentum"?"tapi bisa jatuh dalam saat pasar berbalik":x.avg<1?"untungnya tipis":"";
+    return row(nm[k],`${nf(x.n,0)} transaksi, rata-rata <b class="${x.avg>=0?"ok":"no"}">${pct(x.avg,2)}</b>, untung ${nf(x.win,0)}%, tahun untung ${x.yp}/${x.y}`,verd(x.avg<0?-1:good?1:0,note)); }).join("");
+  const rows=[
+    meth,
+    D?row("Dividen",`${D.from}–${D.to}: ${pct(D.cagr,1)}/tahun (rata-rata saham ${pct(D.bench,1)}); 2026: ${pct(D.y2026[0],0)} vs ${pct(D.y2026[1],0)}`,verd(1,"lebih tahan saat pasar jatuh")):"",
+    IS_ID?row("Value · Growth · Quality","Belum bisa diuji: riwayat laporan keuangan hanya ±4 tahun. Dicatat maju sejak "+tgl(DATA&&DATA.started,1)+".",'<span class="note">–</span>'):"",
+    A&&A.pick?row("Area beli",`${nf(A.pick.n,0)} transaksi, rata-rata <b class="ok">${pct(A.pick.avg,2)}</b>; ${Math.round(A.pick.sl/10)} dari 10 kena batas rugi${IS_ID?`; tanpa saringan tren & pasar hanya ${pct(A.plain.avg,2)}`:`, hampir sama dengan pasar`}`,verd(IS_ID?1:0,IS_ID?"dengan saringan tren naik & pasar tidak lesu":"")):"",
+    row("Lampu pasar (tunda beli saat pasar lesu)",IS_ID?"Tahun ini CAN SLIM −18% saat IHSG −45%; Area beli naik dari +0,04% ke +0,24% per transaksi":"Momentum + beli hanya saat lampu hijau lebih baik di kedua periode uji",verd(1)),
+    Tt?row("Garis tren",`${nf(Tt.n,0)} grafik, ${ltSpan()}: selisih dengan pasar kecil dan bergantian tiap tahun${tvUp?"":"; tidak ada sinyal yang konsisten lebih bagus"}`,verd(0,"pakai untuk melihat bentuk & support/resistance")):"",
+    jb?row("Jalur (ke mana dulu)",`Benar ${nf(jb.acc,0)} dari 100 kali (lempar koin 50)`,verd(0,"hanya untuk membayangkan rencana")):"",
+    row("Pola candle",IS_ID?"10 tahun: Hammer & Bullish engulfing di saham yang sedang turun justru lebih jelek dari pasar (hampir tiap tahun)":"10 tahun: selisih dengan pasar di bawah ±0,25%",IS_ID?verd(-1,"jangan beli hanya karena candle “tanda balik”"):verd(0)),
+    row("Fibonacci (harga & waktu)",IS_ID?"IHSG sejak 2005: sama dengan angka acak, juga dengan toleransi ±2 minggu":"S&P 500: sedikit lebih baik dari acak (lemah); Nasdaq: acak",verd(0)),
+    IS_ID?row("Ramai hari ini (volume melonjak)","10 tahun: tidak lebih bagus dari pasar; saham turun ≥7% sehari cenderung tertinggal 1,5–2,8%",verd(0,"untuk memantau")):"",
+    IS_ID?row("Arus asing (KSEI)","Apr 2024 – Sep 2026: tidak ada pola yang konsisten",verd(0,"data baru 2,5 tahun")):"",
+    IS_ID&&C?row("Beli di tanggal cum, jual di tanggal ex",`${C.years}: rata-rata ${pct(C.avg,2)} per transaksi setelah pajak 10% & biaya, untung ${C.win}%; dipegang 5–10 hari setelah ex, hilang`,verd(1,"untungnya tipis")):"",
+    IS_ID?row("Beli saham yang sedang jatuh (pantulan, Swing, Hammer)","Di BEI, saham yang turun cenderung terus turun; yang naik cenderung lanjut naik",verd(-1)):""
+  ].join("");
+  box.innerHTML=`<div class="rhead"><div class="l"><h2>📏 Hasil uji: apa yang terbukti</h2>
+      <p class="note">Rangkuman uji mundur ${yrs} (${nf(LT.n||0,0)} saham${IS_ID?" BEI":""}) yang dipakai di web ini. Setiap hasil dibandingkan dengan asal beli atau dengan rata-rata pasar di hari yang sama, dan diperiksa per tahun supaya bukan kebetulan.</p></div></div>
+    <div class="dgrid">${rows}</div>
+    <div class="mcard" style="margin-top:12px;font-size:14px;gap:6px"><h4><span>${T("👉 Pegangan","👉 Ringkasnya")}</span></h4>
+      <div>✅ ${T("Ikuti arah utama: beli saham yang trennya naik, saat pasar tidak lesu, dengan batas rugi.","Yang terbukti: saham bertren naik, saat pasar tidak lesu, dengan batas rugi.")}</div>
+      <div>😐 ${T("Garis tren, Jalur, Fibonacci, dan pola candle cukup untuk melihat gambar, bukan alasan beli.","Garis tren, Jalur, Fibonacci, dan pola candle tidak terbukti sebagai sinyal.")}</div>
+      ${IS_ID?`<div>⚠️ ${T("Jangan menangkap pisau jatuh: saham BEI yang sedang turun cenderung terus turun.","Saham BEI yang sedang turun secara historis cenderung terus turun.")}</div>`:""}
+      <p class="note" style="margin-top:4px">Semua uji memakai saham yang masih tercatat hari ini, jadi hasil sebenarnya sedikit lebih rendah. Hasil masa lalu tidak menjamin hasil berikutnya.</p></div>`;
 }
 function renderDivcal(box){
   const today=(DATA&&DATA.priceDate)||new Date().toISOString().slice(0,10), f=store.get(WP+"dc.f")||"all";
@@ -2213,7 +2249,7 @@ function cardify(root){
 function renderResults(){
   const box=$("results");
   if(!DATA){ box.innerHTML=`<div class="tablebox"><div class="empty">Belum ada data. Setelah workflow selesai, tabel saham muncul di sini.</div></div>`; return; }
-  if(tab==="summary") renderSummary(box); else if(tab==="hot") renderHot(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else if(tab==="calc") renderCalc(box); else if(tab==="divcal") renderDivcal(box); else if(tab==="porto") renderPorto(box); else if(tab==="screen") renderScreen(box); else renderMethod(box,MID[tab]);
+  if(tab==="summary") renderSummary(box); else if(tab==="hot") renderHot(box); else if(tab==="uji") renderUji(box); else if(tab==="cycles") renderCycles(box); else if(tab==="watch") renderWatch(box); else if(tab==="calc") renderCalc(box); else if(tab==="divcal") renderDivcal(box); else if(tab==="porto") renderPorto(box); else if(tab==="screen") renderScreen(box); else renderMethod(box,MID[tab]);
   renderDrawer(box);
 }
 function renderAll(){ renderStatus(); renderTabs(); renderRail(); renderResults(); }
