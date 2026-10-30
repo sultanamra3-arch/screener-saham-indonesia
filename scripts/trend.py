@@ -298,6 +298,33 @@ def path_track(data: dict, file: Path, today: str, best: str, skip=()):
     file.write_text(json.dumps(T, separators=(",", ":")))
 
 
+# ---------------------------------------------------------------- kerucut proyeksi: seberapa sering harga asli jatuh di dalam pita
+CONE_H = (5, 10, 20)
+
+
+def cone_stats(data: dict, skip=(), M: int = 300) -> dict:
+    """Pita dari 1.000 jalur acak (di grafik) = ambil-ulang kenaikan harian 250 hari terakhir yang sudah dinolkan rata-ratanya.
+    Di sini diuji: berapa persen harga asli h hari kemudian ada di dalam pita 80% dan 50%."""
+    rng = np.random.default_rng(11)
+    h80, h50, n = {h: 0 for h in CONE_H}, {h: 0 for h in CONE_H}, 0
+    for k, (dates, a) in data.items():
+        if k in skip:
+            continue
+        c = a[:, 2]
+        lr = np.diff(np.log(c))
+        for t in range(260, len(c) - max(CONE_H) - 1, 10):
+            r = lr[t - 250:t]
+            r = r - r.mean()
+            sims = rng.choice(r, (M, max(CONE_H))).cumsum(1)
+            n += 1
+            for h in CONE_H:
+                q = np.quantile(sims[:, h - 1], [.1, .25, .75, .9]); x = math.log(c[t + h] / c[t])
+                h80[h] += q[0] <= x <= q[3]; h50[h] += q[1] <= x <= q[2]
+    if not n:
+        return {}
+    return {"n": n, "c80": {str(h): round(h80[h] / n * 100, 1) for h in CONE_H}, "c50": {str(h): round(h50[h] / n * 100, 1) for h in CONE_H}}
+
+
 def run(data_dir: Path, cost: float, skip=(), skip_last: bool = False, log=print):
     """Dipanggil dari fetch_data.py / fetch_kripto.py setelah data candlestick ditulis."""
     try:
@@ -307,6 +334,7 @@ def run(data_dir: Path, cost: float, skip=(), skip_last: bool = False, log=print
         st = stats(data, cost, skip)
         st["date"] = max(v[0][-1] for v in data.values())
         st["path"] = path_stats(data, skip)
+        st["cone"] = cone_stats(data, skip)
         (data_dir / "trend_stats.json").write_text(json.dumps(st, separators=(",", ":")))
         o, dn = track(data, data_dir / "trend_track.json", st["date"], cost, skip)
         if st["path"]:

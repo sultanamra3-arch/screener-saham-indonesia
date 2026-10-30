@@ -788,7 +788,7 @@ function crossed(a,b,k=3){ // 1 = a memotong ke atas b dalam k bar terakhir, -1 
   const n=a.length; for(let i=n-1;i>=Math.max(1,n-k);i--){ if([a[i],b[i],a[i-1],b[i-1]].some(x=>x==null)) continue;
     if(a[i-1]<=b[i-1]&&a[i]>b[i]) return 1; if(a[i-1]>=b[i-1]&&a[i]<b[i]) return -1; } return 0; }
 const IND=[["ma20","MA20","#f59e0b",1],["ma50","MA50","#0ea5e9",1],["ma200","MA200","#e11d48",1],["ema9","EMA9","#14b8a6",0],["bb","Bollinger","#64748b",0],["vwap","VWAP 20","#a855f7",0],
-  ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1],["path","〰️ Jalur","#7c3aed",0]];
+  ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1],["path","〰️ Jalur","#7c3aed",0],["proj","🔮 Proyeksi","#94a3b8",0]];
 function indOn(){ let s=null; try{ s=JSON.parse(store.get(WP+"ind")||"null"); }catch(e){}
   if(Array.isArray(s)&&!store.get(WP+"ind.tr")){ if(!s.includes("trend")) s.push("trend"); store.set(WP+"ind",JSON.stringify(s)); store.set(WP+"ind.tr","1"); } return new Set(s||IND.filter(x=>x[3]).map(x=>x[0])); }
 const OHLC={};
@@ -817,6 +817,7 @@ function indRead(on,B,c,hasV,x){
     out.push(`<b>Stoch RSI (14 14 3 3):</b> %K ${nf(k,1)}, %D ${nf(d,1)}. ${cr===1&&Math.min(k,d)<25?"<b class='ok'>%K baru memotong ke atas %D di zona jenuh jual</b>: sinyal pantulan awal; lebih kuat bila harga di zona support.":cr===-1&&Math.max(k,d)>75?"<b class='no'>%K baru memotong ke bawah %D di zona jenuh beli</b>: rawan koreksi.":k<20?"Jenuh jual; tunggu %K memotong ke atas %D.":k>80?"Jenuh beli; hati-hati mengejar.":"Di tengah, belum ada sinyal."}`); } }
   if(on.has("trend")&&x.trend) out.push(trendTxt(x.trend,c,f));
   if(on.has("path")&&x.path) out.push(pathTxt(x.path,f));
+  if(on.has("proj")&&x.proj) out.push(projTxt(x.proj,f));
   return out;
 }
 // ---------- Garis tren otomatis & skenario ----------
@@ -846,7 +847,7 @@ function trendDraw(ch,T,C,fut,a,good,bad,pf){
       z.setData([{time:T[n-1],value:p},{time:F[h-1],value:v}]); z.setMarkers([{time:F[h-1],position:up?"aboveBar":"belowBar",color,shape:up?"arrowUp":"arrowDown",text:txt}]); };
     arrow(tu,good,true,"skenario naik"); arrow(td,bad,false,"skenario turun"); out.tu=tu; out.td=td; }
   return out; }
-function pathDraw(ch,T,C,fut,a,pf,rs){
+function pathCalc(T,C,fut,a,rs){
   const P=(TRS||{}).path, n=T.length, p=C[n-1]; if(fut.length<10) return null;
   const m=C[n-1]>C[Math.max(0,n-11)]?1:-1, lo=tlFrom(a.piv,T,"L"), hi=tlFrom(a.piv,T,"H");
   let pos=null; if(lo&&hi){ const vl=lo.at(n-1), vh=hi.at(n-1); if(vh>vl) pos=(p-vl)/(vh-vl); }
@@ -858,11 +859,45 @@ function pathDraw(ch,T,C,fut,a,pf,rs){
   const Rz=[pick((a.res||[]).filter(z=>z.lo>p*(1+thr*0.4)).sort((x,y)=>x.lo-y.lo))].filter(Boolean), Sz=[pick((a.sup||[]).filter(z=>z.hi<p/(1+thr*0.4)).sort((x,y)=>y.hi-x.hi))].filter(Boolean);
   const upT=Rz[0]?Rz[0].lo:p*(1+thr), dnT=Sz[0]?Sz[0].hi:p/(1+thr), t1=fut[D-1], t2=fut[Math.min(2*D,fut.length)-1];
   const mk=d=>d>0?[[T[n-1],p],[t1,upT],[t2,dnT]]:[[T[n-1],p],[t1,dnT],[t2,upT]], main=mk(dir), alt=mk(-dir);
+  return {dir,main,alt,rule,D,acc:P&&P.acc?P.acc[rule]:null,n:P&&P.n}; }
+function pathDraw(ch,T,C,fut,a,pf,rs){
+  const pt=pathCalc(T,C,fut,a,rs); if(!pt) return null; const {main,alt}=pt;
   const base={priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat:pf,autoscaleInfoProvider:()=>null};
   ch.addLineSeries({...base,color:"#c4b5fd",lineWidth:1,lineStyle:1}).setData(alt.map(([t,v])=>({time:t,value:v})));
   const z=ch.addLineSeries({...base,color:"#7c3aed",lineWidth:3,lineStyle:2}); z.setData(main.map(([t,v])=>({time:t,value:v})));
   z.setMarkers(main.slice(1).map(([t,v],i)=>({time:t,position:v>=main[i][1]?"aboveBar":"belowBar",color:"#7c3aed",shape:"circle",text:usd(v)})));
-  return {dir,main,rule,D,acc:P&&P.acc?P.acc[rule]:null,n:P&&P.n}; }
+  return pt; }
+// ---------- 🔮 Proyeksi: 1.000 jalur acak dari kebiasaan grafik ini ----------
+function rngOf(str){ let h=1779033703^str.length; for(let i=0;i<str.length;i++){ h=Math.imul(h^str.charCodeAt(i),3432918353); h=h<<13|h>>>19; }
+  return ()=>{ h=Math.imul(h^h>>>16,2246822507); h=Math.imul(h^h>>>13,3266489909); h^=h>>>16; return (h>>>0)/4294967296; }; }
+function projCalc(B,T,fut,a,pt,key){
+  const n=B.length, H=Math.min(20,fut.length); if(n<120||H<5) return null;
+  const C=B.map(b=>b[4]), lr=[]; for(let i=Math.max(1,n-250);i<n;i++) lr.push([Math.log(C[i]/C[i-1]),i]);
+  const mu=lr.reduce((s,x)=>s+x[0],0)/lr.length, rnd=rngOf(key+"|"+T[n-1]), M=1000, p=C[n-1];
+  const paths=[], ends=[]; for(let m=0;m<M;m++){ let v=0; const ix=[], cum=[]; for(let h=0;h<H;h++){ const j=Math.floor(rnd()*lr.length); v+=lr[j][0]-mu; ix.push(lr[j][1]); cum.push(v); } paths.push({ix,cum}); }
+  const q=(arr,f)=>{ const s=arr.slice().sort((x,y)=>x-y); return s[Math.min(s.length-1,Math.floor(f*s.length))]; };
+  const band=[]; for(let h=0;h<H;h++){ const col=paths.map(x=>x.cum[h]); band.push([.1,.25,.5,.75,.9].map(f=>p*Math.exp(q(col,f)))); }
+  // contoh jalur candle: yang paling mirip 〰️ Jalur (kalau ada), selain itu yang paling dekat median
+  let best=null, be=1e9;
+  paths.forEach(x=>{ let e=0;
+    if(pt){ [1,2].forEach(k=>{ const i=fut.indexOf(pt.main[k][0]); if(i>=0&&i<H) e+=(x.cum[i]-Math.log(pt.main[k][1]/p))**2; else if(i>=H) e+=(x.cum[H-1]-Math.log(pt.main[k][1]/p))**2*0.5; }); }
+    else e=(x.cum[H-1]-Math.log(band[H-1][2]/p))**2;
+    if(e<be){ be=e; best=x; } });
+  let prev=p; const ghost=best.ix.map((j,h)=>{ const b=B[j], pc=B[j-1][4], f=prev/pc*Math.exp(-mu*(h+1)+0); const s=Math.exp(-mu);
+    const o=b[1]/pc*prev*s, hi=b[2]/pc*prev*s, lo=b[3]/pc*prev*s, c=b[4]/pc*prev*s; prev=c; return [fut[h],o,Math.max(hi,o,c),Math.min(lo,o,c),c]; });
+  const endP=paths.map(x=>p*Math.exp(x.cum[H-1])), R1=(a.res||[]).find(z=>z.strength!=="lemah"&&z.lo>p), S1=(a.sup||[]).find(z=>z.strength!=="lemah"&&z.hi<p);
+  return {H,band,ghost,end:fut[H-1],pUp:R1?endP.filter(v=>v>=R1.lo).length/M*100:null,R1,pDn:S1?endP.filter(v=>v<=S1.hi).length/M*100:null,S1}; }
+function projDraw(ch,B,T,fut,a,pf,pt,key,good,bad){
+  const pr=projCalc(B,T,fut,a,pt,key); if(!pr) return null; const n=T.length, p=B[n-1][4];
+  const base={priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat:pf,autoscaleInfoProvider:()=>null};
+  const ln=(k,color,w,st)=>ch.addLineSeries({...base,color,lineWidth:w,lineStyle:st}).setData([{time:T[n-1],value:p}].concat(pr.band.map((b,h)=>({time:fut[h],value:b[k]}))));
+  ln(0,"#cbd5e1",1,2); ln(4,"#cbd5e1",1,2); ln(1,"#94a3b8",1,0); ln(3,"#94a3b8",1,0);
+  const g=ch.addCandlestickSeries({...base,upColor:good+"80",downColor:bad+"80",borderUpColor:good+"cc",borderDownColor:bad+"cc",wickUpColor:good+"cc",wickDownColor:bad+"cc"});
+  g.setData(pr.ghost.map(x=>({time:x[0],open:x[1],high:x[2],low:x[3],close:x[4]})));
+  g.setMarkers([{time:pr.ghost[pr.ghost.length-1][0],position:"aboveBar",color:"#64748b",shape:"circle",text:"contoh"}]);
+  return pr; }
+function projTxt(pr,f){ if(!pr) return ""; const e=pr.band[pr.H-1], C=(TRS||{}).cone;
+  return `<b>🔮 Proyeksi ${pr.H} hari bursa (gambaran, bukan ramalan):</b> sekitar ${tgl(pr.end)}, harga kemungkinan besar (80%) di antara <b>${f(e[0])} – ${f(e[4])}</b>, dan separuh kemungkinan (50%) di antara ${f(e[1])} – ${f(e[3])}.${pr.R1&&pr.pUp!=null?` Peluang di atas R1 ${f(pr.R1.lo)}: <b>${nf(pr.pUp,0)}%</b>.`:""}${pr.S1&&pr.pDn!=null?` Peluang di bawah S1 ${f(pr.S1.hi)}: <b>${nf(pr.pDn,0)}%</b>.`:""} Candle transparan hanyalah <b>satu contoh</b> dari 1.000 jalur acak yang disusun dari candle asli grafik ini${pr.ghost?"":""}.${C&&C.c80?` Di uji mundur (${nf(C.n,0)} kali), harga asli 20 hari kemudian jatuh di dalam pita 80% sebanyak <b>${nf(C.c80["20"],0)}%</b> dan di dalam pita 50% sebanyak <b>${nf(C.c50["20"],0)}%</b> (idealnya 80% dan 50%).`:""}`; }
 function pathTxt(pt,f){ if(!pt) return "";
   const RN={mom10:"dengan menganggap arah 10 hari terakhir berlanjut",rev10:"dengan menganggap arah 10 hari terakhir berbalik",rsi_ch:"dari RSI dan posisi harga di saluran",pos_ch:"dari posisi harga di saluran garis tren"}[pt.rule]||"";
   return `<b>〰️ Jalur (gambaran, bukan ramalan pasti):</b> ${pt.dir>0?"naik":"turun"} dulu ke ${f(pt.main[1][1])} sekitar ${tgl(pt.main[1][0])}, lalu ${pt.dir>0?"turun":"naik"} ke ${f(pt.main[2][1])} sekitar ${tgl(pt.main[2][0])} (±${pt.D} hari bursa per gelombang, dari kebiasaan grafik ini). Arah pertama dipilih ${RN}.${pt.acc!=null?` Di uji mundur (${nf(pt.n,0)} kejadian) arah pertama seperti ini tepat <b>${nf(pt.acc,1)}%</b>, sedangkan lempar koin 50%${pt.acc<55?`: <b class="no">praktis sama dengan menebak</b>`:""}.`:""} Garis ungu tipis = jalur sebaliknya, yang hampir sama mungkinnya.`; }
@@ -889,6 +924,7 @@ function trendCard(){
     <div class="tablebox"><table class="nocard" style="min-width:0"><thead><tr><th>Kejadian</th><th class="num">Jumlah</th><th class="num">vs biasa</th><th>Kesimpulan uji</th><th>Sejak dipasang (${K.start?tgl(K.start,1):"–"})</th></tr></thead><tbody>
     ${Object.keys(TRN).map(k=>{ const e=E[k]||{}; return `<tr><td>${TRN[k]}</td><td class="num">${e.n!=null?nf(e.n,0):"–"}</td><td class="num">${e.diff!=null?`<span class="${e.diff>=0?"ok":"no"}">${e.diff>=0?"+":""}${nf(e.diff,2)}</span>`:"–"}</td><td>${trVerdict(e)}</td><td style="font-size:13px">${by(k)}</td></tr>`; }).join("")}</tbody></table></div>
     ${S.path&&S.path.acc?`<p style="margin:8px 0 0">〰️ <b>Jalur zigzag</b>: arah gelombang pertama ${esc(S.path.rule)}, tepat <b>${nf(S.path.acc[S.path.best],1)}%</b> dari ${nf(S.path.n,0)} kejadian (lempar koin 50%; aturan lain: ${Object.entries(S.path.acc).filter(([k])=>k!==S.path.best&&k!=="always_up").map(([k,v])=>nf(v,1)+"%").join(", ")}).${TRP&&TRP.n?` Sejak dipasang: ${TRP.ok} dari ${TRP.n} tepat (${nf(TRP.ok/TRP.n*100,0)}%).`:" Rekam jejak sejak dipasang mulai terisi beberapa minggu lagi."}</p>`:""}
+    ${S.cone&&S.cone.c80?`<p style="margin:8px 0 0">🔮 <b>Pita proyeksi</b>: harga asli jatuh di dalam pita 80% sebanyak ${["5","10","20"].map(h=>`<b>${nf(S.cone.c80[h],0)}%</b> (${h} hari)`).join(", ")}; pita 50%: ${["5","10","20"].map(h=>nf(S.cone.c50[h],0)+"%").join(", ")}. Makin dekat ke 80% dan 50%, makin jujur pitanya.</p>`:""}
     ${S.scen?`<p class="note">Pantulan di garis naik: ${S.scen.up}% sampai garis atas dalam 30 hari, ${S.scen.dn}% menembus ke bawah, ${S.scen.none}% belum keduanya (${nf(S.scen.n,0)} kejadian).</p>`:""}
     <p class="note">“vs biasa” = selisih rata-rata hasil ${S.h} hari dibanding hari acak. “Lebih baik/buruk dari biasa” hanya bila peluang kebetulannya di bawah 5%. Garis tren menggambarkan arah yang sudah terjadi; ke depannya tetap tidak pasti.</p>`; }
 // ---------- Garis info (alat ukur di grafik) ----------
@@ -986,6 +1022,7 @@ function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   (a.res||[]).forEach((z,i)=>{ s.createPriceLine({price:z.mid,color:bad,lineWidth:z.strength==="kuat"?2:1,lineStyle:2,axisLabelVisible:true,title:`R${i+1} ${z.strength}`}); });
   if(on.has("trend")) x.trend=trendDraw(ch,T,C,fut,a,good,bad,pf);
   if(on.has("path")) x.path=pathDraw(ch,T,C,fut,a,pf,x.rsi);
+  if(on.has("proj")&&candle) x.proj=projDraw(ch,B,T,fut,a,pf,x.path||pathCalc(T,C,fut,a,x.rsi),opt.dkey||"",good,bad);
   ch.timeScale().setVisibleLogicalRange({from:Math.max(0,B.length-150),to:B.length+fut.length});
   watchSize(ch,el,pxObs);
   infoLines(ch,s,T.concat(fut),el,opt.dkey,idr);

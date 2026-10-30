@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-10-30",
+  "t": "🔮 Proyeksi candle & pita kemungkinan",
+  "x": "Tombol Proyeksi menggambar contoh candle 20 hari ke depan dari kebiasaan grafik itu sendiri, plus pita tempat harga kemungkinan besar berada (80%) dan peluang menembus R1/S1; ketepatan pitanya diuji dan ditampilkan."
+ },
+ {
+  "d": "2026-10-30",
   "t": "〰️ Jalur zigzag ke depan",
   "x": "Tombol Jalur menggambar perkiraan gelombang (turun dulu lalu naik, atau sebaliknya) ke zona support/resistance, lengkap dengan seberapa sering arah pertamanya benar di uji mundur."
  },
