@@ -350,6 +350,7 @@ footer{color:var(--muted);font-size:12.5px}
 @media (max-width:899px){#autoUpd{bottom:calc(76px + env(safe-area-inset-bottom))}}
 
 @media (max-width:600px){.topbar{flex-wrap:wrap;row-gap:8px}.topbar .brand{margin-right:auto}.topbar .tb-r{display:contents}.topbar .mkt{order:9;width:100%;display:flex}.topbar .mkt a{flex:1;text-align:center;padding:6px 8px;font-size:13px}}
+.il-box.tl{border-color:#7c3aed}
 </style>
 </head>
 <body>
@@ -787,8 +788,9 @@ function crossed(a,b,k=3){ // 1 = a memotong ke atas b dalam k bar terakhir, -1 
   const n=a.length; for(let i=n-1;i>=Math.max(1,n-k);i--){ if([a[i],b[i],a[i-1],b[i-1]].some(x=>x==null)) continue;
     if(a[i-1]<=b[i-1]&&a[i]>b[i]) return 1; if(a[i-1]>=b[i-1]&&a[i]<b[i]) return -1; } return 0; }
 const IND=[["ma20","MA20","#f59e0b",1],["ma50","MA50","#0ea5e9",1],["ma200","MA200","#e11d48",1],["ema9","EMA9","#14b8a6",0],["bb","Bollinger","#64748b",0],["vwap","VWAP 20","#a855f7",0],
-  ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0]];
-function indOn(){ let s=null; try{ s=JSON.parse(store.get(WP+"ind")||"null"); }catch(e){} return new Set(s||IND.filter(x=>x[3]).map(x=>x[0])); }
+  ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1]];
+function indOn(){ let s=null; try{ s=JSON.parse(store.get(WP+"ind")||"null"); }catch(e){}
+  if(Array.isArray(s)&&!store.get(WP+"ind.tr")){ if(!s.includes("trend")) s.push("trend"); store.set(WP+"ind",JSON.stringify(s)); store.set(WP+"ind.tr","1"); } return new Set(s||IND.filter(x=>x[3]).map(x=>x[0])); }
 const OHLC={};
 const OHLCP={};
 function warmCharts(ts){ const go=()=>{ try{ loadSer(); loadLWC().catch(()=>{}); (ts||[]).slice(0,12).forEach(t=>loadOhlc(t)); }catch(e){} };
@@ -813,8 +815,60 @@ function indRead(on,B,c,hasV,x){
     out.push(`<b>MACD (12, 26, 9):</b> ${cr===1?"<b class='ok'>baru memotong ke atas garis sinyal</b>: momentum mulai naik.":cr===-1?"<b class='no'>baru memotong ke bawah garis sinyal</b>: momentum mulai turun.":m>s?"di atas garis sinyal (momentum naik)":"di bawah garis sinyal (momentum turun)"}${cr?"":hp!=null?(Math.abs(h)>Math.abs(hp)?", makin kuat.":", mulai melemah."):"."} ${m>0?"Di atas nol: tren menengah naik.":"Di bawah nol: tren menengah turun."}`); } }
   if(on.has("srsi")){ const [k]=lastOf(x.srsi.k), [d]=lastOf(x.srsi.d); if(k!=null&&d!=null){ const cr=crossed(x.srsi.k,x.srsi.d,3);
     out.push(`<b>Stoch RSI (14 14 3 3):</b> %K ${nf(k,1)}, %D ${nf(d,1)}. ${cr===1&&Math.min(k,d)<25?"<b class='ok'>%K baru memotong ke atas %D di zona jenuh jual</b>: sinyal pantulan awal; lebih kuat bila harga di zona support.":cr===-1&&Math.max(k,d)>75?"<b class='no'>%K baru memotong ke bawah %D di zona jenuh beli</b>: rawan koreksi.":k<20?"Jenuh jual; tunggu %K memotong ke atas %D.":k>80?"Jenuh beli; hati-hati mengejar.":"Di tengah, belum ada sinyal."}`); } }
+  if(on.has("trend")&&x.trend) out.push(trendTxt(x.trend,c,f));
   return out;
 }
+// ---------- Garis tren otomatis & skenario ----------
+let TRS=null, TRS_P=null, TRK2=null;
+function loadTrendStats(){ if(TRS_P) return TRS_P;
+  TRS_P=Promise.all([fetch("data/trend_stats.json",{cache:"no-cache"}).then(r=>r.ok?r.json():null).catch(()=>null),fetch("data/trend_track.json",{cache:"no-cache"}).then(r=>r.ok?r.json():null).catch(()=>null)]).then(([a,b])=>{ TRS=a||{}; TRK2=b||{}; });
+  return TRS_P; }
+function tlFrom(piv,T,typ){ // garis lurus (skala log) lewat 2 titik balik terakhir sejenis
+  const P=(piv||[]).filter(p=>p[2]===typ).map(p=>({i:T.indexOf(p[0]),v:p[1],d:p[0]})).filter(p=>p.i>=0).slice(-2);
+  if(P.length<2) return null; const [p1,p2]=P;
+  const k=(Math.log(p2.v)-Math.log(p1.v))/(p2.i-p1.i);
+  return {p1,p2,rising:p2.v>p1.v,at:i=>Math.exp(Math.log(p1.v)+k*(i-p1.i))}; }
+function trendDraw(ch,T,C,fut,a,good,bad,pf){
+  const n=T.length, F=fut.slice(0,30), out={up:tlFrom(a.piv,T,"L"),dn:tlFrom(a.piv,T,"H")};
+  const opt={lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat:pf,autoscaleInfoProvider:()=>null};
+  const seg=(ln,color)=>{ if(!ln) return;
+    ch.addLineSeries({...opt,color}).setData(T.slice(ln.p1.i).map((t,j)=>({time:t,value:ln.at(ln.p1.i+j)})));
+    if(F.length) ch.addLineSeries({...opt,color,lineStyle:2}).setData([{time:T[n-1],value:ln.at(n-1)}].concat(F.map((t,j)=>({time:t,value:ln.at(n+j)})))); };
+  seg(out.up,"#0f9d58"); seg(out.dn,"#d93025");
+  const cross=(ln,dir)=>{ if(!ln) return null; for(let i=n-1;i>=Math.max(1,n-3);i--){ const a0=ln.at(i-1),a1=ln.at(i); if(dir>0?(C[i-1]<=a0&&C[i]>a1):(C[i-1]>=a0&&C[i]<a1)) return n-1-i; } return null; };
+  out.brkUp=out.dn&&!out.dn.rising?cross(out.dn,1):null; out.brkDn=out.up&&out.up.rising?cross(out.up,-1):null; // sama dengan yang diuji
+  const p=C[n-1], h=Math.min(15,F.length);
+  if(h>=3){ const R1=(a.res||[]).find(z=>z.strength!=="lemah"&&z.lo>p*1.005), S1=(a.sup||[]).find(z=>z.hi<p*0.995);
+    let tu=out.dn&&out.dn.at(n-1+h)>p*1.01?out.dn.at(n-1+h):null; if(R1&&(!tu||R1.lo<tu)) tu=R1.lo;
+    let td=out.up&&out.up.at(n-1+h)<p*0.99?out.up.at(n-1+h):null; if(S1&&(!td||S1.hi>td)) td=S1.hi;
+    const arrow=(v,color,up,txt)=>{ if(v==null) return; const z=ch.addLineSeries({...opt,color,lineStyle:1});
+      z.setData([{time:T[n-1],value:p},{time:F[h-1],value:v}]); z.setMarkers([{time:F[h-1],position:up?"aboveBar":"belowBar",color,shape:up?"arrowUp":"arrowDown",text:txt}]); };
+    arrow(tu,good,true,"skenario naik"); arrow(td,bad,false,"skenario turun"); out.tu=tu; out.td=td; }
+  return out; }
+const TRN={brk_up:"Tembus garis turun ke atas",brk_dn:"Tembus garis naik ke bawah",touch_up:"Memantul di garis naik",touch_dn:"Tertolak di garis turun"};
+function trVerdict(e){ if(!e||e.diff==null) return '<span class="note">data belum cukup</span>'; return e.p<5?(e.diff>0?'<b class="ok">lebih baik dari biasa</b>':'<b class="no">lebih buruk dari biasa</b>'):"tidak berbeda dari kebetulan"; }
+function trStat(k){ const e=((TRS||{}).ev||{})[k]; if(!e||e.diff==null) return ""; return ` Di masa lalu (${nf(e.n,0)} kejadian), ${TRS.h} hari bursa sesudahnya rata-rata ${e.diff>=0?"+":""}${nf(e.diff,2)} poin dibanding hari biasa: ${trVerdict(e)}.`; }
+function trendTxt(tr,c,f){
+  const p=c[c.length-1], L=[];
+  if(!tr.up&&!tr.dn) return `<b>Garis tren:</b> titik balik belum cukup untuk menarik garis tren.`;
+  const U=tr.up, D=tr.dn, shape=U&&D?(U.rising&&D.rising?"<b>saluran naik</b> (lembah dan puncak makin tinggi)":!U.rising&&!D.rising?"<b>saluran turun</b> (lembah dan puncak makin rendah)":U.rising?"<b>menyempit</b> (lembah makin tinggi, puncak makin rendah; biasanya disusul gerakan besar)":"<b>melebar</b> (lembah makin rendah, puncak makin tinggi; gejolak sedang besar)"):"";
+  if(U){ const v=U.at(c.length-1); L.push(`garis bawah (hijau, lembah ${tgl(U.p1.d)} → ${tgl(U.p2.d)}, ${U.rising?"naik":"turun"}) sekarang di ${f(v)}, harga ${nf(Math.abs((p/v-1)*100),1)}% ${p>=v?"di atasnya":"di bawahnya"}`); }
+  if(D){ const v=D.at(c.length-1); L.push(`garis atas (merah, puncak ${tgl(D.p1.d)} → ${tgl(D.p2.d)}, ${D.rising?"naik":"turun"}) di ${f(v)}, harga ${nf(Math.abs((p/v-1)*100),1)}% ${p>=v?"di atasnya":"di bawahnya"}`); }
+  let s=`<b>Garis tren:</b> ${shape?shape+". ":""}${L.join("; ")}.`;
+  if(tr.brkUp!=null) s+=` <b class="ok">${tr.brkUp?tr.brkUp+" hari lalu harga":"Hari ini harga"} menembus garis atas yang turun.</b>`+trStat("brk_up");
+  if(tr.brkDn!=null) s+=` <b class="no">${tr.brkDn?tr.brkDn+" hari lalu harga":"Hari ini harga"} menembus garis bawah yang naik.</b>`+trStat("brk_dn");
+  const sc=(TRS||{}).scen;
+  if(tr.tu!=null||tr.td!=null) s+=`<br><b>Dua skenario</b> (bukan ramalan): ${tr.tu!=null?`🟢 naik ke ${f(tr.tu)} (${pct((tr.tu/p-1)*100)})`:""}${tr.tu!=null&&tr.td!=null?" · ":""}${tr.td!=null?`🔴 turun ke ${f(tr.td)} (${pct((tr.td/p-1)*100)})`:""}.${sc?` Sebagai gambaran: dari ${nf(sc.n,0)} pantulan di garis bawah yang naik pada masa lalu, hanya ${sc.up}% yang sampai ke garis atas dalam 30 hari, sedangkan ${sc.dn}% malah menembus garis ke bawah.`:""}`;
+  return s; }
+function trendCard(){
+  const S=TRS||{}, E=S.ev||{}, K=TRK2||{}, D=(K.done||[]);
+  if(!S.ev) return `<p class="note">Statistik garis tren mulai tersedia setelah pembaruan data berikutnya.</p>`;
+  const by=k=>{ const r=D.filter(x=>x.k===k); if(!r.length) return '<span class="note">belum ada</span>'; const a=r.reduce((s,x)=>s+x.ret,0)/r.length, e=r.reduce((s,x)=>s+x.ex,0)/r.length; return `${r.length}× · rata-rata <b class="${a>=0?"ok":"no"}">${pct(a,1)}</b> · vs pasar <b class="${e>=0?"ok":"no"}">${e>=0?"+":""}${nf(e,1)} poin</b>`; };
+  return `<p class="note" style="margin:0 0 8px">Garis tren otomatis memakai titik balik ZigZag yang sama dengan grafik. Diuji pada ${nf(S.n_sym||0,0)} grafik (±1,5 tahun data), dinilai ${S.h} hari bursa sesudah kejadian${S.cost?`, setelah biaya ${nf(S.cost,2)}%`:""}. Pembanding: rata-rata semua hari (${S.base?pct(S.base.avg,2):"–"}).</p>
+    <div class="tablebox"><table class="nocard" style="min-width:0"><thead><tr><th>Kejadian</th><th class="num">Jumlah</th><th class="num">vs biasa</th><th>Kesimpulan uji</th><th>Sejak dipasang (${K.start?tgl(K.start,1):"–"})</th></tr></thead><tbody>
+    ${Object.keys(TRN).map(k=>{ const e=E[k]||{}; return `<tr><td>${TRN[k]}</td><td class="num">${e.n!=null?nf(e.n,0):"–"}</td><td class="num">${e.diff!=null?`<span class="${e.diff>=0?"ok":"no"}">${e.diff>=0?"+":""}${nf(e.diff,2)}</span>`:"–"}</td><td>${trVerdict(e)}</td><td style="font-size:13px">${by(k)}</td></tr>`; }).join("")}</tbody></table></div>
+    ${S.scen?`<p class="note">Pantulan di garis naik: ${S.scen.up}% sampai garis atas dalam 30 hari, ${S.scen.dn}% menembus ke bawah, ${S.scen.none}% belum keduanya (${nf(S.scen.n,0)} kejadian).</p>`:""}
+    <p class="note">“vs biasa” = selisih rata-rata hasil ${S.h} hari dibanding hari acak. “Lebih baik/buruk dari biasa” hanya bila peluang kebetulannya di bawah 5%. Garis tren menggambarkan arah yang sudah terjadi; ke depannya tetap tidak pasti.</p>`; }
 // ---------- Garis info (alat ukur di grafik) ----------
 let IL_MODE=false;
 function ilLoad(k){ try{ return JSON.parse(store.get(WP+"il."+k)||"[]"); }catch(e){ return []; } }
@@ -827,10 +881,14 @@ function infoLines(ch,s,T,el,key,idr){
   const idx=t=>T.indexOf(t);
   const fmtP=v=>idr?usd(Math.round(v)):usd(v);
   const draw=()=>{ series.forEach(x=>{ try{ ch.removeSeries(x); }catch(e){} }); series=[];
-    L.forEach(g=>{ const up=g.p2>=g.p1, z=ch.addLineSeries({color:up?"#16a34a":"#dc2626",lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,autoscaleInfoProvider:()=>null});
-      z.setData([{time:g.t1,value:g.p1},{time:g.t2,value:g.p2}]); series.push(z); }); place(); };
+    L.forEach(g=>{ const up=g.p2>=g.p1, z=ch.addLineSeries({color:g.k==="tl"?"#7c3aed":up?"#16a34a":"#dc2626",lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,autoscaleInfoProvider:()=>null});
+      if(g.k==="tl"){ const i1=idx(g.t1), i2=idx(g.t2), ie=T.length-1; if(i1<0||i2<=i1){ z.setData([]); series.push(z); return; } const k=(Math.log(g.p2)-Math.log(g.p1))/(i2-i1); g._te=T[ie]; g._pe=Math.exp(Math.log(g.p1)+k*(ie-i1));
+        z.setData([{time:g.t1,value:g.p1},{time:g.t2,value:g.p2}].concat(ie>i2?[{time:g._te,value:g._pe}]:[])); }
+      else z.setData([{time:g.t1,value:g.p1},{time:g.t2,value:g.p2}]); series.push(z); }); place(); };
   const place=()=>{ const W=el.clientWidth;
-    lay.innerHTML=L.map((g,i)=>{ const x=ch.timeScale().timeToCoordinate(g.t2), y=s.priceToCoordinate(g.p2); if(x==null||y==null) return "";
+    lay.innerHTML=L.map((g,i)=>{ if(g.k==="tl"){ const xe=ch.timeScale().timeToCoordinate(g._te||g.t2), ye=s.priceToCoordinate(g._pe||g.p2); if(xe==null||ye==null) return "";
+        return `<div class="il-box tl" style="left:${Math.min(Math.max(4,xe-150),W-160)}px;top:${Math.max(4,ye-34)}px"><b>✏️ garis tren</b><span class="note">ujung ${fmtP(g._pe||g.p2)}</span><button type="button" data-ild="${i}" aria-label="Hapus garis">✕</button></div>`; }
+      const x=ch.timeScale().timeToCoordinate(g.t2), y=s.priceToCoordinate(g.p2); if(x==null||y==null) return "";
       const d=g.p2-g.p1, pc=(g.p2/g.p1-1)*100, bars=Math.abs(idx(g.t2)-idx(g.t1)), days=Math.round(Math.abs(new Date(g.t2)-new Date(g.t1))/864e5), up=d>=0;
       const left=Math.min(Math.max(4,x+8),W-190), top=Math.max(4,y+(up?-64:8));
       return `<div class="il-box ${up?"up":"dn"}" style="left:${left}px;top:${top}px"><b>${up?"+":"−"}${fmtP(Math.abs(d))} (${up?"+":"−"}${nf(Math.abs(pc),2)}%)</b><span>${bars} bar · ${days} hari</span><span class="note">${fmtP(g.p1)} → ${fmtP(g.p2)}</span><button type="button" data-ild="${i}" aria-label="Hapus garis">✕</button></div>`; }).join("")
@@ -841,7 +899,7 @@ function infoLines(ch,s,T,el,key,idr){
     if(!pend){ pend={t,p:pr}; place(); ilHint("Ketuk titik kedua"); return; }
     if(t===pend.t){ return; }
     const a=idx(pend.t)<idx(t)?[pend,{t,p:pr}]:[{t,p:pr},pend];
-    L.push({t1:a[0].t,p1:a[0].p,t2:a[1].t,p2:a[1].p}); pend=null; ilSave(key,L); IL_MODE=false; ilBar(); ilHint(""); draw(); });
+    L.push(Object.assign({t1:a[0].t,p1:a[0].p,t2:a[1].t,p2:a[1].p},IL_MODE==="tl"?{k:"tl"}:{})); pend=null; ilSave(key,L); IL_MODE=false; ilBar(); ilHint(""); draw(); });
   ch.timeScale().subscribeVisibleLogicalRangeChange(()=>requestAnimationFrame(place));
   const ro=new ResizeObserver(()=>requestAnimationFrame(place)); ro.observe(el); pxObs.push(ro);
   window.__ilClear=()=>{ L=[]; pend=null; ilSave(key,L); draw(); ilBar(); };
@@ -857,9 +915,10 @@ function tvWidget(box,sym){
   box.querySelector(".tradingview-widget-container").appendChild(sc);
 }
 function ilHint(t){ const h=$("ilHint"); if(h) h.textContent=t; }
-function ilBar(){ const b=$("ilBtn"), c=$("ilClr"); if(b){ b.setAttribute("aria-pressed",IL_MODE); b.textContent=IL_MODE?"📏 Batal":"📏 Garis info"; }
-  if(c) c.hidden=!(window.__ilCount&&window.__ilCount()); const el=$("cyChart"); if(el) el.classList.toggle("il-on",IL_MODE);
-  ilHint(IL_MODE?"Ketuk titik pertama di grafik (mis. lembah), lalu titik kedua (mis. puncak).":""); }
+function ilBar(){ const b=$("ilBtn"), c=$("ilClr"), tb=$("tlBtn"); if(b){ b.setAttribute("aria-pressed",IL_MODE===true); b.textContent=IL_MODE===true?"📏 Batal":"📏 Garis info"; }
+  if(tb){ tb.setAttribute("aria-pressed",IL_MODE==="tl"); tb.textContent=IL_MODE==="tl"?"✏️ Batal":"✏️ Tarik garis"; }
+  if(c) c.hidden=!(window.__ilCount&&window.__ilCount()); const el=$("cyChart"); if(el) el.classList.toggle("il-on",!!IL_MODE);
+  ilHint(IL_MODE==="tl"?"Ketuk dua titik untuk menarik garis tren (mis. dua lembah). Garis diperpanjang sampai ke area tanggal depan.":IL_MODE?"Ketuk titik pertama di grafik (mis. lembah), lalu titik kedua (mis. puncak).":""); }
 function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   pxObs.forEach(o=>o.disconnect()); pxObs=[];
   pxCharts.forEach(c=>{try{c.remove()}catch(e){}}); pxCharts=[];
@@ -903,9 +962,10 @@ function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   else s.setMarkers(mk);
   (a.sup||[]).forEach((z,i)=>{ s.createPriceLine({price:z.mid,color:good,lineWidth:z.strength==="kuat"?2:1,lineStyle:2,axisLabelVisible:true,title:`S${i+1} ${z.strength}`}); });
   (a.res||[]).forEach((z,i)=>{ s.createPriceLine({price:z.mid,color:bad,lineWidth:z.strength==="kuat"?2:1,lineStyle:2,axisLabelVisible:true,title:`R${i+1} ${z.strength}`}); });
+  if(on.has("trend")) x.trend=trendDraw(ch,T,C,fut,a,good,bad,pf);
   ch.timeScale().setVisibleLogicalRange({from:Math.max(0,B.length-150),to:B.length+fut.length});
   watchSize(ch,el,pxObs);
-  infoLines(ch,s,T,el,opt.dkey,idr);
+  infoLines(ch,s,T.concat(fut),el,opt.dkey,idr);
   // panel bawah
   const P=opt.panels; const all=[ch];
   if(P){ P.innerHTML="";
@@ -960,11 +1020,12 @@ function renderCycles(box){
     ${cycleGuide(idxName)}${saranBox(isIdx?saranMarket({cyc:true}).html:`${o?saranStock(o)+`<p style="margin:6px 0 10px">${calcBtn(o.ticker)}</p>`:""}`+saranMarket({cyc:true}).head)}<div style="height:12px"></div>
     <div class="tablebox" id="cyBox" style="padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
       <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
-      <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
-      <div class="indbar" id="indBar">${(()=>{ const on=indOn(); return IND.map(([k,n,c])=>`<button type="button" data-ind="${k}" aria-pressed="${on.has(k)}"><i style="background:${c}"></i>${n}</button>`).join(""); })()}<span class="il-sep"></span><button type="button" id="ilBtn" aria-pressed="false" title="Ukur perubahan harga antara dua titik">📏 Garis info</button><button type="button" id="ilClr" hidden title="Hapus semua garis info">🗑️</button><button type="button" id="tvBtn" title="Grafik TradingView: harga lebih baru (tertunda ±15 menit), alat gambar dan indikator lengkap">📺 TradingView</button></div>
+      <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span><span style="color:#0f9d58">╱ garis tren</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
+      <div class="indbar" id="indBar">${(()=>{ const on=indOn(); return IND.map(([k,n,c])=>`<button type="button" data-ind="${k}" aria-pressed="${on.has(k)}"><i style="background:${c}"></i>${n}</button>`).join(""); })()}<span class="il-sep"></span><button type="button" id="ilBtn" aria-pressed="false" title="Ukur perubahan harga antara dua titik">📏 Garis info</button><button type="button" id="tlBtn" aria-pressed="false" title="Tarik garis tren sendiri; diperpanjang ke depan">✏️ Tarik garis</button><button type="button" id="ilClr" hidden title="Hapus semua garis yang Anda buat">🗑️</button><button type="button" id="tvBtn" title="Grafik TradingView: harga lebih baru (tertunda ±15 menit), alat gambar dan indikator lengkap">📺 TradingView</button></div>
       <div id="tvBox"></div><p class="note" id="ilHint" style="margin:0 0 6px;min-height:0"></p>
       <div id="cyChart" style="width:100%;min-height:400px"></div>
       <div id="cyPanels"></div></div>
+    <div class="mcard" style="margin-top:12px"><h4><span>📐 Garis tren: seberapa bisa dipercaya?</span></h4><div id="trBox"><p class="note">Memuat…</p></div></div>
     <div class="mcard" style="margin-top:12px"><h4><span>📊 Bacaan indikator</span></h4><div id="cyRead"><p class="note">Memuat…</p></div>
       <details style="margin-top:8px"><summary class="note" style="cursor:pointer">Penjelasan singkat tiap indikator</summary><div class="dl" style="font-size:13.5px;margin-top:6px;gap:6px">
       <div><span><b>Candlestick</b>: satu batang = satu hari. Hijau = ditutup lebih tinggi dari pembukaan, merah = lebih rendah. Sumbu tipis = harga tertinggi dan terendah hari itu.</span></div>
@@ -1007,10 +1068,11 @@ function renderCycles(box){
   const tvSym=IS_ID?(isIdx?"IDX:COMPOSITE":"IDX:"+sel):({"S&P 500":"SP:SPX","Nasdaq-100":"NASDAQ:NDX"}[sel]||sel);
   const tvSet=on=>{ $("cyBox").classList.toggle("tv-on",on); $("tvBtn").textContent=on?"📈 Grafik ChartFlow":"📺 TradingView"; $("tvBtn").setAttribute("aria-pressed",on);
     if(on){ IL_MODE=false; ilBar(); tvWidget($("tvBox"),tvSym); } else $("tvBox").innerHTML=""; };
-  $("indBar").addEventListener("click",ev=>{ if(ev.target.closest("#tvBtn")){ const on=!$("cyBox").classList.contains("tv-on"); store.set(WP+"tv",on?"1":"0"); tvSet(on); return; } if(ev.target.closest("#ilBtn")){ IL_MODE=!IL_MODE; if(!IL_MODE&&window.__ilCancel) window.__ilCancel(); ilBar(); return; }
+  $("indBar").addEventListener("click",ev=>{ if(ev.target.closest("#tvBtn")){ const on=!$("cyBox").classList.contains("tv-on"); store.set(WP+"tv",on?"1":"0"); tvSet(on); return; } if(ev.target.closest("#ilBtn")){ IL_MODE=IL_MODE===true?false:true; if(!IL_MODE&&window.__ilCancel) window.__ilCancel(); ilBar(); return; }
+    if(ev.target.closest("#tlBtn")){ IL_MODE=IL_MODE==="tl"?false:"tl"; if(!IL_MODE&&window.__ilCancel) window.__ilCancel(); ilBar(); return; }
     if(ev.target.closest("#ilClr")){ if(window.__ilClear) window.__ilClear(); return; }
     const bt=ev.target.closest("[data-ind]"); if(!bt) return; const on=indOn(), k=bt.dataset.ind; on.has(k)?on.delete(k):on.add(k); store.set(WP+"ind",JSON.stringify([...on])); bt.setAttribute("aria-pressed",on.has(k)); draw(); });
-  Promise.all([loadLWC(),loadOhlc(sel)]).then(([,bb])=>{ if(tab!=="cycles") return; bars=bb; draw(); if(store.get(WP+"tv")==="1") tvSet(true); if(b) drawBreadth($("cyBreadth"),b); })
+  Promise.all([loadLWC(),loadOhlc(sel),loadTrendStats()]).then(([,bb])=>{ if(tab!=="cycles") return; bars=bb; draw(); { const tb=$("trBox"); if(tb) tb.innerHTML=trendCard(); } if(store.get(WP+"tv")==="1") tvSet(true); if(b) drawBreadth($("cyBreadth"),b); })
     .catch(()=>{ $("cyChart").innerHTML=`<p class="note">Grafik tidak bisa dimuat (pustaka grafik gagal diunduh).</p>`; });
 }
 

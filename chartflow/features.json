@@ -1,26 +1,137 @@
 {
  "_info": "Daftar fitur untuk pemeriksaan halaman depan chartflow.my.id (scripts/check_landing.py). Setiap menambah/menghapus fitur: ubah daftar ini, halaman depan, dan chartflow/public/changes.json di commit yang sama.",
  "active": [
-  {"name": "7 metode saham", "mention": ["7 metode"]},
-  {"name": "Filter sendiri", "mention": ["Filter sendiri"]},
-  {"name": "Ramai hari ini", "mention": ["Ramai hari ini"]},
-  {"name": "Pencarian cepat", "mention": ["Pencarian cepat"]},
-  {"name": "Area beli / Watchlist", "mention": ["Area beli"]},
-  {"name": "Grafik & indikator", "mention": ["indikator"]},
-  {"name": "Garis info", "mention": ["Garis info"]},
-  {"name": "TradingView", "mention": ["TradingView"]},
-  {"name": "Kalkulator", "mention": ["Kalkulator"]},
-  {"name": "Portofolio & jurnal", "mention": ["Portofolio", "jurnal"]},
-  {"name": "Alarm Telegram", "mention": ["Alarm"]},
-  {"name": "Kalender dividen", "mention": ["Kalender dividen"]},
-  {"name": "Arus dana asing", "mention": ["asing"]},
-  {"name": "Kripto", "mention": ["Kripto", "Lampu BTC", "Momentum 90 hari"]},
-  {"name": "Update tiap 30 menit tanpa refresh", "mention": ["tiap 30 menit", "tanpa perlu refresh"]},
-  {"name": "Aplikasi Android", "mention": ["APK"]}
+  {
+   "name": "7 metode saham",
+   "mention": [
+    "7 metode"
+   ]
+  },
+  {
+   "name": "Filter sendiri",
+   "mention": [
+    "Filter sendiri"
+   ]
+  },
+  {
+   "name": "Ramai hari ini",
+   "mention": [
+    "Ramai hari ini"
+   ]
+  },
+  {
+   "name": "Pencarian cepat",
+   "mention": [
+    "Pencarian cepat"
+   ]
+  },
+  {
+   "name": "Area beli / Watchlist",
+   "mention": [
+    "Area beli"
+   ]
+  },
+  {
+   "name": "Grafik & indikator",
+   "mention": [
+    "indikator"
+   ]
+  },
+  {
+   "name": "Garis tren & skenario",
+   "mention": [
+    "garis tren",
+    "skenario"
+   ]
+  },
+  {
+   "name": "Garis info",
+   "mention": [
+    "Garis info"
+   ]
+  },
+  {
+   "name": "TradingView",
+   "mention": [
+    "TradingView"
+   ]
+  },
+  {
+   "name": "Kalkulator",
+   "mention": [
+    "Kalkulator"
+   ]
+  },
+  {
+   "name": "Portofolio & jurnal",
+   "mention": [
+    "Portofolio",
+    "jurnal"
+   ]
+  },
+  {
+   "name": "Alarm Telegram",
+   "mention": [
+    "Alarm"
+   ]
+  },
+  {
+   "name": "Kalender dividen",
+   "mention": [
+    "Kalender dividen"
+   ]
+  },
+  {
+   "name": "Arus dana asing",
+   "mention": [
+    "asing"
+   ]
+  },
+  {
+   "name": "Kripto",
+   "mention": [
+    "Kripto",
+    "Lampu BTC",
+    "Momentum 90 hari"
+   ]
+  },
+  {
+   "name": "Update tiap 30 menit tanpa refresh",
+   "mention": [
+    "tiap 30 menit",
+    "tanpa perlu refresh"
+   ]
+  },
+  {
+   "name": "Aplikasi Android",
+   "mention": [
+    "APK"
+   ]
+  }
  ],
  "removed": [
-  {"name": "Bandingkan saham", "forbid": ["Bandingkan saham", "Bandingkan<", "shot-compare"]},
-  {"name": "Peta sektor", "forbid": ["Peta sektor", "Arus uang & sektor", "shot-sector"]},
-  {"name": "Jadwal lama 2x sehari", "forbid": ["2× sehari", "12.15 dan 17.45"]}
+  {
+   "name": "Bandingkan saham",
+   "forbid": [
+    "Bandingkan saham",
+    "Bandingkan<",
+    "shot-compare"
+   ]
+  },
+  {
+   "name": "Peta sektor",
+   "forbid": [
+    "Peta sektor",
+    "Arus uang & sektor",
+    "shot-sector"
+   ]
+  },
+  {
+   "name": "Jadwal lama 2x sehari",
+   "forbid": [
+    "2× sehari",
+    "12.15 dan 17.45"
+   ]
+  }
  ]
 }
