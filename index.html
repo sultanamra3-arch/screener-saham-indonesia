@@ -789,8 +789,11 @@ function crossed(a,b,k=3){ // 1 = a memotong ke atas b dalam k bar terakhir, -1 
     if(a[i-1]<=b[i-1]&&a[i]>b[i]) return 1; if(a[i-1]>=b[i-1]&&a[i]<b[i]) return -1; } return 0; }
 const IND=[["ma20","MA20","#f59e0b",1],["ma50","MA50","#0ea5e9",1],["ma200","MA200","#e11d48",1],["ema9","EMA9","#14b8a6",0],["bb","Bollinger","#64748b",0],["vwap","VWAP 20","#a855f7",0],
   ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1],["path","〰️ Jalur","#7c3aed",0],["proj","🔮 Proyeksi","#94a3b8",0]];
+const FX=["trend","path","proj"]; // gambaran ke depan: hanya satu yang tampil
 function indOn(){ let s=null; try{ s=JSON.parse(store.get(WP+"ind")||"null"); }catch(e){}
-  if(Array.isArray(s)&&!store.get(WP+"ind.tr")){ if(!s.includes("trend")) s.push("trend"); store.set(WP+"ind",JSON.stringify(s)); store.set(WP+"ind.tr","1"); } return new Set(s||IND.filter(x=>x[3]).map(x=>x[0])); }
+  if(Array.isArray(s)&&!store.get(WP+"ind.tr")){ if(!s.includes("trend")) s.push("trend"); store.set(WP+"ind",JSON.stringify(s)); store.set(WP+"ind.tr","1"); }
+  s=s||IND.filter(x=>x[3]).map(x=>x[0]); const f=s.filter(k=>FX.includes(k)); if(f.length>1){ const keep=f[f.length-1]; s=s.filter(k=>!FX.includes(k)||k===keep); store.set(WP+"ind",JSON.stringify(s)); }
+  return new Set(s); }
 const OHLC={};
 const OHLCP={};
 function warmCharts(ts){ const go=()=>{ try{ loadSer(); loadLWC().catch(()=>{}); (ts||[]).slice(0,12).forEach(t=>loadOhlc(t)); }catch(e){} };
@@ -831,7 +834,7 @@ function tlFrom(piv,T,typ){ // garis lurus (skala log) lewat 2 titik balik terak
   const k=(Math.log(p2.v)-Math.log(p1.v))/(p2.i-p1.i);
   return {p1,p2,rising:p2.v>p1.v,at:i=>Math.exp(Math.log(p1.v)+k*(i-p1.i))}; }
 function trendDraw(ch,T,C,fut,a,good,bad,pf){
-  const n=T.length, F=fut.slice(0,30), out={up:tlFrom(a.piv,T,"L"),dn:tlFrom(a.piv,T,"H")};
+  const n=T.length, F=fut.slice(0,5), out={up:tlFrom(a.piv,T,"L"),dn:tlFrom(a.piv,T,"H")};
   const opt={lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat:pf,autoscaleInfoProvider:()=>null};
   const seg=(ln,color)=>{ if(!ln) return;
     ch.addLineSeries({...opt,color}).setData(T.slice(ln.p1.i).map((t,j)=>({time:t,value:ln.at(ln.p1.i+j)})));
@@ -839,13 +842,11 @@ function trendDraw(ch,T,C,fut,a,good,bad,pf){
   seg(out.up,"#0f9d58"); seg(out.dn,"#d93025");
   const cross=(ln,dir)=>{ if(!ln) return null; for(let i=n-1;i>=Math.max(1,n-3);i--){ const a0=ln.at(i-1),a1=ln.at(i); if(dir>0?(C[i-1]<=a0&&C[i]>a1):(C[i-1]>=a0&&C[i]<a1)) return n-1-i; } return null; };
   out.brkUp=out.dn&&!out.dn.rising?cross(out.dn,1):null; out.brkDn=out.up&&out.up.rising?cross(out.up,-1):null; // sama dengan yang diuji
-  const p=C[n-1], h=Math.min(15,F.length);
+  const p=C[n-1], h=Math.min(15,fut.length);
   if(h>=3){ const R1=(a.res||[]).find(z=>z.strength!=="lemah"&&z.lo>p*1.005), S1=(a.sup||[]).find(z=>z.hi<p*0.995);
     let tu=out.dn&&out.dn.at(n-1+h)>p*1.01?out.dn.at(n-1+h):null; if(R1&&(!tu||R1.lo<tu)) tu=R1.lo;
     let td=out.up&&out.up.at(n-1+h)<p*0.99?out.up.at(n-1+h):null; if(S1&&(!td||S1.hi>td)) td=S1.hi;
-    const arrow=(v,color,up,txt)=>{ if(v==null) return; const z=ch.addLineSeries({...opt,color,lineStyle:1});
-      z.setData([{time:T[n-1],value:p},{time:F[h-1],value:v}]); z.setMarkers([{time:F[h-1],position:up?"aboveBar":"belowBar",color,shape:up?"arrowUp":"arrowDown",text:txt}]); };
-    arrow(tu,good,true,"skenario naik"); arrow(td,bad,false,"skenario turun"); out.tu=tu; out.td=td; }
+    out.tu=tu; out.td=td; }
   return out; }
 function pathCalc(T,C,fut,a,rs){
   const P=(TRS||{}).path, n=T.length, p=C[n-1]; if(fut.length<10) return null;
@@ -877,30 +878,33 @@ function projCalc(B,T,fut,a,pt,key){
   const paths=[], ends=[]; for(let m=0;m<M;m++){ let v=0; const ix=[], cum=[]; for(let h=0;h<H;h++){ const j=Math.floor(rnd()*lr.length); v+=lr[j][0]-mu; ix.push(lr[j][1]); cum.push(v); } paths.push({ix,cum}); }
   const q=(arr,f)=>{ const s=arr.slice().sort((x,y)=>x-y); return s[Math.min(s.length-1,Math.floor(f*s.length))]; };
   const band=[]; for(let h=0;h<H;h++){ const col=paths.map(x=>x.cum[h]); band.push([.1,.25,.5,.75,.9].map(f=>p*Math.exp(q(col,f)))); }
-  // contoh jalur candle: yang paling mirip 〰️ Jalur (kalau ada), selain itu yang paling dekat median
-  let best=null, be=1e9;
-  paths.forEach(x=>{ let e=0;
-    if(pt){ [1,2].forEach(k=>{ const i=fut.indexOf(pt.main[k][0]); if(i>=0&&i<H) e+=(x.cum[i]-Math.log(pt.main[k][1]/p))**2; else if(i>=H) e+=(x.cum[H-1]-Math.log(pt.main[k][1]/p))**2*0.5; }); }
-    else e=(x.cum[H-1]-Math.log(band[H-1][2]/p))**2;
-    if(e<be){ be=e; best=x; } });
-  let prev=p; const ghost=best.ix.map((j,h)=>{ const b=B[j], pc=B[j-1][4], f=prev/pc*Math.exp(-mu*(h+1)+0); const s=Math.exp(-mu);
-    const o=b[1]/pc*prev*s, hi=b[2]/pc*prev*s, lo=b[3]/pc*prev*s, c=b[4]/pc*prev*s; prev=c; return [fut[h],o,Math.max(hi,o,c),Math.min(lo,o,c),c]; });
   const endP=paths.map(x=>p*Math.exp(x.cum[H-1])), R1=(a.res||[]).find(z=>z.strength!=="lemah"&&z.lo>p), S1=(a.sup||[]).find(z=>z.strength!=="lemah"&&z.hi<p);
-  return {H,band,ghost,end:fut[H-1],pUp:R1?endP.filter(v=>v>=R1.lo).length/M*100:null,R1,pDn:S1?endP.filter(v=>v<=S1.hi).length/M*100:null,S1}; }
-function projDraw(ch,B,T,fut,a,pf,pt,key,good,bad){
-  const pr=projCalc(B,T,fut,a,pt,key); if(!pr) return null; const n=T.length, p=B[n-1][4];
+  return {H,band,end:fut[H-1],pUp:R1?endP.filter(v=>v>=R1.lo).length/M*100:null,R1,pDn:S1?endP.filter(v=>v<=S1.hi).length/M*100:null,S1}; }
+function projDraw(ch,el,B,T,fut,a,pf,key){
+  const pr=projCalc(B,T,fut,a,null,key); if(!pr) return null; const n=T.length, p=B[n-1][4];
   const base={priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat:pf,autoscaleInfoProvider:()=>null};
-  const ln=(k,color,w,st,title)=>ch.addLineSeries({...base,color,lineWidth:w,lineStyle:st,lastValueVisible:true,title}).setData([{time:T[n-1],value:p}].concat(pr.band.map((b,h)=>({time:fut[h],value:b[k]}))));
-  ln(0,"#94a3b8",1,2,"bawah 8/10"); ln(4,"#94a3b8",1,2,"atas 8/10"); ln(1,"#64748b",1,0,"bawah 5/10"); ln(3,"#64748b",1,0,"atas 5/10");
-  const g=ch.addCandlestickSeries({...base,upColor:good+"80",downColor:bad+"80",borderUpColor:good+"cc",borderDownColor:bad+"cc",wickUpColor:good+"cc",wickDownColor:bad+"cc"});
-  g.setData(pr.ghost.map(x=>({time:x[0],open:x[1],high:x[2],low:x[3],close:x[4]})));
-  g.setMarkers([{time:pr.ghost[pr.ghost.length-1][0],position:"aboveBar",color:"#64748b",shape:"circle",text:"contoh"}]);
+  const pts=[[T[n-1],[p,p,p,p,p]]].concat(pr.band.map((b,h)=>[fut[h],b]));
+  const ln=(k,title)=>{ const z=ch.addLineSeries({...base,color:"#94a3b8",lineWidth:1,lastValueVisible:true,title}); z.setData(pts.map(([t,b])=>({time:t,value:b[k]}))); return z; };
+  const s=ln(0,"bawah 8/10"); ln(4,"atas 8/10");
+  // pita: terang = 8 dari 10, gelap = 5 dari 10
+  el.querySelectorAll(".pj-cv").forEach(x=>x.remove()); el.style.position="relative";
+  const cv=document.createElement("canvas"); cv.className="pj-cv"; cv.style.cssText="position:absolute;left:0;top:0;pointer-events:none;z-index:2"; el.appendChild(cv);
+  let sig=""; const ts=ch.timeScale();
+  const paint=()=>{ if(!cv.isConnected) return; requestAnimationFrame(paint);
+    let xy; try{ xy=pts.map(([t,b])=>[ts.timeToCoordinate(t),b.map(v=>s.priceToCoordinate(v))]); }catch(e){ return; }
+    const w=ts.width(), hgt=el.clientHeight, k=w+"|"+hgt+"|"+xy.map(q=>q[0]+","+q[1][0]+","+q[1][4]).join(";"); if(k===sig) return; sig=k;
+    const dpr=window.devicePixelRatio||1; cv.width=w*dpr; cv.height=hgt*dpr; cv.style.width=w+"px"; cv.style.height=hgt+"px";
+    const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,hgt);
+    const ok=xy.filter(q=>q[0]!=null&&q[1].every(v=>v!=null)); if(ok.length<2) return;
+    const poly=(lo,hi,col)=>{ g.beginPath(); ok.forEach((q,i)=>g[i?"lineTo":"moveTo"](q[0],q[1][hi])); ok.slice().reverse().forEach(q=>g.lineTo(q[0],q[1][lo])); g.closePath(); g.fillStyle=col; g.fill(); };
+    poly(0,4,"rgba(100,116,139,.13)"); poly(1,3,"rgba(100,116,139,.22)"); };
+  paint();
   return pr; }
 function projTxt(pr,f){ if(!pr) return ""; const e=pr.band[pr.H-1], C=(TRS||{}).cone;
   return `<b>🔮 Perkiraan ${pr.H} hari bursa ke depan</b> (sampai sekitar ${tgl(pr.end)}):<br>
     • <b>Hampir pasti</b> (8 dari 10 kemungkinan) harga ada di antara <b>${f(e[0])}</b> dan <b>${f(e[4])}</b>.<br>
     • <b>Paling mungkin</b> (5 dari 10) di antara ${f(e[1])} dan ${f(e[3])}.${pr.R1&&pr.pUp!=null?`<br>• Peluang naik melewati R1 ${f(pr.R1.lo)}: <b>${nf(pr.pUp,0)} dari 100</b>.`:""}${pr.S1&&pr.pDn!=null?`<br>• Peluang turun di bawah S1 ${f(pr.S1.hi)}: <b>${nf(pr.pDn,0)} dari 100</b>.`:""}
-    <br>Candle samar di grafik hanya <b>contoh gerakan</b>, bukan tebakan pasti.${C&&C.c80?` ✔️ Perkiraan seperti ini sudah dicek ke masa lalu: sekitar <b>${Math.round(C.c80["20"]/10)} dari 10</b> kali harga memang berakhir di rentang “hampir pasti”.`:""}`; }
+    <br>Di grafik: <b>area abu-abu terang</b> = rentang “hampir pasti”, <b>area lebih gelap</b> = rentang “paling mungkin”. Proyeksi tidak menebak arah naik atau turun.${C&&C.c80?` ✔️ Perkiraan seperti ini sudah dicek ke masa lalu: sekitar <b>${Math.round(C.c80["20"]/10)} dari 10</b> kali harga memang berakhir di rentang “hampir pasti”.`:""}`; }
 function pathTxt(pt,f){ if(!pt) return ""; const P=(TRS||{}).path;
   return `<b>〰️ Jalur:</b> gambaran kalau harga <b>${pt.dir>0?"naik":"turun"} dulu ke ${f(pt.main[1][1])}</b> (sekitar ${tgl(pt.main[1][0])}), lalu <b>${pt.dir>0?"turun":"naik"} ke ${f(pt.main[2][1])}</b> (sekitar ${tgl(pt.main[2][0])}). Garis ungu tipis = kemungkinan sebaliknya.${pt.acc!=null?` ⚠️ Arah “${pt.dir>0?"naik":"turun"} dulu” ini hanya tebakan: di masa lalu tebakan seperti ini benar <b>${nf(pt.acc,0)} dari 100</b> kali, hampir sama dengan lempar koin.`:""}`; }
 const TRN={brk_up:"⬆️ Harga menembus garis atas (merah) yang sedang turun",brk_dn:"⬇️ Harga jebol garis bawah (hijau) yang sedang naik",touch_up:"↩️ Harga memantul di garis bawah (hijau)",touch_dn:"✋ Harga tertolak di garis atas (merah)"};
@@ -993,6 +997,7 @@ function ilBar(){ const b=$("ilBtn"), c=$("ilClr"), tb=$("tlBtn"); if(b){ b.setA
 function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   pxObs.forEach(o=>o.disconnect()); pxObs=[];
   pxCharts.forEach(c=>{try{c.remove()}catch(e){}}); pxCharts=[];
+  if(el) el.querySelectorAll(".pj-cv").forEach(x=>x.remove());
   const L=window.LightweightCharts; if(!L||!vals) return;
   opt=opt||{};
   const muted=cssVar("--muted"), line=cssVar("--line"), acc=cssVar("--accent"), good=cssVar("--good"), bad=cssVar("--bad"), warn=cssVar("--warn");
@@ -1035,7 +1040,7 @@ function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   (a.res||[]).forEach((z,i)=>{ s.createPriceLine({price:z.mid,color:bad,lineWidth:z.strength==="kuat"?2:1,lineStyle:2,axisLabelVisible:true,title:`R${i+1} ${z.strength}`}); });
   if(on.has("trend")) x.trend=trendDraw(ch,T,C,fut,a,good,bad,pf);
   if(on.has("path")) x.path=pathDraw(ch,T,C,fut,a,pf,x.rsi);
-  if(on.has("proj")&&candle) x.proj=projDraw(ch,B,T,fut,a,pf,x.path||pathCalc(T,C,fut,a,x.rsi),opt.dkey||"",good,bad);
+  if(on.has("proj")&&candle) x.proj=projDraw(ch,el,B,T,fut,a,pf,opt.dkey||"");
   ch.timeScale().setVisibleLogicalRange({from:Math.max(0,B.length-150),to:B.length+fut.length});
   watchSize(ch,el,pxObs);
   infoLines(ch,s,T.concat(fut),el,opt.dkey,idr);
@@ -1144,7 +1149,8 @@ function renderCycles(box){
   $("indBar").addEventListener("click",ev=>{ if(ev.target.closest("#tvBtn")){ const on=!$("cyBox").classList.contains("tv-on"); store.set(WP+"tv",on?"1":"0"); tvSet(on); return; } if(ev.target.closest("#ilBtn")){ IL_MODE=IL_MODE===true?false:true; if(!IL_MODE&&window.__ilCancel) window.__ilCancel(); ilBar(); return; }
     if(ev.target.closest("#tlBtn")){ IL_MODE=IL_MODE==="tl"?false:"tl"; if(!IL_MODE&&window.__ilCancel) window.__ilCancel(); ilBar(); return; }
     if(ev.target.closest("#ilClr")){ if(window.__ilClear) window.__ilClear(); return; }
-    const bt=ev.target.closest("[data-ind]"); if(!bt) return; const on=indOn(), k=bt.dataset.ind; on.has(k)?on.delete(k):on.add(k); store.set(WP+"ind",JSON.stringify([...on])); bt.setAttribute("aria-pressed",on.has(k)); draw(); });
+    const bt=ev.target.closest("[data-ind]"); if(!bt) return; const on=indOn(), k=bt.dataset.ind; if(on.has(k)) on.delete(k); else { on.add(k); if(FX.includes(k)) FX.forEach(o=>{ if(o!==k) on.delete(o); }); }
+    store.set(WP+"ind",JSON.stringify([...on])); $("indBar").querySelectorAll("[data-ind]").forEach(b=>b.setAttribute("aria-pressed",on.has(b.dataset.ind))); draw(); });
   Promise.all([loadLWC(),loadOhlc(sel),loadTrendStats()]).then(([,bb])=>{ if(tab!=="cycles") return; bars=bb; draw(); { const tb=$("trBox"); if(tb) tb.innerHTML=trendCard(); } if(store.get(WP+"tv")==="1") tvSet(true); if(b) drawBreadth($("cyBreadth"),b); })
     .catch(()=>{ $("cyChart").innerHTML=`<p class="note">Grafik tidak bisa dimuat (pustaka grafik gagal diunduh).</p>`; });
 }
