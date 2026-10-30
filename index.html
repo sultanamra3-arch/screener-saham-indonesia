@@ -789,11 +789,9 @@ function crossed(a,b,k=3){ // 1 = a memotong ke atas b dalam k bar terakhir, -1 
     if(a[i-1]<=b[i-1]&&a[i]>b[i]) return 1; if(a[i-1]>=b[i-1]&&a[i]<b[i]) return -1; } return 0; }
 const IND=[["ma20","MA20","#f59e0b",1],["ma50","MA50","#0ea5e9",1],["ma200","MA200","#e11d48",1],["ema9","EMA9","#14b8a6",0],["bb","Bollinger","#64748b",0],["vwap","VWAP 20","#a855f7",0],
   ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1],["path","〰️ Jalur","#7c3aed",0],["proj","🔮 Proyeksi","#94a3b8",0]];
-const FX=["trend","path","proj"]; // gambaran ke depan: hanya satu yang tampil
 function indOn(){ let s=null; try{ s=JSON.parse(store.get(WP+"ind")||"null"); }catch(e){}
   if(Array.isArray(s)&&!store.get(WP+"ind.tr")){ if(!s.includes("trend")) s.push("trend"); store.set(WP+"ind",JSON.stringify(s)); store.set(WP+"ind.tr","1"); }
-  s=s||IND.filter(x=>x[3]).map(x=>x[0]); const f=s.filter(k=>FX.includes(k)); if(f.length>1){ const keep=f[f.length-1]; s=s.filter(k=>!FX.includes(k)||k===keep); store.set(WP+"ind",JSON.stringify(s)); }
-  return new Set(s); }
+  return new Set(s||IND.filter(x=>x[3]).map(x=>x[0])); }
 const OHLC={};
 const OHLCP={};
 function warmCharts(ts){ const go=()=>{ try{ loadSer(); loadLWC().catch(()=>{}); (ts||[]).slice(0,12).forEach(t=>loadOhlc(t)); }catch(e){} };
@@ -1149,7 +1147,7 @@ function renderCycles(box){
   $("indBar").addEventListener("click",ev=>{ if(ev.target.closest("#tvBtn")){ const on=!$("cyBox").classList.contains("tv-on"); store.set(WP+"tv",on?"1":"0"); tvSet(on); return; } if(ev.target.closest("#ilBtn")){ IL_MODE=IL_MODE===true?false:true; if(!IL_MODE&&window.__ilCancel) window.__ilCancel(); ilBar(); return; }
     if(ev.target.closest("#tlBtn")){ IL_MODE=IL_MODE==="tl"?false:"tl"; if(!IL_MODE&&window.__ilCancel) window.__ilCancel(); ilBar(); return; }
     if(ev.target.closest("#ilClr")){ if(window.__ilClear) window.__ilClear(); return; }
-    const bt=ev.target.closest("[data-ind]"); if(!bt) return; const on=indOn(), k=bt.dataset.ind; if(on.has(k)) on.delete(k); else { on.add(k); if(FX.includes(k)) FX.forEach(o=>{ if(o!==k) on.delete(o); }); }
+    const bt=ev.target.closest("[data-ind]"); if(!bt) return; const on=indOn(), k=bt.dataset.ind; on.has(k)?on.delete(k):on.add(k);
     store.set(WP+"ind",JSON.stringify([...on])); $("indBar").querySelectorAll("[data-ind]").forEach(b=>b.setAttribute("aria-pressed",on.has(b.dataset.ind))); draw(); });
   Promise.all([loadLWC(),loadOhlc(sel),loadTrendStats()]).then(([,bb])=>{ if(tab!=="cycles") return; bars=bb; draw(); { const tb=$("trBox"); if(tb) tb.innerHTML=trendCard(); } if(store.get(WP+"tv")==="1") tvSet(true); if(b) drawBreadth($("cyBreadth"),b); })
     .catch(()=>{ $("cyChart").innerHTML=`<p class="note">Grafik tidak bisa dimuat (pustaka grafik gagal diunduh).</p>`; });
