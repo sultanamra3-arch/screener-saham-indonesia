@@ -10,58 +10,88 @@
 <meta property="og:description" content="Pembuat ChartFlow: screener saham BEI, Wall Street, dan kripto berbasis data.">
 <meta property="og:image" content="https://link.chartflow.my.id/img/og.jpg">
 <meta property="og:type" content="profile">
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#eef3ff">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#070b1a">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#eaf0ff">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#060914">
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Unbounded:wght@600;700&display=swap">
 <style>
 :root{
-  --bg:#eef3ff; --g1:#8fb0ff; --g2:#b9a6ff; --g3:#7fe3d0;
+  --bg:#eaf0ff; --g1:#8fb0ff; --g2:#c2a8ff; --g3:#7fe3d0;
   --fg:#0d1530; --mut:#55617e;
-  --gl:rgba(255,255,255,.66); --gb:rgba(255,255,255,.9); --edge:rgba(13,21,48,.08);
+  --gl:rgba(255,255,255,.62); --gb:rgba(255,255,255,.92); --edge:rgba(13,21,48,.07);
   --bl:#2f5bea; --sh:0 10px 30px rgba(30,50,130,.12);
+  /* kartu selalu gelap, seperti kartu premium */
+  --k1:#0b1124; --k2:#16204a; --kfg:#eef2ff; --kmut:#a6b2d6; --up:#43e6a4;
 }
 @media (prefers-color-scheme:dark){:root{
-  --bg:#070b1a; --g1:#2f5bea; --g2:#7b4dff; --g3:#0fb8a0;
+  --bg:#060914; --g1:#2f5bea; --g2:#7b4dff; --g3:#0fb8a0;
   --fg:#eaf0ff; --mut:#9ba7c5;
-  --gl:rgba(255,255,255,.06); --gb:rgba(255,255,255,.13); --edge:rgba(255,255,255,.04);
-  --bl:#5b80ff; --sh:0 10px 30px rgba(0,0,0,.35);
+  --gl:rgba(255,255,255,.055); --gb:rgba(255,255,255,.13); --edge:rgba(255,255,255,.04);
+  --bl:#5b80ff; --sh:0 10px 30px rgba(0,0,0,.4);
 }}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;background:var(--bg)}
 body{margin:0;min-height:100vh;background:var(--bg);color:var(--fg);font-family:Manrope,system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:inherit;text-decoration:none}
+.glow{position:fixed;inset:-12vmax;pointer-events:none;z-index:0;opacity:.6;filter:blur(14px);
+  background:radial-gradient(38vmax 38vmax at 12% 8%,var(--g1),transparent 62%),radial-gradient(34vmax 34vmax at 94% 28%,var(--g2),transparent 62%),radial-gradient(42vmax 42vmax at 45% 102%,var(--g3),transparent 62%)}
+main{position:relative;z-index:1;max-width:440px;margin:0 auto;padding:max(30px,env(safe-area-inset-top)) 18px 32px}
 
-/* cahaya latar: satu-satunya gerakan, sangat pelan */
-.glow{position:fixed;inset:-10vmax;pointer-events:none;z-index:0;opacity:.6;filter:blur(12px);
-  background:radial-gradient(38vmax 38vmax at 15% 10%,var(--g1),transparent 62%),
-             radial-gradient(34vmax 34vmax at 92% 30%,var(--g2),transparent 62%),
-             radial-gradient(40vmax 40vmax at 45% 100%,var(--g3),transparent 62%)}
-@media (prefers-reduced-motion:no-preference){ .glow{animation:geser 24s ease-in-out infinite alternate} }
-@keyframes geser{to{transform:translate3d(3vmax,-2vmax,0) rotate(8deg)}}
+/* ===== kartu hologram ===== */
+.stage{perspective:1100px;margin:6px 0 26px}
+.card{--rx:0deg;--ry:0deg;--mx:50%;--my:50%;--hx:50%;
+  position:relative;aspect-ratio:1.586;border-radius:24px;color:var(--kfg);overflow:hidden;
+  transform:rotateX(var(--rx)) rotateY(var(--ry));will-change:transform;
+  background:radial-gradient(120% 90% at 0% 0%,#2a3a86 0%,transparent 55%),radial-gradient(90% 90% at 100% 100%,#14315e 0%,transparent 60%),linear-gradient(140deg,var(--k2),var(--k1));
+  box-shadow:0 30px 60px -18px rgba(10,20,60,.55),0 0 0 1px rgba(255,255,255,.08) inset;
+  touch-action:pan-y;cursor:grab}
+.card:after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(circle at var(--mx) var(--my),rgba(255,255,255,.28),transparent 42%)} /* kilau cahaya */
+.holo{position:absolute;inset:0;pointer-events:none;mix-blend-mode:color-dodge;opacity:.42;
+  background:linear-gradient(115deg,transparent 20%,#ff6bd5 32%,#ffd36b 40%,#6bffb8 48%,#6bc8ff 56%,#b06bff 64%,transparent 76%);
+  background-size:260% 260%;background-position:var(--hx) 50%;
+  -webkit-mask:repeating-linear-gradient(115deg,#000 0 2px,rgba(0,0,0,.55) 2px 5px);mask:repeating-linear-gradient(115deg,#000 0 2px,rgba(0,0,0,.55) 2px 5px)}
+.ci{position:absolute;inset:0;padding:18px 18px 16px;display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:8px}
+.brand{font-family:Unbounded,Manrope,sans-serif;font-weight:700;font-size:13px;letter-spacing:.02em}
+.brand img{width:22px;height:22px;border-radius:6px}
+.chip{margin-left:auto;width:34px;height:26px;border-radius:6px;background:linear-gradient(135deg,#f3d27a,#b8862f 55%,#f6e3a4);box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+.who{display:flex;align-items:center;gap:13px;margin-top:auto}
+.who img{width:62px;height:62px;border-radius:18px;object-fit:cover;box-shadow:0 0 0 2px rgba(255,255,255,.22)}
+.who h1{margin:0;font-family:Unbounded,Manrope,sans-serif;font-weight:700;font-size:clamp(17px,5.2vw,21px);line-height:1.15;letter-spacing:-.01em}
+.who p{margin:3px 0 0;font-size:12.5px;color:var(--kmut)}
+.chart{position:absolute;left:0;top:30%;width:100%;height:32%;pointer-events:none;overflow:visible}
+.chart path.ln{fill:none;stroke:var(--up);stroke-width:2.2;filter:drop-shadow(0 0 6px rgba(67,230,164,.7))}
+.chart path.ar{fill:url(#ga)}
+.stats{display:flex;gap:6px;margin-top:10px}
+.stats span{font-size:11.5px;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:var(--kfg)}
+.stats b{font-weight:800}
 
-main{position:relative;z-index:1;max-width:440px;margin:0 auto;padding:max(44px,env(safe-area-inset-top)) 18px 32px;text-align:center}
-.ph{width:136px;height:136px;border-radius:38px;object-fit:cover;display:block;margin:0 auto;box-shadow:0 0 0 4px var(--gb),0 18px 40px rgba(20,40,120,.32)}
-h1{font-size:28px;line-height:1.15;margin:18px 0 4px;letter-spacing:-.02em;font-weight:800}
-.sub{margin:0 auto 22px;color:var(--mut);font-size:14.5px;max-width:32ch}
+/* masuk: berputar sekali */
+@media (prefers-reduced-motion:no-preference){
+  .stage .card{animation:masuk 1.1s cubic-bezier(.2,.9,.25,1.05) both}
+  .chart .ln{stroke-dasharray:600;stroke-dashoffset:600;animation:gambar 1.6s .5s ease-out forwards}
+}
+@keyframes masuk{from{transform:rotateY(-70deg) rotateX(18deg) translateY(30px);opacity:0}to{transform:rotateX(var(--rx)) rotateY(var(--ry));opacity:1}}
+@keyframes gambar{to{stroke-dashoffset:0}}
+.hint{text-align:center;font-size:12px;color:var(--mut);margin:-16px 0 18px}
 
-.glass{background:var(--gl);border:1px solid var(--gb);box-shadow:var(--sh),inset 0 0 0 1px var(--edge);
-  -webkit-backdrop-filter:blur(16px) saturate(1.3);backdrop-filter:blur(16px) saturate(1.3)}
-.l{display:flex;align-items:center;gap:13px;text-align:left;padding:13px 14px;margin-bottom:10px;border-radius:18px;transition:transform .15s ease}
+/* ===== link kaca ===== */
+.glass{background:var(--gl);border:1px solid var(--gb);box-shadow:var(--sh),inset 0 0 0 1px var(--edge);-webkit-backdrop-filter:blur(16px) saturate(1.3);backdrop-filter:blur(16px) saturate(1.3)}
+.l{display:flex;align-items:center;gap:13px;padding:13px 14px;margin-bottom:10px;border-radius:18px;transition:transform .15s ease}
 .l:hover{transform:translateY(-2px)}
 .l i{font-style:normal;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--gb);font-size:19px;flex:none}
 .l b{display:block;font-size:15.5px;font-weight:700}
 .l small{display:block;font-size:13px;color:var(--mut)}
 .l.p{background:var(--bl);color:#fff;border:1px solid transparent;box-shadow:0 14px 34px rgba(47,91,234,.38)}
 .l.p small{color:rgba(255,255,255,.86)} .l.p i{background:rgba(255,255,255,.18)}
-
-.sos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:20px 0 4px}
+.sos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:20px 0 4px;text-align:center}
 .sos a{padding:10px 6px;border-radius:16px;font-weight:700;font-size:14px;min-width:0}
 .sos small{display:block;font-weight:500;font-size:11px;color:var(--mut);overflow-wrap:anywhere;line-height:1.3;margin-top:1px}
-footer{margin-top:20px;font-size:11.5px;color:var(--mut);line-height:1.5}
+footer{margin-top:20px;font-size:11.5px;color:var(--mut);line-height:1.5;text-align:center}
 a:focus-visible{outline:2px solid var(--bl);outline-offset:3px}
 @media (prefers-reduced-motion:reduce){ .l{transition:none} .l:hover{transform:none} }
 </style>
@@ -69,12 +99,28 @@ a:focus-visible{outline:2px solid var(--bl);outline-offset:3px}
 <body>
 <div class="glow" aria-hidden="true"></div>
 <main>
-  <img class="ph" src="img/foto-m.webp" alt="Foto Sultan Amra" width="136" height="136">
-  <h1>Sultan Amra, S.IP.</h1>
-  <p class="sub">Pembuat ChartFlow, screener saham BEI, Wall Street, dan kripto yang diuji ke data 10 tahun.</p>
+  <div class="stage">
+    <div class="card" id="card" role="img" aria-label="Kartu profil Sultan Amra, pembuat ChartFlow">
+      <svg class="chart" viewBox="0 0 300 80" preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id="ga" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#43e6a4" stop-opacity=".28"/><stop offset="1" stop-color="#43e6a4" stop-opacity="0"/></linearGradient></defs>
+        <path class="ar" d="M0,62 L18,58 36,64 54,50 72,54 90,44 108,48 126,34 144,40 162,30 180,34 198,22 216,27 234,16 252,20 270,9 300,4 L300,80 0,80Z"/>
+        <path class="ln" d="M0,62 L18,58 36,64 54,50 72,54 90,44 108,48 126,34 144,40 162,30 180,34 198,22 216,27 234,16 252,20 270,9 300,4"/>
+      </svg>
+      <div class="holo"></div>
+      <div class="ci">
+        <div class="row"><span class="row brand"><img src="img/icon-192.png" alt="">ChartFlow</span><span class="chip" aria-hidden="true"></span></div>
+        <div class="who">
+          <img src="img/foto-kartu.webp" alt="Foto Sultan Amra" width="62" height="62">
+          <div><h1>Sultan Amra, S.IP.</h1><p>Pembuat ChartFlow</p></div>
+        </div>
+        <div class="stats"><span><b>3</b> pasar</span><span><b>7</b> metode</span><span>diuji <b>10 th</b></span></div>
+      </div>
+    </div>
+  </div>
+  <p class="hint">Sentuh dan geser kartunya</p>
 
   <nav aria-label="Link ChartFlow">
-    <a class="l p" href="https://chartflow.my.id/"><i>🚀</i><span><b>Coba ChartFlow</b><small>Gratis, lihat fitur dan tampilannya</small></span></a>
+    <a class="l p" href="https://chartflow.my.id/"><i>🚀</i><span><b>Coba ChartFlow</b><small>Screener saham BEI, Wall Street, dan kripto. Gratis.</small></span></a>
     <a class="l glass" href="https://chartflow.my.id/?minta"><i>✋</i><span><b>Minta kode akses</b><small>Dikirim lewat WhatsApp atau Telegram</small></span></a>
     <a class="l glass" href="https://chartflow.my.id/?masuk"><i>🔑</i><span><b>Masuk</b><small>Sudah punya kode</small></span></a>
     <a class="l glass" href="https://chartflow.my.id/download/ChartFlow.apk"><i>📲</i><span><b>Aplikasi Android</b><small>Unduh APK, layar penuh</small></span></a>
@@ -89,6 +135,29 @@ a:focus-visible{outline:2px solid var(--bl);outline-offset:3px}
 
   <footer>Informasi edukasi dari aturan metode yang terbuka, bukan ajakan membeli atau menjual. Kripto berisiko sangat tinggi; nilainya bisa turun sebagian besar. Hasil masa lalu tidak menjamin hasil berikutnya.<br>© <span id="yr">2026</span> Sultan Amra, S.IP.</footer>
 </main>
-<script>document.getElementById("yr").textContent=new Date().getFullYear();</script>
+<script>
+document.getElementById("yr").textContent=new Date().getFullYear();
+(function(){
+  var card=document.getElementById("card"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var tx=0,ty=0,cx=0,cy=0,active=0,t0=performance.now();
+  function set(x,y){ // x,y dalam -1..1
+    card.style.setProperty("--ry",(x*16).toFixed(2)+"deg"); card.style.setProperty("--rx",(-y*12).toFixed(2)+"deg");
+    card.style.setProperty("--mx",(50+x*45).toFixed(1)+"%"); card.style.setProperty("--my",(50+y*45).toFixed(1)+"%");
+    card.style.setProperty("--hx",(50+x*50).toFixed(1)+"%"); }
+  function fromPoint(px,py){ var r=card.getBoundingClientRect(); tx=Math.max(-1,Math.min(1,(px-r.left)/r.width*2-1)); ty=Math.max(-1,Math.min(1,(py-r.top)/r.height*2-1)); active=performance.now(); }
+  card.addEventListener("pointermove",function(e){ fromPoint(e.clientX,e.clientY); });
+  card.addEventListener("pointerleave",function(){ tx=ty=0; });
+  card.addEventListener("touchmove",function(e){ var t=e.touches[0]; fromPoint(t.clientX,t.clientY); },{passive:true});
+  card.addEventListener("touchend",function(){ tx=ty=0; });
+  window.addEventListener("deviceorientation",function(e){ if(e.gamma==null) return; tx=Math.max(-1,Math.min(1,e.gamma/25)); ty=Math.max(-1,Math.min(1,(e.beta-45)/25)); active=performance.now(); });
+  if(reduce){ set(0,0); return; }
+  card.addEventListener("animationend",function(){ card.style.animation="none"; });
+  (function loop(now){
+    var idle=now-active>2500;
+    var gx=idle?Math.sin((now-t0)/2600)*.45:tx, gy=idle?Math.cos((now-t0)/3400)*.3:ty;
+    cx+=(gx-cx)*.08; cy+=(gy-cy)*.08; set(cx,cy); requestAnimationFrame(loop);
+  })(performance.now());
+})();
+</script>
 </body>
 </html>
