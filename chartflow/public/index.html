@@ -464,6 +464,7 @@ const RM=matchMedia("(prefers-reduced-motion: reduce)").matches;
 (function(){ const inApp=matchMedia("(display-mode: standalone)").matches||(document.referrer||"").indexOf("android-app://")===0;
   if(!inApp&&!/iphone|ipad|ipod/i.test(navigator.userAgent)) document.querySelector(".apkl").hidden=false; })();
 if(new URLSearchParams(location.search).has("masuk")) setTimeout(()=>$("login").showModal(),200);
+if(new URLSearchParams(location.search).has("minta")) setTimeout(()=>$("req").showModal(),200);
 document.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{ document.querySelectorAll("dialog[open]").forEach(d=>d.close()); document.getElementById(b.dataset.open).showModal(); }));
 (function(){ const b=document.getElementById("theme"), cur=()=>document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
   const paint=()=>b.textContent=cur()==="dark"?"☀️":"🌙"; paint();

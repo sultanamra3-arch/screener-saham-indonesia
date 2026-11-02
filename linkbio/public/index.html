@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ChartFlow · Link</title>
+<meta name="description" content="Semua link ChartFlow: screener saham BEI, Wall Street, dan kripto berbasis data yang diuji 10 tahun.">
+<meta property="og:title" content="ChartFlow · Link">
+<meta property="og:description" content="Screener saham BEI, Wall Street, dan kripto berbasis data yang diuji 10 tahun.">
+<meta property="og:image" content="https://chartflow.my.id/img/og.jpg">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#2f5bea">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+:root{--bg:#f6f8fc;--surface:#fff;--sunk:#eef1f7;--line:#e3e7ef;--fg:#0f172a;--muted:#5b6474;--accent:#2f5bea;--accent2:#6d8dff;--ink:#fff;--good:#0f9960;--shadow:0 1px 2px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.06)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1220;--surface:#121b2d;--sunk:#18233a;--line:#22304a;--fg:#e8edf6;--muted:#9aa7bb;--accent:#6d8dff;--accent2:#9fb4ff;--ink:#0b1220;--good:#34d399;--shadow:0 1px 2px rgba(0,0,0,.4)}}
+:root[data-theme="dark"]{--bg:#0b1220;--surface:#121b2d;--sunk:#18233a;--line:#22304a;--fg:#e8edf6;--muted:#9aa7bb;--accent:#6d8dff;--accent2:#9fb4ff;--ink:#0b1220;--good:#34d399;--shadow:0 1px 2px rgba(0,0,0,.4)}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--fg);font-family:"Plus Jakarta Sans",system-ui,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+body:before{content:"";position:fixed;inset:-20vh -20vw auto;height:60vh;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 22%,transparent),transparent);pointer-events:none;z-index:0}
+main{position:relative;z-index:1;max-width:460px;margin:0 auto;padding:44px 16px 28px;display:flex;flex-direction:column;align-items:center;gap:18px}
+.logo{width:92px;height:92px;border-radius:24px;box-shadow:var(--shadow);background:var(--surface)}
+h1{margin:4px 0 0;font-size:28px;letter-spacing:-.02em;line-height:1.15}
+.tag{margin:0;text-align:center;color:var(--muted);max-width:34ch}
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.chip{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600}
+.links{width:100%;display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.lk{display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;border-radius:16px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);color:var(--fg);text-decoration:none;transition:transform .12s ease,border-color .12s ease}
+.lk:hover{transform:translateY(-1px);border-color:var(--accent)}
+.lk:focus-visible{outline:3px solid var(--accent2);outline-offset:2px}
+.lk .ic{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--sunk);font-size:20px}
+.lk b{display:block;font-size:16px;line-height:1.3}
+.lk span.s{display:block;font-size:13px;color:var(--muted);line-height:1.35}
+.lk .go{margin-left:auto;color:var(--muted);font-size:18px}
+.lk.main{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+.lk.main .ic{background:color-mix(in srgb,var(--ink) 18%,transparent)}
+.lk.main span.s,.lk.main .go{color:color-mix(in srgb,var(--ink) 80%,transparent)}
+.sec{width:100%;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:10px 0 -2px 4px}
+.facts{width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.facts div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 8px;text-align:center}
+.facts b{display:block;font-size:20px;letter-spacing:-.02em}
+.facts span{font-size:12px;color:var(--muted)}
+footer{margin-top:10px;text-align:center;font-size:12.5px;color:var(--muted);max-width:40ch}
+.theme{position:fixed;top:12px;right:12px;z-index:2;width:40px;height:40px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:18px;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.lk{transition:none}}
+</style>
+</head>
+<body>
+<button class="theme" id="theme" type="button" aria-label="Ganti tema terang/gelap">🌙</button>
+<main>
+  <img class="logo" src="img/icon-192.png" alt="Logo ChartFlow" width="92" height="92">
+  <h1>ChartFlow</h1>
+  <p class="tag">Screener saham BEI, Wall Street, dan kripto berbasis data. Aturannya terbuka dan diuji ke masa lalu.</p>
+  <div class="chips"><span class="chip">🇮🇩 BEI</span><span class="chip">🇺🇸 Wall Street</span><span class="chip">₿ Kripto</span></div>
+
+  <nav class="links" aria-label="Link utama">
+    <a class="lk main" href="https://chartflow.my.id/"><span class="ic">🚀</span><span><b>Buka ChartFlow</b><span class="s">Lihat fitur, tampilan, dan cara kerjanya</span></span><span class="go">→</span></a>
+    <a class="lk" href="https://chartflow.my.id/?minta"><span class="ic">✋</span><span><b>Minta kode akses</b><span class="s">Gratis, kode dikirim lewat WhatsApp atau Telegram</span></span><span class="go">→</span></a>
+    <a class="lk" href="https://chartflow.my.id/?masuk"><span class="ic">🔑</span><span><b>Masuk</b><span class="s">Sudah punya kode akses</span></span><span class="go">→</span></a>
+    <a class="lk" href="https://chartflow.my.id/download/ChartFlow.apk"><span class="ic">📲</span><span><b>Aplikasi Android</b><span class="s">Unduh APK, ringan dan layar penuh</span></span><span class="go">↓</span></a>
+  </nav>
+
+  <div class="sec">Kenali dulu</div>
+  <div class="facts" aria-label="Sekilas ChartFlow"><div><b>3</b><span>pasar</span></div><div><b>7</b><span>metode</span></div><div><b>10 th</b><span>data uji</span></div></div>
+  <nav class="links" aria-label="Link lainnya">
+    <a class="lk" href="https://chartflow.my.id/#jejak"><span class="ic">📈</span><span><b>Rekam jejak terbuka</b><span class="s">Hasil Area beli dicatat, termasuk yang rugi</span></span><span class="go">→</span></a>
+    <a class="lk" href="https://chartflow.my.id/#baru"><span class="ic">✨</span><span><b>Yang baru</b><span class="s">Perubahan dan fitur terbaru</span></span><span class="go">→</span></a>
+    <a class="lk" href="https://chartflow.my.id/#faq"><span class="ic">❓</span><span><b>Pertanyaan umum</b><span class="s">Jawaban untuk hal yang sering ditanyakan</span></span><span class="go">→</span></a>
+  </nav>
+
+  <footer>Informasi edukasi dari aturan metode yang terbuka, bukan ajakan membeli atau menjual. Kripto berisiko sangat tinggi; nilainya bisa turun sebagian besar. Hasil masa lalu tidak menjamin hasil berikutnya.<br><br>© <span id="yr">2026</span> ChartFlow</footer>
+</main>
+<script>
+(function(){ var b=document.getElementById("theme"), r=document.documentElement;
+  try{ var t=localStorage.getItem("theme"); if(t) r.dataset.theme=t; }catch(e){}
+  var cur=function(){ return r.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"); };
+  var paint=function(){ b.textContent=cur()==="dark"?"☀️":"🌙"; }; paint();
+  b.addEventListener("click",function(){ var t=cur()==="dark"?"light":"dark"; r.dataset.theme=t; try{ localStorage.setItem("theme",t); }catch(e){} paint(); });
+  document.getElementById("yr").textContent=new Date().getFullYear(); })();
+</script>
+</body>
+</html>

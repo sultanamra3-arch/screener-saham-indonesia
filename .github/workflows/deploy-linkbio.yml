@@ -1,0 +1,37 @@
+name: Pasang halaman link (link.chartflow.my.id)
+
+on:
+  push:
+    branches: [main]
+    paths: ["linkbio/**", ".github/workflows/deploy-linkbio.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FTP_SERVER: ${{ secrets.FTP_SERVER }}
+      FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+      FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+      # Folder subdomain di hosting (bukan rahasia). Kosong = belum dipasang.
+      LINK_DIR: ""
+      SITE: https://link.chartflow.my.id
+    steps:
+      - uses: actions/checkout@v5
+      - name: Cek pengaturan
+        id: chk
+        run: |
+          if [ -z "$LINK_DIR" ] || [ -z "$FTP_SERVER" ]; then
+            echo "### Halaman link belum dipasang: folder subdomain (LINK_DIR) belum diisi" >> "$GITHUB_STEP_SUMMARY"; echo "ready=false" >> "$GITHUB_OUTPUT"
+          else echo "ready=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Kirim ke hosting lewat FTP
+        if: steps.chk.outputs.ready == 'true'
+        run: |
+          sudo apt-get install -y -qq lftp > /dev/null
+          LFTP_PASSWORD="$FTP_PASSWORD" lftp -c "set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3; set net:timeout 30; \
+            open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\"; mirror -R --parallel=4 linkbio/public \"$LINK_DIR\""
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$SITE/"); echo "### Halaman link terpasang: $SITE → $code" >> "$GITHUB_STEP_SUMMARY"
