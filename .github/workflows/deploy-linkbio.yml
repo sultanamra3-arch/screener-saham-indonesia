@@ -37,5 +37,5 @@ jobs:
           if LFTP_PASSWORD="$FTP_PASSWORD" lftp -c "$OPEN; cd public_html" 2>/dev/null; then T="$LINK_DIR"; else T="${LINK_DIR#public_html/}"; fi
           echo "Tujuan: $T"
           LFTP_PASSWORD="$FTP_PASSWORD" lftp -c "$OPEN; mirror -R --parallel=4 linkbio/public \"$T\""
-          sleep 3; code=$(curl -s -o /dev/null -w "%{http_code}" "$SITE/")
+          sleep 3; code=$(curl -s -o /dev/null -w "%{http_code}" "$SITE/" || echo "belum bisa dibuka (DNS subdomain mungkin masih menyebar)")
           echo "### Halaman link terpasang di folder $T: $SITE → $code" >> "$GITHUB_STEP_SUMMARY"
