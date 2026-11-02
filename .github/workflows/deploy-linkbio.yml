@@ -18,7 +18,7 @@ jobs:
       FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
       FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
       # Folder subdomain di hosting (bukan rahasia). Kosong = belum dipasang.
-      LINK_DIR: ""
+      LINK_DIR: "public_html/link"
       SITE: https://link.chartflow.my.id
     steps:
       - uses: actions/checkout@v5
@@ -32,6 +32,10 @@ jobs:
         if: steps.chk.outputs.ready == 'true'
         run: |
           sudo apt-get install -y -qq lftp > /dev/null
-          LFTP_PASSWORD="$FTP_PASSWORD" lftp -c "set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3; set net:timeout 30; \
-            open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\"; mirror -R --parallel=4 linkbio/public \"$LINK_DIR\""
-          code=$(curl -s -o /dev/null -w "%{http_code}" "$SITE/"); echo "### Halaman link terpasang: $SITE → $code" >> "$GITHUB_STEP_SUMMARY"
+          OPEN="set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3; set net:timeout 30; open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\""
+          # akun FTP bisa berawal di folder home (ada public_html) atau langsung di dalam public_html
+          if LFTP_PASSWORD="$FTP_PASSWORD" lftp -c "$OPEN; cd public_html" 2>/dev/null; then T="$LINK_DIR"; else T="${LINK_DIR#public_html/}"; fi
+          echo "Tujuan: $T"
+          LFTP_PASSWORD="$FTP_PASSWORD" lftp -c "$OPEN; mirror -R --parallel=4 linkbio/public \"$T\""
+          sleep 3; code=$(curl -s -o /dev/null -w "%{http_code}" "$SITE/")
+          echo "### Halaman link terpasang di folder $T: $SITE → $code" >> "$GITHUB_STEP_SUMMARY"
