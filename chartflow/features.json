@@ -119,6 +119,18 @@
    "mention": [
     "APK"
    ]
+  },
+  {
+   "name": "Flo asisten",
+   "mention": [
+    "Flo, asisten ChartFlow"
+   ]
+  },
+  {
+   "name": "Ringkasan Beranda",
+   "mention": [
+    "Ringkasan di Beranda"
+   ]
   }
  ],
  "removed": [
