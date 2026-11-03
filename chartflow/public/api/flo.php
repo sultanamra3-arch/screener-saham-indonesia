@@ -23,7 +23,7 @@ if ($GEM === '' && $GRQ === '') json_out(['ok' => false, 'msg' => 'off']);
 
 $b = body();
 $q = trim(mb_substr((string)($b['q'] ?? ''), 0, 400));
-$ctx = mb_substr((string)($b['ctx'] ?? ''), 0, 15000);
+$ctx = mb_substr((string)($b['ctx'] ?? ''), 0, 23000);
 $mk = in_array($b['market'] ?? '', ['id', 'us', 'kripto'], true) ? $b['market'] : 'id';
 $hist = array_slice(is_array($b['hist'] ?? null) ? $b['hist'] : [], -4);
 if ($q === '') json_out(['ok' => false, 'msg' => 'kosong'], 422);

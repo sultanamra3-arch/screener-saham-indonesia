@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-11-03",
+  "t": "🫧 Flo membaca semua data ChartFlow",
+  "x": "Flo kini bisa menjelaskan indikator grafik, pola candle, garis tren dan Jalur, watchlist dan Area beli, Ramai hari ini, arus dana asing, kalender dividen, seluruh hasil uji, alarm, jurnal, dan ringkasan pasar lain."
+ },
+ {
+  "d": "2026-11-03",
   "t": "🫧 Flo membaca grafik dan portofolio",
   "x": "Flo kini memakai zona support dan resistance dari grafik, dan bisa menjelaskan status posisi di portofolio Anda bila ditanya tentang portofolio."
  },

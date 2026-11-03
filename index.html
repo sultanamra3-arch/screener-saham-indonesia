@@ -2624,19 +2624,72 @@ window.addEventListener("online",()=>autoCheck(true));
   // ---- Flo AI
   const md=t=>esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").split(/\n/).map(l=>/^\s*([-*•]|\d+[.)])\s+/.test(l)?"<li>"+l.replace(/^\s*([-*•]|\d+[.)])\s+/,"")+"</li>":l).join("\n")
     .replace(/(<li>.*?<\/li>\n?)+/gs,m=>"<ul>"+m.replace(/\n/g,"")+"</ul>").replace(/\n{2,}/g,"<br><br>").replace(/\n/g,"<br>");
-  const tickersIn=q=>{ const set=new Set(rows.map(x=>x.ticker)), out=[]; (q.toUpperCase().match(/[A-Z0-9]{2,6}/g)||[]).forEach(w=>{ if(set.has(w)&&!out.includes(w)) out.push(w); });
-    rows.forEach(x=>{ if(out.length<3&&x.company&&q.length>=4){ const nm=x.company.toLowerCase().replace(/^pt\s+|\s*\(persero\)|\s*tbk\.?$/g,"").split(/\s+/).slice(0,2).join(" "); if(nm.length>=5&&q.toLowerCase().includes(nm)&&!out.includes(x.ticker)) out.push(x.ticker); } });
-    return out.slice(0,3); };
+  const COMMON=new Set("AREA BELI NAIK TURUN JUAL APA NOW ALL ARE IT ON FOR CAN AND THE YANG DAN SAYA ADA BISA MAU LAGI HARI INI EMAS BANK GAS KOPI BAIK AMAN TOP TREN SAHAM KOIN DATA BUY SELL HOLD BEST GOOD NEXT PLAN LIVE TIME MAX MIN NET SUN SUPER TOTAL CASH RICH".split(" "));
+  const tickersIn=q=>{ const set=new Set(rows.map(x=>x.ticker)), out=[]; q=q.replace(/\bbitcoin\b/ig,"BTC").replace(/\bethereum\b/ig,"ETH");
+    (q.match(/[A-Za-z0-9]{2,6}/g)||[]).forEach(w0=>{ const w=w0.toUpperCase(); if(set.has(w)&&!out.includes(w)&&(w0===w||!COMMON.has(w))) out.push(w); });
+    rows.forEach(x=>{ if(out.length<5&&x.company&&q.length>=4){ const nm=x.company.toLowerCase().replace(/^pt\s+|\s*\(persero\)|\s*tbk\.?$/g,"").split(/\s+/).slice(0,2).join(" "); if(nm.length>=5&&q.toLowerCase().includes(nm)&&!out.includes(x.ticker)) out.push(x.ticker); } });
+    return out.slice(0,5); };
   const n2=v=>typeof v==="number"&&isFinite(v)?nf(v,Math.abs(v)>=100?0:2):null;
   function stockCtx(t){ const o=rows.find(x=>x.ticker===t); if(!o) return "";
     const f=[["harga",usd(o.price)],["hari ini %",n2(o.chg1d)],["1 bulan %",n2(o.perf1m)],["3 bulan %",n2(o.perf3m)],["1 tahun %",n2(o.perf1y)],["jarak dari MA50 %",n2(o.sma50)],["jarak dari MA200 %",n2(o.sma200)],
-      ["RSI14",n2(o.rsi14)],["P/E",n2(o.pe)],["P/B",n2(o.pb)],["ROE %",n2(o.roe)],["yield dividen %",n2(o.div)],["likuiditas",o.liq?({L:"likuid",K:"kurang likuid",T:"tidak likuid"}[o.liq]||o.liq):null],["syariah",o.syariah?"ya":null]]
+      ["RSI14",n2(o.rsi14)],["P/E",n2(o.pe)],["P/B",n2(o.pb)],["ROE %",n2(o.roe)],["yield dividen %",n2(o.div)],["laba tumbuh %/th",n2(o.epsG)],["pendapatan tumbuh %",n2(o.salesG)],["utang/ekuitas",n2(o.de)],["margin kotor %",n2(o.gm)],["margin operasi %",n2(o.om)],["ROIC %",n2(o.roic)],["P/FCF",n2(o.pfcf)],["payout %",n2(o.payout)],["current ratio",n2(o.cr)],["dividen tanpa putus (th)",n2(o.divYears)],["beta",n2(o.beta)],["puncak 52 minggu",o.hi52!=null?usd(o.hi52):null],["kapitalisasi",o.mcap!=null?(IS_ID&&!CR?nf(o.mcap/1e12,1)+" triliun":nf(o.mcap/1e9,1)+" miliar"):null],["volume vs biasa",o.volR!=null?nf(o.volR,1)+"×":null],["nilai transaksi hari ini",o.val1d!=null?usd(o.val1d):null],["likuiditas",o.liq?({L:"likuid",K:"kurang likuid",T:"tidak likuid"}[o.liq]||o.liq):null],["syariah",o.syariah?"ya":null]]
       .filter(x=>x[1]!=null).map(x=>x[0]+" "+x[1]).join("; ");
     let s=`\n[${t}] ${o.company||""}${o.sector?" · "+o.sector:""}\n${f}`;
     if(typeof M!=="undefined") M.forEach(m=>{ try{ const st=uv(o,m.id); const lv=typeof levels==="function"?levels(m.id,st):""; s+=`\n- ${m.name}: ${(ST[st.s]||st.s)}${st.fresh&&st.s==="buy"?" (baru)":""}${lv?" · "+String(lv).replace(/<[^>]+>/g,""):""}${st.why?" · "+String(st.why).replace(/<[^>]+>/g,""):""}`; }catch(e){} });
     try{ const sm=summaryOf(o); s+=`\nLolos ${sm.pass} dari ${M.length} kriteria metode.`; }catch(e){}
+    const k=o.ks; if(k&&(k.df!=null||k.di!=null)) s+=`\nKepemilikan (KSEI ${k.m||""}): asing ${k.df!=null?(k.df>0?"+":"")+nf(k.df,2)+" poin":"-"}; reksa dana/dana pensiun/asuransi ${k.di!=null?(k.di>0?"+":"")+nf(k.di,2)+" poin":"-"} (ambang tanda ±0,5 poin)`;
+    if(o.ins) s+=`\nOrang dalam (insider) membeli: ${o.ins.p} orang dalam 90 hari, total ${usd(o.ins.v)}${o.ins.cl?", beberapa dalam 30 hari":""}`;
+    if(o.dv&&o.dv.ex) s+=`\nDividen berikutnya: ex ${o.dv.ex}${o.dv.cum?", cum "+o.dv.cum:""}, ±${usd(o.dv.amt)}/lembar (${o.dv.sure?"pasti":"perkiraan"})${o.price?", yield ±"+nf(o.dv.amt/o.price*100,2)+"%":""}`;
     const z=zones(t); if(z) s+="\n"+z;
     return s; }
+  // indikator lengkap, candle, garis tren, dan Jalur dari grafik harian
+  async function techCtx(t){ try{
+    if(typeof loadOhlc!=="function"||typeof smaA!=="function") return "";
+    if(typeof loadTrendStats==="function") await loadTrendStats().catch(()=>{});
+    const B=await loadOhlc(t); if(!B||B.length<30) return "";
+    const T=B.map(b=>b[0]), C=B.map(b=>b[4]), n=C.length, p=C[n-1], L=a=>{ for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return a[i]; return null; }, f=v=>v==null?"-":usd(v);
+    const ma20=smaA(C,20), sd=stdA(C,20,ma20), md=macdA(C), sr=stochRsiA(C), rs=rsiOf(C,14), vw=typeof vwapA==="function"?vwapA(B,20):[];
+    let s=`\n[${t}] INDIKATOR (penutupan ${T[n-1]}): MA20 ${f(L(ma20))}, MA50 ${f(L(smaA(C,50)))}, MA200 ${f(L(smaA(C,200)))}, EMA9 ${f(L(emaA(C,9)))}, Bollinger ${f(L(ma20)-2*L(sd))}–${f(L(ma20)+2*L(sd))}, VWAP20 ${f(L(vw))}, RSI14 ${nf(L(rs),1)}, MACD ${nf(L(md.m),2)} / sinyal ${nf(L(md.s),2)} (histogram ${nf(L(md.h),2)}), Stoch RSI K ${nf(L(sr.k),0)} D ${nf(L(sr.d),0)}`;
+    s+=`\n5 candle terakhir [tanggal, buka, tinggi, rendah, tutup, volume]: `+B.slice(-5).map(b=>`[${b[0]}, ${f(b[1])}, ${f(b[2])}, ${f(b[3])}, ${f(b[4])}, ${b[5]!=null?nf(b[5],0):"-"}]`).join(" ");
+    const [o1,h1,l1,c1]=B[n-1].slice(1), [o0,,,c0]=B[n-2].slice(1), body=Math.abs(c1-o1), rng=h1-l1||1, pat=[];
+    if(body<=rng*0.1) pat.push("Doji"); if(Math.min(o1,c1)-l1>=body*2&&h1-Math.max(o1,c1)<=body*0.5&&body>0) pat.push("Hammer");
+    if(h1-Math.max(o1,c1)>=body*2&&Math.min(o1,c1)-l1<=body*0.5&&body>0) pat.push("Shooting star");
+    if(c1>o1&&c0<o0&&c1>=o0&&o1<=c0) pat.push("Bullish engulfing"); if(c1<o1&&c0>o0&&c1<=o0&&o1>=c0) pat.push("Bearish engulfing");
+    s+=`\nPola candle terakhir: ${pat.length?pat.join(", "):"tidak ada pola umum"}${pat.length?" (catatan: di uji 10 tahun, pola candle sendirian tidak terbukti lebih bagus dari pasar)":""}`;
+    const a=CYC&&CYC.stocks&&CYC.stocks[t];
+    if(a&&typeof tlFrom==="function"){ const up=tlFrom(a.piv,T,"L"), dn=tlFrom(a.piv,T,"H");
+      s+=`\nGaris tren: bawah (hijau, lewat 2 lembah terakhir) ${up?`${up.rising?"naik":"turun"}, di ${f(up.at(n-1))} hari ini`:"belum ada"}; atas (merah, lewat 2 puncak terakhir) ${dn?`${dn.rising?"naik":"turun"}, di ${f(dn.at(n-1))} hari ini`:"belum ada"}.`;
+      if(typeof pathCalc==="function"&&typeof extFut==="function"){ const fut=extFut(((CYC&&CYC.future)||[]).filter(d=>d>T[n-1]),T[n-1]), pt=pathCalc(T,C,fut,a,rs);
+        if(pt) s+=`\nJalur zigzag (gambaran, bukan ramalan): ${pt.dir>0?"naik":"turun"} dulu ke ${f(pt.main[1][1])} (${pt.far?"lebih dari 6 bulan lagi":"sekitar "+pt.main[1][0]}), lalu ${pt.dir>0?"turun":"naik"} ke ${f(pt.main[2][1])} (${pt.far2?"lebih dari 6 bulan lagi":"sekitar "+pt.main[2][0]}). Kebiasaan ayunan grafik ini ±${pt.D} hari${pt.acc!=null?"; ketepatan arah di uji: "+nf(pt.acc,0)+"%":""}.`; } }
+    return s; }catch(e){ return ""; } }
+  const strip=h=>{ const d=document.createElement("div"); d.innerHTML=h; return d.textContent.replace(/\s+/g," ").trim(); };
+  function watchCtx(){ try{
+    const st=typeof stars==="function"?[...stars()]:[], byT=Object.fromEntries(rows.map(o=>[o.ticker,o]));
+    let s=`\nWATCHLIST PENGGUNA (★): ${st.length?st.map(t=>{ const o=byT[t]; if(!o) return t; let b=[]; try{ b=summaryOf(o).by.buy; }catch(e){} return `${t} ${usd(o.price)}${b.length?" ["+BUY()+": "+b.join(", ")+"]":""}`; }).join("; "):"kosong"}`;
+    if(typeof planList==="function"&&CYC&&CYC.watch){ const pl=planList(byT).list.slice(0,25);
+      s+=`\nAREA BELI (rencana dari zona support; ${regime().k==="tertekan"?"pasar tertekan: semua rencana DITUNDA":"aktif"}):`+(pl.length?pl.map(x=>{ const q=x.pl; return `\n${x.t}: ${q.kind==="now"?"di area beli":q.kind==="wait"?(q.why==="trend"?"ditunda (di bawah MA200)":"ditunda (pasar tertekan)"):"menunggu harga turun ke area"}; beli ${usd(q.e)}, batas rugi ${usd(q.stop)} (${nf(q.loss,1)}%), target ${q.tgt?usd(q.tgt):"-"}${q.up!=null?" (+"+nf(q.up,1)+"%)":""}${q.rr!=null?", untung:rugi "+nf(q.rr,1)+"×":""}${st.includes(x.t)?" ★":""}`; }).join(""):" tidak ada"); }
+    return s; }catch(e){ return ""; } }
+  function hotCtx(){ try{ if(typeof hotLists!=="function") return ""; const h=hotLists(typeof filtered==="function"?filtered():rows), r=o=>`${o.ticker} ${usd(o.price)} ${pct(o.chg1d,1)}`;
+    return `\nRAMAI HARI INI: volume melonjak (≥2× biasa): ${h.spike.map(o=>r(o)+" vol "+nf(o.volR,1)+"×").join("; ")||"tidak ada"}\nNaik terbesar: ${h.up.map(r).join("; ")||"-"}\nTurun terbesar: ${h.down.map(r).join("; ")||"-"}${h.near&&h.near.length?"\nNaik dan dekat resistance: "+h.near.slice(0,10).map(x=>`${x.o.ticker} (${nf(x.dist,1)}% ke ${usd(x.z.lo)})`).join("; "):""}`; }catch(e){ return ""; } }
+  function flowCtx(){ const L=rows.filter(o=>o.ks&&o.ks.df!=null), I=rows.filter(o=>o.ins);
+    let s=""; if(L.length){ const up=L.filter(o=>o.ks.df>=0.5).sort((a,b)=>b.ks.df-a.ks.df).slice(0,15), dn=L.filter(o=>o.ks.df<=-0.5).sort((a,b)=>a.ks.df-b.ks.df).slice(0,15);
+      s+=`\nKEPEMILIKAN ASING (KSEI ${L[0].ks.m||""}, perubahan poin): naik ${up.map(o=>o.ticker+" +"+nf(o.ks.df,2)).join(", ")||"-"}; turun ${dn.map(o=>o.ticker+" "+nf(o.ks.df,2)).join(", ")||"-"}`; }
+    if(I.length) s+=`\nINSIDER MEMBELI (90 hari): `+I.sort((a,b)=>b.ins.v-a.ins.v).slice(0,15).map(o=>`${o.ticker} ${o.ins.p} orang ${usd(o.ins.v)}`).join("; ");
+    return s; }
+  function divCtx(){ const td=(DATA&&DATA.priceDate)||"", L=rows.filter(o=>o.dv&&o.dv.ex&&o.dv.ex>=td).sort((a,b)=>a.dv.ex<b.dv.ex?-1:1).slice(0,25);
+    return `\nKALENDER DIVIDEN (ex terdekat): `+(L.length?L.map(o=>`${o.ticker} ex ${o.dv.ex}${o.dv.cum?" cum "+o.dv.cum:""} ±${usd(o.dv.amt)} (${o.dv.sure?"pasti":"perkiraan"}, yield ±${nf(o.dv.amt/o.price*100,2)}%)`).join("; "):"tidak ada jadwal"); }
+  function ujiCtx(){ try{ if(typeof renderUji!=="function"||typeof LT==="undefined"||!LT) return ""; const d=document.createElement("div"); renderUji(d); return "\nHALAMAN HASIL UJI: "+d.textContent.replace(/\s+/g," ").trim().slice(0,4500); }catch(e){ return ""; } }
+  async function otherCtx(q){ const want=[]; const ql=q.toLowerCase();
+    if(MK!=="kripto"&&/kripto|bitcoin|\bbtc\b|\beth\b|koin|altcoin/.test(ql)) want.push("kripto");
+    if(MK!=="us"&&/wall street|s&p|nasdaq|amerika|saham as\b|\bus\b/.test(ql)) want.push("us");
+    if(MK!=="id"&&/ihsg|\bbei\b|indonesia|saham id\b/.test(ql)) want.push("id");
+    let s=""; for(const m of want){ try{ const d=await fetch(`/app/${m}/data/stocks.json`,{credentials:"same-origin"}).then(r=>r.json()); const st=d.stocks||[];
+      s+=`\nPASAR LAIN (${m==="kripto"?"kripto":m==="us"?"Amerika":"BEI"}, ringkas, tanpa status metode): ${d.market&&d.market.text?d.market.text:""}${d.lamp?" Lampu BTC "+(d.lamp.g50?"hijau":"merah"):""}`;
+      const qq=q.replace(/\bbitcoin\b/ig,"BTC").replace(/\bethereum\b/ig,"ETH"), tk=(qq.match(/[A-Za-z0-9]{2,6}/g)||[]).filter(w0=>{ const w=w0.toUpperCase(); return st.some(x=>x.ticker===w)&&(w0===w||!COMMON.has(w)); }).map(w=>w.toUpperCase()).slice(0,3);
+      tk.forEach(w=>{ const o=st.find(x=>x.ticker===w); s+=`\n${w} ${o.company||""}: harga ${m==="us"?"$"+nf(o.price,2):"Rp"+nf(o.price,o.price<100?2:0)}, hari ini ${nf(o.chg1d,1)}%, 1 bulan ${nf(o.perf1m,1)}%, 1 tahun ${nf(o.perf1y,1)}%, jarak dari MA200 ${nf(o.sma200,1)}%`; }); }catch(e){} }
+    return s; }
+  async function alarmCtx(){ try{ const j=await fetch("/api/alarm.php",{credentials:"same-origin"}).then(r=>r.json()); if(!j.ok) return "";
+    return `\nALARM HARGA PENGGUNA (${j.linked?"Telegram terhubung":"Telegram belum terhubung"}): `+((j.alarms||[]).map(a=>`${a.t} ${a.op===">"||a.op==="up"?"naik ke":"turun ke"} ${a.p}`).join("; ")||"tidak ada"); }catch(e){ return ""; } }
   const zTxt=(z,k,i)=>`${k}${i+1} ${usd(z.lo)}${z.hi!==z.lo?"–"+usd(z.hi):""} (${z.strength||"-"}, ${z.dist>0?"+":""}${nf(z.dist,1)}% dari harga${z.why&&z.why.length?", dari "+z.why.slice(0,3).join(", "):""})`;
   function zones(t){ const a=typeof CYC!=="undefined"&&CYC&&CYC.stocks&&CYC.stocks[t]; if(!a) return "";
     return `Zona support (dari grafik): ${(a.sup||[]).slice(0,3).map((z,i)=>zTxt(z,"S",i)).join("; ")||"tidak ada"}\nZona resistance (dari grafik): ${(a.res||[]).slice(0,3).map((z,i)=>zTxt(z,"R",i)).join("; ")||"tidak ada"}`; }
@@ -2648,9 +2701,9 @@ window.addEventListener("online",()=>autoCheck(true));
       .filter(x=>!ms.length||ms.some(m=>x.st[m.id]==="buy"||x.st[m.id]==="hold"));
     const lab=x=>{ const b=(typeof M!=="undefined"?M:[]).filter(m=>x.st[m.id]==="buy").map(m=>m.name); return b.length?` [${BUY()}: ${b.join(", ")}]`:""; };
     let out="";
-    if(wantS){ const L=list.map(x=>({x,z:(x.a.sup||[])[0]})).filter(y=>y.z&&y.z.dist>=-5).sort((a,b)=>b.z.dist-a.z.dist).slice(0,20);
+    if(wantS){ const L=list.map(x=>({x,z:(x.a.sup||[])[0]})).filter(y=>y.z&&y.z.dist>=-5).sort((a,b)=>b.z.dist-a.z.dist).slice(0,30);
       out+=`\n${UNIT.toUpperCase()} DEKAT SUPPORT${ms.length?" (punya status "+BUY()+"/Tahan di "+ms.map(m=>m.name).join(", ")+")":""}, jarak harga ke S1 maksimal 5%:\n`+(L.length?L.map(y=>`${y.x.o.ticker} ${usd(y.x.o.price)}: ${zTxt(y.z,"S",0)}${lab(y.x)}`).join("\n"):"tidak ada"); }
-    if(wantR){ const L=list.map(x=>({x,z:(x.a.res||[])[0]})).filter(y=>y.z&&y.z.dist<=5).sort((a,b)=>a.z.dist-b.z.dist).slice(0,20);
+    if(wantR){ const L=list.map(x=>({x,z:(x.a.res||[])[0]})).filter(y=>y.z&&y.z.dist<=5).sort((a,b)=>a.z.dist-b.z.dist).slice(0,30);
       out+=`\n${UNIT.toUpperCase()} DEKAT RESISTANCE${ms.length?" ("+ms.map(m=>m.name).join(", ")+")":""}, jarak ke R1 maksimal 5%:\n`+(L.length?L.map(y=>`${y.x.o.ticker} ${usd(y.x.o.price)}: ${zTxt(y.z,"R",0)}${lab(y.x)}`).join("\n"):"tidak ada"); }
     if(ms.length){ const B=list.filter(x=>ms.some(m=>x.st[m.id]==="buy")).slice(0,25); out+=`\nSEMUA ${UNIT.toUpperCase()} BERSTATUS ${BUY().toUpperCase()} DI ${ms.map(m=>m.name).join(", ").toUpperCase()}: `+(B.length?B.map(x=>x.o.ticker).join(", "):"tidak ada"); }
     return out; }
@@ -2664,9 +2717,11 @@ window.addEventListener("online",()=>autoCheck(true));
     P.open.forEach(ps=>{ let e={acts:[]}; try{ e=posEval(ps); }catch(er){}
       s+=`\n[${ps.code}] beli ${usd(ps.price)} × ${ps.qty} ${un}${ps.date?" pada "+ps.date:""}, metode ${nm(ps.method)}; harga sekarang ${e.p!=null?usd(e.p):"-"}; untung/rugi ${e.pl!=null?usd(Math.round(e.pl))+" ("+pct(e.plp,1)+")":"-"}; stop ${e.stop?usd(e.stop):"-"}; target ${e.target?usd(e.target):"-"}; status ChartFlow: ${e.acts&&e.acts.length?e.acts.map(a=>tx(a.t)).join("; "):"tahan, masih sesuai aturan metodenya"}${ps.why?"; alasan beli: "+tx(ps.why).slice(0,120):""}`;
       const z=zones(ps.code); if(z) s+="\n"+z; });
+    try{ const J=typeof journalStats==="function"&&P.closed.length?journalStats(P.closed):null; if(J&&J.all) s+=`\nSTATISTIK JURNAL: ${J.all.n} transaksi selesai, ${J.all.win} untung, rata-rata ${pct(J.all.avg,1)}, total ${usd(Math.round(J.all.pl))}${J.all.days!=null?", rata-rata dipegang "+nf(J.all.days,0)+" hari":""}`+(J.by?"; per metode: "+Object.entries(J.by).map(([k,v])=>v?`${nm(k)} ${v.n}× rata-rata ${pct(v.avg,1)}`:"").filter(Boolean).join(", "):""); }catch(e){}
+    try{ if(typeof feeRates==="function"){ const [fb,fs,tx]=feeRates(); s+=`\nBIAYA DI KALKULATOR: beli ${nf(fb*100,2)}%, jual ${nf(fs*100,2)}%, pajak dividen ${nf(tx*100,0)}%`; } }catch(e){}
     if(P.closed.length) s+="\nRIWAYAT JUAL (terbaru): "+P.closed.slice(-10).reverse().map(c=>`${c.code} ${nm(c.method)} ${c.plp!=null?pct(c.plp,1):""}${c.days!=null?" dalam "+c.days+" hari":""}`).join("; ");
     return s; }
-  function buildCtx(q){
+  async function buildCtx(q){
     const L=[], d=DATA||{}; L.push(`Pasar: ${MK==="id"?"BEI":MK==="us"?"Amerika":"kripto"}. Data diperbarui ${d.updatedAt?new Date(d.updatedAt).toLocaleString("id-ID",{timeZone:"Asia/Jakarta"}):"-"} WIB; harga penutupan ${d.priceDate||"-"}.`);
     if(CR){ const Lm=typeof lamp==="function"?lamp():{}; L.push(`Lampu BTC: ${Lm.g50?"hijau (BTC di atas rata-rata 50 hari)":"merah (BTC di bawah rata-rata 50 hari)"}. Aturan: sinyal beli baru hanya dinilai saat lampu hijau.`); }
     else { const r=regime(), b=breadth(); L.push(`Kondisi ${IDX}: ${r.k}. ${b!=null?Math.round(b)+"% "+UNIT+" di atas rata-rata 200 hari. ":""}${(d.market||{}).text||""}`);
@@ -2679,15 +2734,23 @@ window.addEventListener("online",()=>autoCheck(true));
       L.push(`\n${BUY().toUpperCase()} TERBANYAK HARI INI: `+(top.length?top.map(x=>`${x.t} (${x.b.join(", ")})`).join("; "):"tidak ada")); }catch(e){}
     let tk=tickersIn(q); if(!tk.length&&typeof openTicker!=="undefined"&&openTicker) tk=[openTicker]; if(!tk.length) tk=lastTk; lastTk=tk;
     tk.forEach(t=>L.push(stockCtx(t)));
+    if(tk.length&&tk.length<=3&&!/^[A-Z0-9]{2,6}$/.test(q.trim())) for(const t of tk) L.push(await techCtx(t));
+    if(/watchlist|bintang|★|area beli|rencana beli|antre|pantauan|dipantau|harga beli/i.test(q)) L.push(watchCtx());
+    if(/ramai|volume|melonjak|naik (paling|ter)|turun (paling|ter)|gainer|loser|top|hari ini/i.test(q)) L.push(hotCtx());
+    if(/asing|institusi|ksei|reksa dana|insider|orang dalam|direksi|bandar|arus dana/i.test(q)) L.push(flowCtx());
+    if(/dividen|\bex\b|\bcum\b|yield|kalender/i.test(q)) L.push(divCtx());
+    if(/uji|terbukti|backtest|akurat|ketepatan|garis tren|jalur|candle|fibonacci|lampu|strategi terbaik|paling bagus/i.test(q)) L.push(ujiCtx());
+    if(/alarm|notifikasi|pengingat|telegram/i.test(q)) L.push(await alarmCtx());
+    L.push(await otherCtx(q));
     const wp=PORTQ.test(q)||(portFollow&&q.length<60); portFollow=PORTQ.test(q); if(wp) L.push(portCtx());
     if(/support|resist|dekat|lantai|atap|pantul|area beli|tembus/i.test(q)||(!tk.length&&!wp)) L.push(nearList(q));
     L.push("\nCatatan: zona support/resistance dihitung ChartFlow dari Fibonacci, titik balik, rata-rata bergerak, dan angka bulat; kekuatan: kuat/sedang/lemah.");
-    return L.join("\n").slice(0,14000); }
+    return L.filter(Boolean).join("\n").slice(0,22000); }
   async function askAI(q){
     say(esc(q),true);
     const w=document.createElement("div"); w.className="fp-m bot fp-wait"; w.innerHTML='<span class="dots"><i></i><i></i><i></i></span>'; body.append(w); body.scrollTop=body.scrollHeight;
     try{ if(typeof loadCycles==="function") await loadCycles(); }catch(e){}
-    let j=null; try{ const r=await fetch("/api/flo.php",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({q,ctx:buildCtx(q),market:MK,hist})}); j=await r.json(); }catch(e){}
+    let j=null; try{ const r=await fetch("/api/flo.php",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({q,ctx:await buildCtx(q),market:MK,hist})}); j=await r.json(); }catch(e){}
     w.remove();
     if(j&&j.ok){ hist.push({q,a:j.text}); hist=hist.slice(-4);
       say(md(j.text)+`<span class="fp-ai">AI · ${j.left!=null?`sisa ${j.left} pertanyaan hari ini`:"bisa keliru"}</span>`); return; }
