@@ -86,6 +86,7 @@ function gemini(string $key, string $sys, array $hist, string $user): string {
         if ($code === 404) continue; // nama model sudah berganti: coba berikutnya
         $t = '';
         foreach ($j['candidates'][0]['content']['parts'] ?? [] as $p) { if (empty($p['thought'])) $t .= $p['text'] ?? ''; }
+        if (trim($t) === '' && $code === 200) { global $WHY; $WHY[] = 'gemini ' . $m . ': jawaban kosong (' . ($j['candidates'][0]['finishReason'] ?? ($j['promptFeedback']['blockReason'] ?? '?')) . ')'; }
         return trim($t);
     }
     return '';
@@ -97,7 +98,9 @@ function groq(string $key, string $sys, array $hist, string $user): string {
     $model = defined('CF_GROQ_MODEL') && CF_GROQ_MODEL ? CF_GROQ_MODEL : 'llama-3.3-70b-versatile';
     [$code, $j] = post_json('https://api.groq.com/openai/v1/chat/completions', ['Authorization: Bearer ' . $key],
         ['model' => $model, 'messages' => $msg, 'temperature' => 0.3, 'max_tokens' => 700]);
-    return trim((string)($j['choices'][0]['message']['content'] ?? ''));
+    $t = trim((string)($j['choices'][0]['message']['content'] ?? ''));
+    if ($t === '' && $code === 200) { global $WHY; $WHY[] = 'groq: jawaban kosong'; }
+    return $t;
 }
 
 $text = ''; $src = '';
