@@ -95,10 +95,23 @@ function groq(string $key, string $sys, array $hist, string $user): string {
     $msg = [['role' => 'system', 'content' => $sys]];
     foreach ($hist as $h) { $msg[] = ['role' => 'user', 'content' => mb_substr((string)($h['q'] ?? ''), 0, 400)]; $msg[] = ['role' => 'assistant', 'content' => mb_substr((string)($h['a'] ?? ''), 0, 800)]; }
     $msg[] = ['role' => 'user', 'content' => $user];
-    $model = defined('CF_GROQ_MODEL') && CF_GROQ_MODEL ? CF_GROQ_MODEL : 'llama-3.3-70b-versatile';
-    [$code, $j] = post_json('https://api.groq.com/openai/v1/chat/completions', ['Authorization: Bearer ' . $key],
-        ['model' => $model, 'messages' => $msg, 'temperature' => 0.3, 'max_tokens' => 700]);
-    $t = trim((string)($j['choices'][0]['message']['content'] ?? ''));
+    // nama model di Groq sering berganti: coba beberapa, lalu ambil dari daftar model yang tersedia
+    $models = defined('CF_GROQ_MODEL') && CF_GROQ_MODEL ? [CF_GROQ_MODEL] : ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'qwen/qwen3-32b', 'openai/gpt-oss-20b'];
+    $tried = 0; $code = 0; $j = null;
+    for ($n = 0; $n < count($models) && $n < 8; $n++) {
+        $m = $models[$n];
+        [$code, $j] = post_json('https://api.groq.com/openai/v1/chat/completions', ['Authorization: Bearer ' . $key],
+            ['model' => $m, 'messages' => $msg, 'temperature' => 0.3, 'max_tokens' => 900]);
+        if ($code !== 404 && $code !== 400) break;
+        if (++$tried === count($models)) { // semua gagal: lihat daftar model yang ada
+            $ch = curl_init('https://api.groq.com/openai/v1/models');
+            curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10, CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $key]]);
+            $l = json_decode((string)curl_exec($ch), true); curl_close($ch);
+            foreach ($l['data'] ?? [] as $x) { $id = (string)($x['id'] ?? '');
+                if ($id && !in_array($id, $models, true) && !preg_match('/whisper|tts|guard|embed|vision|playai|compound|orpheus|prompt/i', $id)) $models[] = $id; }
+        }
+    }
+    $t = trim(preg_replace('/<think>.*?<\/think>/s', '', (string)($j['choices'][0]['message']['content'] ?? '')));
     if ($t === '' && $code === 200) { global $WHY; $WHY[] = 'groq: jawaban kosong'; }
     return $t;
 }
