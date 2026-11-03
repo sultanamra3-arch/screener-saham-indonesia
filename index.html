@@ -2579,7 +2579,7 @@ window.addEventListener("online",()=>autoCheck(true));
   const flo=document.createElement("button"); flo.type="button"; flo.className="flo"; flo.setAttribute("aria-label","Tanya Flo, asisten ChartFlow");
   flo.innerHTML=`<span class="say" aria-hidden="true"></span><span class="orb"><span class="eyes"><i></i><i></i></span></span><span class="lbl">Tanya Flo</span>`;
   const panel=document.createElement("aside"); panel.className="flopanel"; panel.setAttribute("aria-label","Flo, asisten ChartFlow");
-  const CHIPS=[["pasar","Kondisi pasar hari ini"],["top",`${CR?"Koin":"Saham"} yang lolos paling banyak`],["uji","Metode mana yang terbukti?"],["arti","Arti label status"]];
+  const CHIPS=[...(AI?[["porto","Cek portofolio saya"]]:[]),["pasar","Kondisi pasar hari ini"],["top",`${CR?"Koin":"Saham"} yang lolos paling banyak`],["uji","Metode mana yang terbukti?"],["arti","Arti label status"]];
   panel.innerHTML=`<div class="fp-hd"><span class="mini"></span><span>Flo<small>Asisten ChartFlow</small></span><button type="button" class="fp-x" aria-label="Tutup">✕</button></div>
     <div class="fp-body" aria-live="polite"><div class="fp-hi"><div class="fp-big"><span class="eyes"><i></i><i></i></span></div><h3>Hai, saya Flo</h3><p>${AI?`Tanyakan apa saja tentang data ChartFlow hari ini, misalnya "kenapa ${EX} ${CR?"belum dinilai":"ditunda"}?" atau "bedanya Value dan Quality apa?".`:`Saya membaca data ChartFlow hari ini dan menjelaskan aturan tiap metode. Ketik kode ${UNIT} (misalnya ${EX}) atau pilih pertanyaan.`}</p></div></div>
     <div class="fp-chips">${CHIPS.map(([k,t])=>`<button type="button" data-q="${k}">${esc(t)}</button>`).join("")}</div>
@@ -2654,6 +2654,18 @@ window.addEventListener("online",()=>autoCheck(true));
       out+=`\n${UNIT.toUpperCase()} DEKAT RESISTANCE${ms.length?" ("+ms.map(m=>m.name).join(", ")+")":""}, jarak ke R1 maksimal 5%:\n`+(L.length?L.map(y=>`${y.x.o.ticker} ${usd(y.x.o.price)}: ${zTxt(y.z,"R",0)}${lab(y.x)}`).join("\n"):"tidak ada"); }
     if(ms.length){ const B=list.filter(x=>ms.some(m=>x.st[m.id]==="buy")).slice(0,25); out+=`\nSEMUA ${UNIT.toUpperCase()} BERSTATUS ${BUY().toUpperCase()} DI ${ms.map(m=>m.name).join(", ").toUpperCase()}: `+(B.length?B.map(x=>x.o.ticker).join(", "):"tidak ada"); }
     return out; }
+  const PORTQ=/portofolio|porto\b|saham saya|koin saya|posisi saya|posisi\b|yang saya beli|saya beli|punya saya|milik saya|saya pegang|aset saya|untung saya|rugi saya/i;
+  let portFollow=false;
+  function portCtx(){ if(typeof porto!=="function"||typeof posEval!=="function") return "";
+    const P=porto(), un=CR?"koin":IS_ID?"lot":"lembar", nm=m=>(typeof MID!=="undefined"&&MID[m]?MID[m].name:"campuran/aturan sendiri"), tx=v=>String(v||"").replace(/<[^>]+>/g,"");
+    if(!P.open.length&&!P.closed.length) return "\nPORTOFOLIO PENGGUNA: kosong, belum ada posisi yang dicatat.";
+    let s="\nPORTOFOLIO PENGGUNA (posisi terbuka):";
+    if(!P.open.length) s+=" tidak ada";
+    P.open.forEach(ps=>{ let e={acts:[]}; try{ e=posEval(ps); }catch(er){}
+      s+=`\n[${ps.code}] beli ${usd(ps.price)} × ${ps.qty} ${un}${ps.date?" pada "+ps.date:""}, metode ${nm(ps.method)}; harga sekarang ${e.p!=null?usd(e.p):"-"}; untung/rugi ${e.pl!=null?usd(Math.round(e.pl))+" ("+pct(e.plp,1)+")":"-"}; stop ${e.stop?usd(e.stop):"-"}; target ${e.target?usd(e.target):"-"}; status ChartFlow: ${e.acts&&e.acts.length?e.acts.map(a=>tx(a.t)).join("; "):"tahan, masih sesuai aturan metodenya"}${ps.why?"; alasan beli: "+tx(ps.why).slice(0,120):""}`;
+      const z=zones(ps.code); if(z) s+="\n"+z; });
+    if(P.closed.length) s+="\nRIWAYAT JUAL (terbaru): "+P.closed.slice(-10).reverse().map(c=>`${c.code} ${nm(c.method)} ${c.plp!=null?pct(c.plp,1):""}${c.days!=null?" dalam "+c.days+" hari":""}`).join("; ");
+    return s; }
   function buildCtx(q){
     const L=[], d=DATA||{}; L.push(`Pasar: ${MK==="id"?"BEI":MK==="us"?"Amerika":"kripto"}. Data diperbarui ${d.updatedAt?new Date(d.updatedAt).toLocaleString("id-ID",{timeZone:"Asia/Jakarta"}):"-"} WIB; harga penutupan ${d.priceDate||"-"}.`);
     if(CR){ const Lm=typeof lamp==="function"?lamp():{}; L.push(`Lampu BTC: ${Lm.g50?"hijau (BTC di atas rata-rata 50 hari)":"merah (BTC di bawah rata-rata 50 hari)"}. Aturan: sinyal beli baru hanya dinilai saat lampu hijau.`); }
@@ -2667,7 +2679,8 @@ window.addEventListener("online",()=>autoCheck(true));
       L.push(`\n${BUY().toUpperCase()} TERBANYAK HARI INI: `+(top.length?top.map(x=>`${x.t} (${x.b.join(", ")})`).join("; "):"tidak ada")); }catch(e){}
     let tk=tickersIn(q); if(!tk.length&&typeof openTicker!=="undefined"&&openTicker) tk=[openTicker]; if(!tk.length) tk=lastTk; lastTk=tk;
     tk.forEach(t=>L.push(stockCtx(t)));
-    if(/support|resist|dekat|lantai|atap|pantul|area beli|tembus/i.test(q)||!tk.length) L.push(nearList(q));
+    const wp=PORTQ.test(q)||(portFollow&&q.length<60); portFollow=PORTQ.test(q); if(wp) L.push(portCtx());
+    if(/support|resist|dekat|lantai|atap|pantul|area beli|tembus/i.test(q)||(!tk.length&&!wp)) L.push(nearList(q));
     L.push("\nCatatan: zona support/resistance dihitung ChartFlow dari Fibonacci, titik balik, rata-rata bergerak, dan angka bulat; kekuatan: kuat/sedang/lemah.");
     return L.join("\n").slice(0,14000); }
   async function askAI(q){
@@ -2695,7 +2708,7 @@ window.addEventListener("online",()=>autoCheck(true));
       ${s.by.buy.length?`<b>${esc(BUY())}</b> menurut: ${esc(s.by.buy.join(", "))}.`:`Belum ${esc(BUY().toLowerCase())} di metode mana pun.`}
       ${s.by.sell.length?`<br><b class="no">Sinyal jual</b> aktif di: ${esc(s.by.sell.join(", "))}.`:""}
       ${typeof M!=="undefined"?`<br><span class="note">Lolos ${s.pass} dari ${M.length} kriteria metode.</span>`:""}<br><button type="button" class="go" data-t="${esc(o.ticker)}">Buka detail ${esc(o.ticker)}</button>`); }
-  panel.querySelector(".fp-chips").addEventListener("click",ev=>{ const b=ev.target.closest("[data-q]"); if(!b) return; say(esc(b.textContent),true); setTimeout(()=>say(answer(b.dataset.q)),RM?0:260); });
+  panel.querySelector(".fp-chips").addEventListener("click",ev=>{ const b=ev.target.closest("[data-q]"); if(!b) return; if(b.dataset.q==="porto"){ askAI("Bagaimana kondisi portofolio saya menurut aturan ChartFlow?"); return; } say(esc(b.textContent),true); setTimeout(()=>say(answer(b.dataset.q)),RM?0:260); });
   panel.querySelector(".fp-in").addEventListener("submit",ev=>{ ev.preventDefault(); const i=panel.querySelector("input"); lookup(i.value); i.value=""; });
   body.addEventListener("click",ev=>{ const b=ev.target.closest("[data-t]"); if(!b) return; if(PHONE()) closeP(); openTicker=b.dataset.t; renderResults(); });
 
