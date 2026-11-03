@@ -2635,7 +2635,25 @@ window.addEventListener("online",()=>autoCheck(true));
     let s=`\n[${t}] ${o.company||""}${o.sector?" · "+o.sector:""}\n${f}`;
     if(typeof M!=="undefined") M.forEach(m=>{ try{ const st=uv(o,m.id); const lv=typeof levels==="function"?levels(m.id,st):""; s+=`\n- ${m.name}: ${(ST[st.s]||st.s)}${st.fresh&&st.s==="buy"?" (baru)":""}${lv?" · "+String(lv).replace(/<[^>]+>/g,""):""}${st.why?" · "+String(st.why).replace(/<[^>]+>/g,""):""}`; }catch(e){} });
     try{ const sm=summaryOf(o); s+=`\nLolos ${sm.pass} dari ${M.length} kriteria metode.`; }catch(e){}
+    const z=zones(t); if(z) s+="\n"+z;
     return s; }
+  const zTxt=(z,k,i)=>`${k}${i+1} ${usd(z.lo)}${z.hi!==z.lo?"–"+usd(z.hi):""} (${z.strength||"-"}, ${z.dist>0?"+":""}${nf(z.dist,1)}% dari harga${z.why&&z.why.length?", dari "+z.why.slice(0,3).join(", "):""})`;
+  function zones(t){ const a=typeof CYC!=="undefined"&&CYC&&CYC.stocks&&CYC.stocks[t]; if(!a) return "";
+    return `Zona support (dari grafik): ${(a.sup||[]).slice(0,3).map((z,i)=>zTxt(z,"S",i)).join("; ")||"tidak ada"}\nZona resistance (dari grafik): ${(a.res||[]).slice(0,3).map((z,i)=>zTxt(z,"R",i)).join("; ")||"tidak ada"}`; }
+  // daftar saham yang dekat support/resistance, bisa disaring per metode yang disebut di pertanyaan
+  function nearList(q){ const C=typeof CYC!=="undefined"&&CYC&&CYC.stocks; if(!C) return "";
+    const ql=q.toLowerCase(), ms=(typeof M!=="undefined"?M:[]).filter(m=>ql.includes(m.name.toLowerCase())||(m.title&&ql.includes(m.title.toLowerCase())));
+    const wantR=/resist|atap|tembus/.test(ql), wantS=/support|lantai|pantul|area beli|dekat/.test(ql)||!wantR;
+    const list=(typeof filtered==="function"?filtered():rows).filter(o=>C[o.ticker]).map(o=>{ const a=C[o.ticker]; let st={}; try{ st=Object.fromEntries((typeof M!=="undefined"?M:[]).map(m=>[m.id,uv(o,m.id).s])); }catch(e){} return {o,a,st}; })
+      .filter(x=>!ms.length||ms.some(m=>x.st[m.id]==="buy"||x.st[m.id]==="hold"));
+    const lab=x=>{ const b=(typeof M!=="undefined"?M:[]).filter(m=>x.st[m.id]==="buy").map(m=>m.name); return b.length?` [${BUY()}: ${b.join(", ")}]`:""; };
+    let out="";
+    if(wantS){ const L=list.map(x=>({x,z:(x.a.sup||[])[0]})).filter(y=>y.z&&y.z.dist>=-5).sort((a,b)=>b.z.dist-a.z.dist).slice(0,20);
+      out+=`\n${UNIT.toUpperCase()} DEKAT SUPPORT${ms.length?" (punya status "+BUY()+"/Tahan di "+ms.map(m=>m.name).join(", ")+")":""}, jarak harga ke S1 maksimal 5%:\n`+(L.length?L.map(y=>`${y.x.o.ticker} ${usd(y.x.o.price)}: ${zTxt(y.z,"S",0)}${lab(y.x)}`).join("\n"):"tidak ada"); }
+    if(wantR){ const L=list.map(x=>({x,z:(x.a.res||[])[0]})).filter(y=>y.z&&y.z.dist<=5).sort((a,b)=>a.z.dist-b.z.dist).slice(0,20);
+      out+=`\n${UNIT.toUpperCase()} DEKAT RESISTANCE${ms.length?" ("+ms.map(m=>m.name).join(", ")+")":""}, jarak ke R1 maksimal 5%:\n`+(L.length?L.map(y=>`${y.x.o.ticker} ${usd(y.x.o.price)}: ${zTxt(y.z,"R",0)}${lab(y.x)}`).join("\n"):"tidak ada"); }
+    if(ms.length){ const B=list.filter(x=>ms.some(m=>x.st[m.id]==="buy")).slice(0,25); out+=`\nSEMUA ${UNIT.toUpperCase()} BERSTATUS ${BUY().toUpperCase()} DI ${ms.map(m=>m.name).join(", ").toUpperCase()}: `+(B.length?B.map(x=>x.o.ticker).join(", "):"tidak ada"); }
+    return out; }
   function buildCtx(q){
     const L=[], d=DATA||{}; L.push(`Pasar: ${MK==="id"?"BEI":MK==="us"?"Amerika":"kripto"}. Data diperbarui ${d.updatedAt?new Date(d.updatedAt).toLocaleString("id-ID",{timeZone:"Asia/Jakarta"}):"-"} WIB; harga penutupan ${d.priceDate||"-"}.`);
     if(CR){ const Lm=typeof lamp==="function"?lamp():{}; L.push(`Lampu BTC: ${Lm.g50?"hijau (BTC di atas rata-rata 50 hari)":"merah (BTC di bawah rata-rata 50 hari)"}. Aturan: sinyal beli baru hanya dinilai saat lampu hijau.`); }
@@ -2649,10 +2667,13 @@ window.addEventListener("online",()=>autoCheck(true));
       L.push(`\n${BUY().toUpperCase()} TERBANYAK HARI INI: `+(top.length?top.map(x=>`${x.t} (${x.b.join(", ")})`).join("; "):"tidak ada")); }catch(e){}
     let tk=tickersIn(q); if(!tk.length&&typeof openTicker!=="undefined"&&openTicker) tk=[openTicker]; if(!tk.length) tk=lastTk; lastTk=tk;
     tk.forEach(t=>L.push(stockCtx(t)));
-    return L.join("\n").slice(0,9000); }
+    if(/support|resist|dekat|lantai|atap|pantul|area beli|tembus/i.test(q)||!tk.length) L.push(nearList(q));
+    L.push("\nCatatan: zona support/resistance dihitung ChartFlow dari Fibonacci, titik balik, rata-rata bergerak, dan angka bulat; kekuatan: kuat/sedang/lemah.");
+    return L.join("\n").slice(0,14000); }
   async function askAI(q){
     say(esc(q),true);
     const w=document.createElement("div"); w.className="fp-m bot fp-wait"; w.innerHTML='<span class="dots"><i></i><i></i><i></i></span>'; body.append(w); body.scrollTop=body.scrollHeight;
+    try{ if(typeof loadCycles==="function") await loadCycles(); }catch(e){}
     let j=null; try{ const r=await fetch("/api/flo.php",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({q,ctx:buildCtx(q),market:MK,hist})}); j=await r.json(); }catch(e){}
     w.remove();
     if(j&&j.ok){ hist.push({q,a:j.text}); hist=hist.slice(-4);
