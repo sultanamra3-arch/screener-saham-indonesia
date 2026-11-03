@@ -425,6 +425,7 @@ body{letter-spacing:-.003em}
   .sidenav .sn-foot .mkt{flex-direction:column;width:auto;border-radius:24px}
   .sidenav .mkt a{padding:7px 8px;text-align:center}.sidenav .mkt .mt{display:none}
   .sidenav #install{width:46px;height:46px;padding:0;font-size:0;border-radius:50%}.sidenav #install::before{content:"📲";font-size:18px}
+  .sidenav #cfUser{width:46px;height:46px;padding:0;font-size:0;border-radius:50%;display:grid;place-items:center;overflow:hidden}.sidenav #cfUser::before{content:"👤";font-size:18px}
   body .tabs#tabs:not(:empty){display:flex!important}
   .sn-ind{position:absolute;left:50%;top:0;width:46px;height:46px;margin-left:-23px;border-radius:50%;background:var(--ink);z-index:0;pointer-events:none;transition:transform .5s cubic-bezier(.3,1.25,.5,1)}
   .sn-tip{position:fixed;padding:5px 11px;border-radius:9px;background:var(--ink);color:var(--ink-fg);font-size:12.5px;font-weight:600;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .25s,top .4s cubic-bezier(.3,1.25,.5,1);z-index:60}
@@ -476,6 +477,10 @@ body{transition:padding-right .55s cubic-bezier(.2,.8,.2,1)}
 .fp-in{display:flex;align-items:center;gap:8px;margin:4px 14px 8px;background:var(--sunk);border-radius:999px;padding:5px 5px 5px 16px}
 .fp-in input{flex:1;min-width:0;border:none;background:none;font:inherit;font-size:14px;color:var(--fg);padding:6px 0;outline:none}
 .fp-in button{width:36px;height:36px;border:none;border-radius:50%;background:var(--ink);color:var(--ink-fg);cursor:pointer;font-size:15px;flex:none}
+.fp-ai{display:block;margin-top:6px;font-size:11px;color:var(--muted)}
+.fp-wait .dots{display:inline-flex;gap:4px;padding:4px 2px}.fp-wait .dots i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:dot 1s infinite}
+.fp-wait .dots i:nth-child(2){animation-delay:.15s}.fp-wait .dots i:nth-child(3){animation-delay:.3s}
+@keyframes dot{0%,80%,100%{opacity:.3;transform:none}40%{opacity:1;transform:translateY(-3px)}}
 .fp-note{margin:0 18px 14px;font-size:11.5px;color:var(--muted);text-align:center}
 @media (max-width:760px){.flopanel{left:8px;right:8px;top:auto;bottom:8px;width:auto;height:min(78vh,640px);transform:translateY(calc(100% + 20px))}}
 @media (prefers-reduced-motion:reduce){.flo,.flopanel,.sn-ind,.sn-tip,.kpi>div,.mcard,body{transition:none!important}.flo .orb,.fp-big,.flo .eyes i,.fp-big .eyes i,.kpi.wait>div,.fp-m{animation:none!important}}
@@ -2513,6 +2518,8 @@ window.addEventListener("online",()=>autoCheck(true));
   const UNIT=CR?"koin":"saham", IDX=CR?"BTC":IS_ID?"IHSG":"S&P 500", EX=CR?"BTC":IS_ID?"BBCA":"AAPL";
   const BUY=()=>(typeof ST!=="undefined"&&ST.buy)||"Layak beli";
   const SAFEm=typeof SAFE!=="undefined"&&SAFE;
+  const AI=!!document.getElementById("cfUser"); // Flo AI hanya di chartflow.my.id (kunci API ada di server)
+  let hist=[], lastTk=[];
   const anim=(el,kf,o)=>{ if(!RM&&el&&el.animate) return el.animate(kf,Object.assign({easing:EASE,fill:"backwards"},o)); };
   const fadeIn=(el,delay)=>anim(el,[{opacity:0,filter:"blur(10px)",transform:"translateY(14px)"},{opacity:1,filter:"blur(0)",transform:"none"}],{duration:650,delay});
   const fill=(card,delay)=>{ anim(card,[{opacity:0,transform:"translateY(10px) scale(.985)"},{opacity:1,transform:"none"}],{duration:600,delay});
@@ -2574,10 +2581,10 @@ window.addEventListener("online",()=>autoCheck(true));
   const panel=document.createElement("aside"); panel.className="flopanel"; panel.setAttribute("aria-label","Flo, asisten ChartFlow");
   const CHIPS=[["pasar","Kondisi pasar hari ini"],["top",`${CR?"Koin":"Saham"} yang lolos paling banyak`],["uji","Metode mana yang terbukti?"],["arti","Arti label status"]];
   panel.innerHTML=`<div class="fp-hd"><span class="mini"></span><span>Flo<small>Asisten ChartFlow</small></span><button type="button" class="fp-x" aria-label="Tutup">✕</button></div>
-    <div class="fp-body" aria-live="polite"><div class="fp-hi"><div class="fp-big"><span class="eyes"><i></i><i></i></span></div><h3>Hai, saya Flo</h3><p>Saya membaca data ChartFlow hari ini dan menjelaskan aturan tiap metode. Ketik kode ${UNIT} (misalnya ${EX}) atau pilih pertanyaan.</p></div></div>
+    <div class="fp-body" aria-live="polite"><div class="fp-hi"><div class="fp-big"><span class="eyes"><i></i><i></i></span></div><h3>Hai, saya Flo</h3><p>${AI?`Tanyakan apa saja tentang data ChartFlow hari ini, misalnya "kenapa ${EX} ${CR?"belum dinilai":"ditunda"}?" atau "bedanya Value dan Quality apa?".`:`Saya membaca data ChartFlow hari ini dan menjelaskan aturan tiap metode. Ketik kode ${UNIT} (misalnya ${EX}) atau pilih pertanyaan.`}</p></div></div>
     <div class="fp-chips">${CHIPS.map(([k,t])=>`<button type="button" data-q="${k}">${esc(t)}</button>`).join("")}</div>
-    <form class="fp-in"><input type="text" placeholder="Ketik kode ${UNIT}, misalnya ${EX}" aria-label="Kode ${UNIT}" autocomplete="off" autocapitalize="characters"><button type="submit" aria-label="Kirim">↑</button></form>
-    <p class="fp-note">Jawaban dihitung dari aturan metode, bukan saran investasi.${CR?" Kripto berisiko sangat tinggi.":""}</p>`;
+    <form class="fp-in"><input type="text" placeholder="${AI?`Tanya apa saja atau ketik kode ${UNIT}`:`Ketik kode ${UNIT}, misalnya ${EX}`}" aria-label="${AI?"Pertanyaan untuk Flo":"Kode "+UNIT}" autocomplete="off" autocapitalize="${AI?"sentences":"characters"}" maxlength="400"><button type="submit" aria-label="Kirim">↑</button></form>
+    <p class="fp-note">${AI?"Pertanyaan bebas dijawab AI dari data ChartFlow dan bisa keliru. ":"Jawaban dihitung dari aturan metode. "}Bukan saran investasi.${CR?" Kripto berisiko sangat tinggi.":""}</p>`;
   document.body.append(flo,panel);
   const body=panel.querySelector(".fp-body");
   const pos=(x,y)=>{ flo.style.transform=`translate(${Math.round(x)}px,${Math.round(y)}px)`; };
@@ -2614,8 +2621,53 @@ window.addEventListener("online",()=>autoCheck(true));
       return `Uji mundur ${esc(typeof ltYrs==="function"?ltYrs():"")} (rata-rata hasil per transaksi setelah biaya):<ul>${ls.map(([m,v])=>`<li><b>${esc((typeof MID!=="undefined"&&MID[m]?MID[m].name:m))}</b>: <span class="${v.avg>=0?"ok":"no"}">${pct(v.avg,2)}</span>, untung ${v.yp} dari ${v.y} tahun${v.avg<0?" ⚠️":""}</li>`).join("")}</ul><span class="note">Metode bertanda ⚠️ rata-ratanya rugi, jadi tidak dipakai di ${T("Saran","Keterangan")} dan Area beli. Hasil masa lalu tidak menjamin hasil berikutnya.</span>`; }
     if(k==="arti") return `<ul><li><b>${esc(BUY())}</b>: semua syarat metode terpenuhi hari ini (<b>baru</b> = baru lolos hari ini).</li><li><b>Tahan</b>: pernah lolos dan belum ada sinyal jual.</li><li><b>Terlambat</b>: sinyalnya sudah lewat, harga sudah bergerak jauh.</li><li><b>Hindari</b>: sinyal jual metode sedang aktif.</li><li><b>Tunggu</b>: belum memenuhi syarat.</li></ul>`;
     return ""; }
-  function lookup(q){ q=q.trim(); if(!q) return; say(esc(q),true);
-    const Q=q.toUpperCase(), o=rows.find(x=>x.ticker===Q)||rows.find(x=>x.company&&x.company.toUpperCase().includes(Q)&&Q.length>=3);
+  // ---- Flo AI
+  const md=t=>esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").split(/\n/).map(l=>/^\s*([-*•]|\d+[.)])\s+/.test(l)?"<li>"+l.replace(/^\s*([-*•]|\d+[.)])\s+/,"")+"</li>":l).join("\n")
+    .replace(/(<li>.*?<\/li>\n?)+/gs,m=>"<ul>"+m.replace(/\n/g,"")+"</ul>").replace(/\n{2,}/g,"<br><br>").replace(/\n/g,"<br>");
+  const tickersIn=q=>{ const set=new Set(rows.map(x=>x.ticker)), out=[]; (q.toUpperCase().match(/[A-Z0-9]{2,6}/g)||[]).forEach(w=>{ if(set.has(w)&&!out.includes(w)) out.push(w); });
+    rows.forEach(x=>{ if(out.length<3&&x.company&&q.length>=4){ const nm=x.company.toLowerCase().replace(/^pt\s+|\s*\(persero\)|\s*tbk\.?$/g,"").split(/\s+/).slice(0,2).join(" "); if(nm.length>=5&&q.toLowerCase().includes(nm)&&!out.includes(x.ticker)) out.push(x.ticker); } });
+    return out.slice(0,3); };
+  const n2=v=>typeof v==="number"&&isFinite(v)?nf(v,Math.abs(v)>=100?0:2):null;
+  function stockCtx(t){ const o=rows.find(x=>x.ticker===t); if(!o) return "";
+    const f=[["harga",usd(o.price)],["hari ini %",n2(o.chg1d)],["1 bulan %",n2(o.perf1m)],["3 bulan %",n2(o.perf3m)],["1 tahun %",n2(o.perf1y)],["jarak dari MA50 %",n2(o.sma50)],["jarak dari MA200 %",n2(o.sma200)],
+      ["RSI14",n2(o.rsi14)],["P/E",n2(o.pe)],["P/B",n2(o.pb)],["ROE %",n2(o.roe)],["yield dividen %",n2(o.div)],["likuiditas",o.liq?({L:"likuid",K:"kurang likuid",T:"tidak likuid"}[o.liq]||o.liq):null],["syariah",o.syariah?"ya":null]]
+      .filter(x=>x[1]!=null).map(x=>x[0]+" "+x[1]).join("; ");
+    let s=`\n[${t}] ${o.company||""}${o.sector?" · "+o.sector:""}\n${f}`;
+    if(typeof M!=="undefined") M.forEach(m=>{ try{ const st=uv(o,m.id); const lv=typeof levels==="function"?levels(m.id,st):""; s+=`\n- ${m.name}: ${(ST[st.s]||st.s)}${st.fresh&&st.s==="buy"?" (baru)":""}${lv?" · "+String(lv).replace(/<[^>]+>/g,""):""}${st.why?" · "+String(st.why).replace(/<[^>]+>/g,""):""}`; }catch(e){} });
+    try{ const sm=summaryOf(o); s+=`\nLolos ${sm.pass} dari ${M.length} kriteria metode.`; }catch(e){}
+    return s; }
+  function buildCtx(q){
+    const L=[], d=DATA||{}; L.push(`Pasar: ${MK==="id"?"BEI":MK==="us"?"Amerika":"kripto"}. Data diperbarui ${d.updatedAt?new Date(d.updatedAt).toLocaleString("id-ID",{timeZone:"Asia/Jakarta"}):"-"} WIB; harga penutupan ${d.priceDate||"-"}.`);
+    if(CR){ const Lm=typeof lamp==="function"?lamp():{}; L.push(`Lampu BTC: ${Lm.g50?"hijau (BTC di atas rata-rata 50 hari)":"merah (BTC di bawah rata-rata 50 hari)"}. Aturan: sinyal beli baru hanya dinilai saat lampu hijau.`); }
+    else { const r=regime(), b=breadth(); L.push(`Kondisi ${IDX}: ${r.k}. ${b!=null?Math.round(b)+"% "+UNIT+" di atas rata-rata 200 hari. ":""}${(d.market||{}).text||""}`);
+      if(r.k==="tertekan") L.push("Aturan ChartFlow saat pasar tertekan: CAN SLIM, Momentum, Swing tidak dipakai di Saran dan Area beli; rencana Area beli ditunda sampai separuh saham kembali di atas rata-rata 200 hari."); }
+    if(typeof M!=="undefined") L.push("\nMETODE:"+M.map(m=>`\n${m.name}${m.title?" ("+m.title+")":""}: ${m.desc||""}${m.entry?" Syarat beli: "+m.entry.join(" "):""}${m.exit?" Syarat jual: "+m.exit.join(" "):""}`).join(""));
+    const LTm=typeof LT!=="undefined"&&LT;
+    if(LTm&&LTm.methods) L.push("\nUJI MUNDUR "+(typeof ltYrs==="function"?ltYrs():"")+" (rata-rata hasil per transaksi setelah biaya):"+Object.entries(LTm.methods).map(([m,v])=>` ${(typeof MID!=="undefined"&&MID[m]?MID[m].name:m)} ${nf(v.avg,2)}%, untung ${nf(v.win,0)}% transaksi, ${v.yp}/${v.y} tahun untung;`).join(""));
+    if(LTm&&LTm.mom){ const R=LTm.mom; L.push(`\nUJI MOMENTUM 90 HARI ${R.from}–${R.to}: ${R.cagr}% per tahun (simpan BTC ${R.btc_cagr}%), turun terdalam ${R.dd}% (BTC ${R.btc_dd}%).`); }
+    try{ const top=(typeof filtered==="function"?filtered():rows).map(o=>({t:o.ticker,b:summaryOf(o).by.buy})).filter(x=>x.b.length).sort((a,b)=>b.b.length-a.b.length).slice(0,10);
+      L.push(`\n${BUY().toUpperCase()} TERBANYAK HARI INI: `+(top.length?top.map(x=>`${x.t} (${x.b.join(", ")})`).join("; "):"tidak ada")); }catch(e){}
+    let tk=tickersIn(q); if(!tk.length&&typeof openTicker!=="undefined"&&openTicker) tk=[openTicker]; if(!tk.length) tk=lastTk; lastTk=tk;
+    tk.forEach(t=>L.push(stockCtx(t)));
+    return L.join("\n").slice(0,9000); }
+  async function askAI(q){
+    say(esc(q),true);
+    const w=document.createElement("div"); w.className="fp-m bot fp-wait"; w.innerHTML='<span class="dots"><i></i><i></i><i></i></span>'; body.append(w); body.scrollTop=body.scrollHeight;
+    let j=null; try{ const r=await fetch("/api/flo.php",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({q,ctx:buildCtx(q),market:MK,hist})}); j=await r.json(); }catch(e){}
+    w.remove();
+    if(j&&j.ok){ hist.push({q,a:j.text}); hist=hist.slice(-4);
+      say(md(j.text)+`<span class="fp-ai">AI · ${j.left!=null?`sisa ${j.left} pertanyaan hari ini`:"bisa keliru"}</span>`); return; }
+    const m=j&&j.msg;
+    if(m==="limit"){ say("Jatah pertanyaan AI hari ini sudah habis. Tombol pertanyaan di bawah dan pencarian kode tetap bisa dipakai, dan jatahnya kembali besok."); return; }
+    if(m==="login"){ say("Sesi Anda sudah berakhir. Silakan masuk lagi dengan kode akses."); return; }
+    say(m==="off"?"Flo AI belum diaktifkan. Sementara itu saya jawab dari aturan ChartFlow.":`AI sedang tidak bisa dihubungi${m==="busy"?" (kuota harian sedang penuh)":""}. Sementara itu saya jawab dari aturan ChartFlow.`);
+    const t=tickersIn(q)[0]; if(t) lookup(t,true); else say(answer(/uji|terbukti|hasil/i.test(q)?"uji":/arti|label|status/i.test(q)?"arti":/pasar|ihsg|kondisi|btc/i.test(q)?"pasar":"top")); }
+  function lookup(q,quiet){ q=q.trim(); if(!q) return;
+    const Q=q.toUpperCase(), exact=rows.find(x=>x.ticker===Q);
+    if(AI&&!quiet&&!exact) return askAI(q);
+    if(!quiet) say(esc(q),true);
+    const o=exact||rows.find(x=>x.company&&x.company.toUpperCase().includes(Q)&&Q.length>=3);
+    if(o) lastTk=[o.ticker];
     if(!o){ say(`Saya belum bisa menjawab pertanyaan bebas. Ketik kode ${UNIT} yang ada di daftar (misalnya ${EX}), atau pilih salah satu pertanyaan di bawah.`); return; }
     let s={by:{buy:[],hold:[],sell:[]},pass:0}; try{ s=summaryOf(o); }catch(e){}
     say(`<b>${esc(o.ticker)}</b> ${o.company?`· ${esc(o.company)}`:""}<br>Harga ${usd(o.price)}${typeof o.chg1d==="number"?` <span class="${o.chg1d>=0?"ok":"no"}">(${pct(o.chg1d,1)} hari ini)</span>`:""}.<br>

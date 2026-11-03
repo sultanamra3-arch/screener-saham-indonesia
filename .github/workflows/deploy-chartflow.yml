@@ -24,6 +24,8 @@ jobs:
       FTP_DIR: ${{ secrets.FTP_DIR }}
       TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+      GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GROQ_KEY: ${{ secrets.GROQ_API_KEY }}
       SITE: https://chartflow.my.id
     steps:
       - uses: actions/checkout@v5
@@ -52,6 +54,8 @@ jobs:
         run: |
           HOOK=$(printf '%s' "$TG_TOKEN:chartflow-hook" | sha256sum | cut -c1-48)
           SALT=$(printf '%s' "$TG_TOKEN:chartflow-salt" | sha256sum | cut -c1-48)
+          # kunci AI untuk Flo (boleh kosong: Flo tetap menjawab dari aturan)
+          GEM=$(printf '%s' "$GEMINI_KEY" | tr -cd 'A-Za-z0-9_-'); GRQ=$(printf '%s' "$GROQ_KEY" | tr -cd 'A-Za-z0-9_-')
           echo "HOOK=$HOOK" >> "$GITHUB_ENV"
           cat > chartflow/public/_data/config.php <<PHP
           <?php
@@ -59,6 +63,8 @@ jobs:
           const CF_CHAT_ID = '$TG_CHAT';
           const CF_HOOK_SECRET = '$HOOK';
           const CF_SALT = '$SALT';
+          const CF_GEMINI_KEY = '$GEM';
+          const CF_GROQ_KEY = '$GRQ';
           PHP
           sed -i 's/^          //' chartflow/public/_data/config.php
 
@@ -70,6 +76,8 @@ jobs:
             open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\"; \
             mirror -R --parallel=4 --exclude-glob db.json chartflow/public ${FTP_DIR:-.}"
           echo "### Beranda dan login terpasang di $SITE" >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$GEMINI_KEY" ] && echo "- 🫧 Flo AI: Gemini aktif" >> "$GITHUB_STEP_SUMMARY" || echo "- Flo AI: secret GEMINI_API_KEY belum diisi" >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$GROQ_KEY" ] && echo "- 🫧 Flo AI: cadangan Groq aktif" >> "$GITHUB_STEP_SUMMARY" || echo "- Flo AI: secret GROQ_API_KEY belum diisi (opsional)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Sambungkan bot Telegram ke website (webhook)
         if: steps.chk.outputs.ready == 'true'

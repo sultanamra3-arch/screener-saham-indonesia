@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-11-03",
+  "t": "🫧 Flo bisa menjawab pertanyaan bebas",
+  "x": "Di chartflow.my.id, Flo kini memakai AI gratis untuk menjawab pertanyaan bebas, hanya dari data ChartFlow hari itu, dengan batas 25 pertanyaan per hari per akun."
+ },
+ {
+  "d": "2026-11-03",
   "t": "🫧 Tampilan baru dan Flo",
   "x": "Screener saham dan kripto kini bertampilan lebih kalem dengan ringkasan empat kartu di Beranda, animasi saat berpindah menu, dan Flo, asisten yang menjelaskan kondisi pasar, status metode, dan hasil uji dari aturan ChartFlow."
  },
