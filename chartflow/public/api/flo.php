@@ -2,6 +2,15 @@
 // Flo AI: menjawab pertanyaan dari data ChartFlow memakai AI gratis (Gemini, cadangan Groq).
 // Kunci API dibuat otomatis saat deploy dari GitHub Secrets ke _data/config.php (tidak ada di repo).
 require __DIR__ . '/lib.php';
+if (!function_exists('mb_substr')) { function mb_substr($s, $a, $l = null) { return $l === null ? substr($s, $a) : substr($s, $a, $l); } }
+$WHY = []; // alasan singkat bila AI gagal (tanpa kunci), untuk diperbaiki
+register_shutdown_function(function () {
+    $e = error_get_last();
+    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true) && !headers_sent()) {
+        http_response_code(200); header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => false, 'msg' => 'gagal', 'why' => 'php: ' . substr(preg_replace('/\/[^ ]*\//', '', $e['message']), 0, 140)]);
+    }
+});
 const FLO_PER_DAY = 25;     // pertanyaan per akun per hari
 const FLO_ALL_DAY = 900;    // batas semua akun per hari (menjaga kuota gratis)
 
@@ -48,11 +57,19 @@ $sys = "Anda adalah Flo, asisten di aplikasi screener ChartFlow untuk $pasar. Ja
 $user = "DATA ChartFlow hari ini:\n" . $ctx . "\n\nPERTANYAAN: " . $q;
 
 function post_json(string $url, array $hdr, array $body): array {
+    global $WHY;
+    if (!function_exists('curl_init')) { $WHY[] = 'server: curl tidak tersedia'; return [0, null]; }
     $ch = curl_init($url);
     curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 25, CURLOPT_CONNECTTIMEOUT => 8,
         CURLOPT_HTTPHEADER => array_merge(['Content-Type: application/json'], $hdr), CURLOPT_POSTFIELDS => json_encode($body, JSON_UNESCAPED_UNICODE)]);
-    $r = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
-    return [$code, $r ? json_decode($r, true) : null];
+    $r = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = curl_error($ch); curl_close($ch);
+    $j = $r ? json_decode((string)$r, true) : null;
+    if ($code !== 200) {
+        $m = is_array($j) ? ($j['error']['message'] ?? $j['error']['status'] ?? '') : '';
+        if (is_array($m)) $m = json_encode($m);
+        $WHY[] = parse_url($url, PHP_URL_HOST) . ' ' . ($code ?: 'koneksi') . ': ' . substr(preg_replace('/key=[^&\s]+|AIza[0-9A-Za-z_-]+|gsk_[0-9A-Za-z]+/', '***', (string)($m ?: $err)), 0, 120);
+    }
+    return [$code, $j];
 }
 function gemini(string $key, string $sys, array $hist, string $user): string {
     $contents = [];
@@ -91,6 +108,6 @@ if ($text === '') {
     [$fh, $db] = db_open();
     if (($db['flo']['day'] ?? '') === $day) { $db['flo']['u'][$k] = max(0, (int)($db['flo']['u'][$k] ?? 1) - 1); $db['flo']['all'] = max(0, (int)$db['flo']['all'] - 1); }
     db_save($fh, $db);
-    json_out(['ok' => false, 'msg' => 'gagal']);
+    json_out(['ok' => false, 'msg' => 'gagal', 'why' => implode(' | ', array_slice($WHY, 0, 4))]);
 }
 json_out(['ok' => true, 'text' => mb_substr($text, 0, 3000), 'src' => $src, 'left' => $left]);

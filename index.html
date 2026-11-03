@@ -2660,7 +2660,7 @@ window.addEventListener("online",()=>autoCheck(true));
     const m=j&&j.msg;
     if(m==="limit"){ say("Jatah pertanyaan AI hari ini sudah habis. Tombol pertanyaan di bawah dan pencarian kode tetap bisa dipakai, dan jatahnya kembali besok."); return; }
     if(m==="login"){ say("Sesi Anda sudah berakhir. Silakan masuk lagi dengan kode akses."); return; }
-    say(m==="off"?"Flo AI belum diaktifkan. Sementara itu saya jawab dari aturan ChartFlow.":`AI sedang tidak bisa dihubungi${m==="busy"?" (kuota harian sedang penuh)":""}. Sementara itu saya jawab dari aturan ChartFlow.`);
+    say(m==="off"?"Flo AI belum diaktifkan. Sementara itu saya jawab dari aturan ChartFlow.":`AI sedang tidak bisa dihubungi${m==="busy"?" (kuota harian sedang penuh)":""}. Sementara itu saya jawab dari aturan ChartFlow.`+(j&&j.why?`<span class="fp-ai">Keterangan teknis: ${esc(j.why)}</span>`:j?"":`<span class="fp-ai">Keterangan teknis: server tidak membalas</span>`));
     const t=tickersIn(q)[0]; if(t) lookup(t,true); else say(answer(/uji|terbukti|hasil/i.test(q)?"uji":/arti|label|status/i.test(q)?"arti":/pasar|ihsg|kondisi|btc/i.test(q)?"pasar":"top")); }
   function lookup(q,quiet){ q=q.trim(); if(!q) return;
     const Q=q.toUpperCase(), exact=rows.find(x=>x.ticker===Q);
