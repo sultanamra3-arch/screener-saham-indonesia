@@ -16,8 +16,160 @@
 <script>try{const q=new URLSearchParams(location.search);if(q.has("app")&&localStorage.getItem("lastMarket")==="id"&&!/indonesia/.test(location.pathname)){location.replace("/screener-saham-indonesia/"+location.hash);}localStorage.setItem("lastMarket","id");}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600;700&display=swap">
 <script>try{const t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+<script>
+/* ---------- Pengaturan tampilan (⚙️): UI, mode warna, bahasa, ukuran huruf, warna naik/turun, animasi, panel grafik ---------- */
+(function(){
+  var K="cf.set", D={ui:"baru",mode:"auto",lang:"id",fs:"m",cvd:"0",anim:"1",dash:"1"}, R=document.documentElement, S={};
+  try{ var raw=JSON.parse(localStorage.getItem(K)||"{}")||{}; for(var k in D) S[k]=raw[k]!=null?String(raw[k]):D[k];
+    if(raw.mode==null){ var t=localStorage.getItem("theme"); if(t==="light"||t==="dark") S.mode=t; } }catch(e){ for(var k2 in D) S[k2]=D[k2]; }
+  function apply(){
+    R.setAttribute("data-ui",S.ui);
+    if(S.ui==="neon") R.setAttribute("data-theme","dark"); else if(S.mode==="auto") R.removeAttribute("data-theme"); else R.setAttribute("data-theme",S.mode);
+    R.setAttribute("data-fs",S.fs); R.setAttribute("data-cvd",S.cvd); R.setAttribute("data-anim",S.anim); R.setAttribute("data-dash",S.dash);
+    R.setAttribute("lang",S.lang==="en"?"en":"id");
+    var mc=document.querySelector('meta[name="theme-color"]'); if(mc) mc.setAttribute("content",S.ui==="neon"?"#05030f":S.ui==="lama"?"#4f6f5c":"#2962ff");
+  }
+  function save(){ try{ localStorage.setItem(K,JSON.stringify(S)); if(S.mode==="auto") localStorage.removeItem("theme"); else localStorage.setItem("theme",S.mode); }catch(e){} }
+  apply();
+
+  /* ---- bahasa Inggris (tahap 1: menu, tombol, judul, kartu, grafik, tabel) ---- */
+  var EN={
+"Screener Saham":"Stock Screener","Screener Kripto":"Crypto Screener","Beranda":"Home","Saham":"Stocks","Watchlist":"Watchlist","Portofolio":"Portfolio","Alat":"Tools","Kripto":"Crypto",
+"📲 Pasang":"📲 Install","aplikasi":"app","Ringkasan":"Summary","Watchlist pribadi":"Personal watchlist","Siklus":"Cycles","Kalkulator":"Calculator","Kalender dividen":"Dividend calendar",
+"Ramai hari ini":"Busy today","📏 Hasil uji":"📏 Test results","Filter sendiri":"Custom filter","Gabungan":"Combined","Area support":"Support area","Posisi Anda":"Your positions",
+"Waktu · Fibonacci":"Time · Fibonacci","Return & risiko":"Return & risk","Ex-dividen":"Ex-dividend","Apa yang terbukti":"What is proven","Aturan Anda":"Your rules",
+"Selamat pagi":"Good morning","Selamat siang":"Good afternoon","Selamat sore":"Good afternoon","Selamat malam":"Good evening",
+"Ringkasan Bursa Efek Indonesia hari ini":"Indonesia Stock Exchange summary today","Ringkasan S&P 500 dan Nasdaq-100 hari ini":"S&P 500 and Nasdaq-100 summary today",
+"Ringkasan 50 koin terbesar di Indodax":"Summary of the 50 largest coins on Indodax","Sinyal tiap metode, lengkap dengan aturannya":"Signals for each method, with their rules",
+"Saham yang ditandai dan area belinya":"Starred stocks and their buy areas","Koin yang ditandai dan area belinya":"Starred coins and their buy areas",
+"Catat pembelian, pantau stop dan target":"Record purchases, track stops and targets","Kalkulator, siklus, volume, dan hasil uji":"Calculator, cycles, volume, and test results",
+"Cari kode atau nama saham":"Search stock code or name","Cari kode atau nama koin":"Search coin code or name","Kondisi IHSG":"IHSG condition","Kondisi S&P 500":"S&P 500 condition",
+"Tertekan":"Under pressure","tertekan":"under pressure","Naik":"Rising","Campuran":"Mixed","campuran":"mixed","Belum jelas":"Not clear yet",
+"IHSG di bawah rata-ratanya":"IHSG below its average","IHSG dalam tren naik":"IHSG in an uptrend","S&P 500 di bawah rata-ratanya":"S&P 500 below its average","S&P 500 dalam tren naik":"S&P 500 in an uptrend",
+"Saham dalam tren naik":"Stocks in an uptrend","Koin dalam tren naik":"Coins in an uptrend","di atas rata-rata 200 hari":"above the 200-day average","Memenuhi syarat hari ini":"Qualifying today",
+"Layak beli hari ini":"Buy-eligible today","Data diperbarui":"Data updated","Diperbarui":"Updated","harga sementara":"intraday price","Harga sementara":"Intraday price","diperbarui tiap jam":"updated hourly",
+"Harga terakhir":"Last price","Likuid":"Liquid","+ Kurang likuid":"+ Less liquid","Semua saham":"All stocks","Hanya syariah":"Sharia only","Semua sektor":"All sectors","Semua kategori":"All categories",
+"Memenuhi syarat":"Qualifies","memenuhi syarat":"qualify","Layak beli":"Buy-eligible","layak beli":"buy-eligible","Di Portofolio":"In portfolio","Sinyal jual":"Sell signal","Tanpa sinyal":"No signal",
+"Gabungan 7 metode":"Combined 7 methods","Kesehatan pasar":"Market health","Memenuhi syarat per metode":"Qualifying per method","Layak beli per metode":"Buy-eligible per method",
+"Satu saham bisa lolos lebih dari satu metode":"One stock can pass more than one method","Sektor, 1 bulan":"Sectors, 1 month","Median perubahan harga per sektor":"Median price change per sector",
+"Jarak harga dari rata-rata 200 hari":"Distance from the 200-day average","Jumlah saham per rentang 10%":"Number of stocks per 10% range","Memuat grafik…":"Loading chart…",
+"Harga penutupan harian":"Daily closing price","di bawah 40%: pasar lesu":"below 40%: weak market",
+"Konsumen primer":"Consumer staples","Utilitas":"Utilities","Keuangan":"Financials","Kesehatan":"Health care","Bahan baku":"Materials","Properti":"Real estate","Konsumen siklikal":"Consumer cyclical",
+"Teknologi":"Technology","Energi":"Energy","Industri":"Industrials","Komunikasi":"Communication","Infrastruktur":"Infrastructure","Pembayaran":"Payments",
+"Jan":"Jan","Feb":"Feb","Mar":"Mar","Apr":"Apr","Mei":"May","Jun":"Jun","Jul":"Jul","Agu":"Aug","Sep":"Sep","Okt":"Oct","Nov":"Nov","Des":"Dec",
+"💡 Keterangan":"💡 Notes","💡 Saran":"💡 Suggestion","informasi edukasi, bukan ajakan membeli atau menjual":"educational information, not a recommendation to buy or sell",
+"hitungan otomatis, bukan nasihat keuangan pribadi":"automatic calculation, not personal financial advice",
+"Sinyal 7 metode per saham":"7-method signals per stock","Tampilkan":"Show","Lolos kriteria ≥ 3 metode":"Passes criteria of ≥ 3 methods","Terlambat":"Too late","Hindari":"Avoid","Tunggu":"Wait",
+"bingkai hijau = lolos semua kriteria":"green frame = passes all criteria","Harga":"Price","Status per metode":"Status per method","Sinyal aktif":"Active signals","Lolos":"Passed","Transaksi/hari":"Value/day",
+"Memenuhi syarat:":"Qualifies:","Layak beli:":"Buy-eligible:","Hindari/jual:":"Avoid/sell:","syariah":"sharia","di luar area beli":"outside buy area","Ketuk saham untuk penjelasan lengkapnya.":"Tap a stock for the full explanation.",
+"Enter = buka saham teratas · Esc = tutup":"Enter = open top result · Esc = close","Tanya Flo":"Ask Flo","Asisten ChartFlow":"ChartFlow assistant","Kondisi pasar hari ini":"Market condition today",
+"Saham yang lolos paling banyak":"Stocks passing the most","Metode mana yang terbukti?":"Which methods are proven?","Arti label status":"What status labels mean",
+"Metode investor":"Investor methods","Metode trader":"Trader methods","Kapan beli":"When to buy","Kapan jual":"When to sell","Kenapa aturan ini":"Why this rule","Uji mundur jangka panjang":"Long-term backtest",
+"baru":"new","Baru hari ini":"New today","Hindari / jual":"Avoid / sell","Lolos semua kriteria":"Passes all criteria","Status":"Status","Alasan":"Reason","Kriteria":"Criteria","Yield":"Yield",
+"belum memenuhi kriteria":"criteria not met yet","Laba/thn":"Earnings/yr","Pendapatan/thn":"Revenue/yr","Margin kotor":"Gross margin","Per tahun":"Per year","Naik/thn":"Growth/yr","Tanpa putus":"Unbroken",
+"Transaksi":"Trades","Untung":"Profit","Rata-rata hasil":"Average result","Tahun yang untung":"Profitable years","Laba kuartal":"Quarterly earnings","Lama dipegang":"Holding time","Peringkat":"Rank",
+"Contoh:":"Examples:","➕ Tambah aturan":"➕ Add rule","💾 Simpan sebagai favorit":"💾 Save as favorite","Memenuhi syarat menurut":"Qualifies by",
+"Stop":"Stop","Area beli":"Buy area","Target":"Target","Sinyal":"Signal","⏸️ Ditunda: pasar lesu":"⏸️ Postponed: weak market","sektor lemah":"weak sector","📈 Rekam jejak Area beli":"📈 Buy-area track record",
+"Selesai":"Finished","Kena target":"Hit target","Kena stop":"Hit stop","Rata-rata per transaksi":"Average per trade","✅ Di area beli":"✅ In buy area","⏳ Menunggu area beli":"⏳ Waiting for buy area",
+"Beli":"Buy","Keluar / batas":"Exit / limit","Hasil":"Result","Untung/rugi":"Profit/loss","berjalan":"open","Cara membaca area beli":"How to read buy areas","Beli di":"Buy at",
+"★ Saham yang Anda tandai":"★ Your starred stocks","Klik ☆ di tabel mana pun untuk menandai.":"Click ☆ in any table to star a stock.","Support terdekat":"Nearest support","Jarak":"Distance",
+"Belum ada saham yang Anda tandai.":"You have not starred any stocks yet.","⚠️ Support jebol hari ini":"⚠️ Support broken today",
+"Modal terpakai":"Capital used","Nilai sekarang":"Current value","Untung/rugi berjalan":"Unrealized P/L","Untung/rugi terealisasi":"Realized P/L","Catat pembelian":"Record a purchase","Kode saham":"Stock code",
+"Harga beli":"Buy price","Jumlah (lot)":"Quantity (lots)","Tanggal beli":"Buy date","Dibeli dengan metode":"Bought with method","Campuran / aturan sendiri":"Mixed / own rules",
+"Stop loss (opsional)":"Stop loss (optional)","Target (opsional)":"Target (optional)","Dividen diterima per lembar":"Dividends received per share","📝 Alasan beli (jurnal, opsional)":"📝 Reason to buy (journal, optional)",
+"➕ Tambah ke portofolio":"➕ Add to portfolio","Belum ada posisi.":"No positions yet.","Cadangan data":"Data backup","⬇ Unduh cadangan":"⬇ Download backup","⬆ Pulihkan dari file":"⬆ Restore from file",
+"Analisis":"Analysis","Lot, untung, rugi":"Lots, profit, loss","volume melonjak":"volume spike","Terbukti / tidak":"Proven / not","Hasil posisi":"Position results","Simulasi jangka panjang":"Long-term simulation",
+"Stop loss":"Stop loss","Total modal Anda (Rp)":"Your total capital (Rp)","Risiko per transaksi (% modal)":"Risk per trade (% of capital)","Maksimal per saham (% modal)":"Max per stock (% of capital)",
+"Biaya, pajak":"Fees, taxes","Biaya beli (%)":"Buy fee (%)","Biaya jual (%)":"Sell fee (%)","Pajak dividen (%)":"Dividend tax (%)","Isi harga beli dan jumlah lot.":"Enter the buy price and number of lots.",
+"Siklus & Fibonacci":"Cycles & Fibonacci","📖 Cara membaca tab ini":"📖 How to read this tab","(klik untuk membuka)":"(click to open)","Garis tren":"Trend line","〰️ Jalur":"〰️ Path",
+"📏 Garis info":"📏 Info line","✏️ Tarik garis":"✏️ Draw line","Memuat…":"Loading…","📊 Bacaan indikator":"📊 Indicator reading","Zona support":"Support zone","Zona resistance":"Resistance zone",
+"Tanggal rawan":"Risky dates","Kesimpulan":"Conclusion","Hari ini":"Today","Volume vs biasa":"Volume vs usual","Nilai transaksi":"Trade value","📈 Grafik":"📈 Chart","🔥 Volume melonjak":"🔥 Volume spike",
+"🎯 Dekat tembus resistance":"🎯 Near resistance breakout","Jarak ke resistance":"Distance to resistance","🚀 Naik terbesar":"🚀 Top gainers","🔻 Turun terbesar":"🔻 Top losers",
+"Kalender ex-dividen":"Ex-dividend calendar","Beli paling lambat":"Buy no later than","Dividen/lembar":"Dividend/share","Metode Dividen":"Dividend method","🧮 Hitung":"🧮 Calculate","perkiraan":"estimate","pasti":"confirmed",
+"📏 Hasil uji: apa yang terbukti":"📏 Test results: what is proven","✅ terbukti":"✅ proven","⚠️ hindari":"⚠️ avoid","😐 tidak terbukti":"😐 not proven","tidak terbukti":"not proven","👉 Ringkasnya":"👉 In short",
+"Pasar:":"Market:","Semua":"All","Lampu BTC":"BTC light","Lampu BTC:":"BTC light:","Merah":"Red","Hijau":"Green","🔴 merah":"🔴 red","🟢 hijau":"🟢 green",
+"BTC di bawah rata-rata 50 hari":"BTC below its 50-day average","BTC di atas rata-rata 50 hari":"BTC above its 50-day average","50 koin terbesar di Indodax":"50 largest coins on Indodax",
+"20 terbesar":"Top 20","Tanpa meme":"No memes","Urutkan":"Sort","Kapitalisasi":"Market cap","Naik hari ini":"Up today","Kenaikan 90 hari":"90-day gain","Koin":"Coin","7 hari":"7 days","30 hari":"30 days","90 hari":"90 days",
+"Tidak dinilai":"Not rated","Trading altcoin":"Altcoin trading","Jangan beli altcoin baru.":"Do not buy new altcoins.","Simpan BTC jangka panjang":"Hold BTC long term",
+"Syarat Penggunaan":"Terms of Use","Kebijakan Privasi":"Privacy Policy","Tutup":"Close","Kirim":"Send","Hapus":"Delete","Simpan":"Save","Batal":"Cancel","Ya":"Yes","Tidak":"No"
+  };
+  var PAT=[
+    [/^dari (\d+) (saham|koin) di daftar$/,function(m,a,b){return "of "+a+(b==="koin"?" coins":" stocks")+" in the list";}],
+    [/^Status (\d+) saham hari ini$/,"Status of $1 stocks today"],
+    [/^(.+), 3 bulan$/,"$1, 3 months"],
+    [/^Di bawah rata-rata 200 hari \((.+)\)$/,"Below the 200-day average ($1)"],[/^Di atas rata-rata 200 hari \((.+)\)$/,"Above the 200-day average ($1)"],
+    [/^% dari (\d*) ?saham likuid di atas rata-rata 200 hari, 6 bulan$/,"% of $1 liquid stocks above the 200-day average, 6 months"],
+    [/^di atas rata-rata \((\d+)\)$/,"above average ($1)"],[/^di bawah rata-rata \((\d+)\)$/,"below average ($1)"],
+    [/^(Memenuhi syarat|Layak beli|Di Portofolio|Sinyal jual) \((\d+)\)$/,function(m,a,b){return (EN[a]||a)+" ("+b+")";}],
+    [/^(\d+) saham · (\d+) likuid$/,"$1 stocks · $2 liquid"],[/^(\d+) koin$/,"$1 coins"],
+    [/^harga penutupan (.+)$/,"closing price $1"],[/^· harga penutupan (.+)$/,"· closing price $1"],
+    [/^(Senin|Selasa|Rabu|Kamis|Jumat|Sabtu|Minggu)\b(.*)$/,function(m,d,r){return ({Senin:"Monday",Selasa:"Tuesday",Rabu:"Wednesday",Kamis:"Thursday",Jumat:"Friday",Sabtu:"Saturday",Minggu:"Sunday"})[d]+r.replace(" pukul "," at ");}],
+    [/^(Value|Growth|Quality|Dividen|CAN SLIM|Momentum|Swing): (Memenuhi syarat|Layak beli|Tunggu|Terlambat|Hindari)$/,function(m,a,b){return (a==="Dividen"?"Dividend":a)+": "+(EN[b]||b);}],
+    [/^(.+) \((\d+) saham\)$/,"$1 ($2 stocks)"]
+  ];
+  var ORIG=new WeakMap(), MINE=new WeakMap(), AO=new WeakMap(), ATTRS=["placeholder","aria-label","title"];
+  function tr(s){ var t=s.trim(); if(!t) return null; var r=Object.prototype.hasOwnProperty.call(EN,t)?EN[t]:null;
+    if(r==null) for(var i=0;i<PAT.length;i++){ if(PAT[i][0].test(t)){ r=t.replace(PAT[i][0],PAT[i][1]); break; } }
+    return r==null||r===t?null:s.replace(t,r); }
+  function txt(n){ var p=n.parentNode; if(!p||/^(SCRIPT|STYLE|TEXTAREA|CODE)$/.test(p.nodeName)) return;
+    if(MINE.get(n)===n.nodeValue) return; var v=tr(n.nodeValue); if(v!=null){ ORIG.set(n,n.nodeValue); MINE.set(n,v); n.nodeValue=v; } }
+  function el(e){ if(e.nodeType!==1) return; var o=AO.get(e)||{};
+    ATTRS.forEach(function(a){ var v=e.getAttribute(a); if(v==null||o[a+"$"]===v) return; var t=tr(v); if(t!=null){ o[a]=v; o[a+"$"]=t; e.setAttribute(a,t); } }); AO.set(e,o); }
+  function walk(root){ if(!root) return; if(root.nodeType===3){ txt(root); return; } if(root.nodeType!==1&&root.nodeType!==9&&root.nodeType!==11) return;
+    if(root.nodeType===1){ if(/^(SCRIPT|STYLE)$/.test(root.nodeName)) return; el(root); }
+    var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT|NodeFilter.SHOW_ELEMENT), n; while((n=w.nextNode())){ if(n.nodeType===3) txt(n); else el(n); } }
+  function restore(){ var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT|NodeFilter.SHOW_ELEMENT), n;
+    while((n=w.nextNode())){ if(n.nodeType===3){ if(ORIG.has(n)&&MINE.get(n)===n.nodeValue){ n.nodeValue=ORIG.get(n); MINE.delete(n); } }
+      else { var o=AO.get(n); if(o) ATTRS.forEach(function(a){ if(o[a]!=null&&n.getAttribute(a)===o[a+"$"]) n.setAttribute(a,o[a]); }); AO.delete(n); } } }
+  var MO=null;
+  function i18n(){ if(!document.body) return;
+    if(S.lang==="en"){ walk(document.body);
+      if(!MO){ MO=new MutationObserver(function(ms){ for(var i=0;i<ms.length;i++){ var m=ms[i];
+          if(m.type==="childList") for(var j=0;j<m.addedNodes.length;j++) walk(m.addedNodes[j]);
+          else if(m.type==="characterData") txt(m.target); else if(m.type==="attributes") el(m.target); } });
+        MO.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:ATTRS}); } }
+    else { if(MO){ MO.disconnect(); MO=null; } restore(); } }
+
+  /* ---- dialog Pengaturan ---- */
+  var L={id:{title:"Pengaturan tampilan",ui:"Tampilan",baru:"Baru",lama:"Sebelumnya",neon:"Neon",mode:"Mode warna",auto:"Ikut HP",light:"Terang",dark:"Gelap",neonDark:"Neon selalu gelap",
+      lang:"Bahasa",fs:"Ukuran huruf",s:"Kecil",m:"Normal",l:"Besar",cvd:"Warna naik / turun",cvd0:"Hijau – merah",cvd1:"Biru – oranye",cvdNote:"Biru–oranye lebih mudah dibedakan bagi pengguna buta warna.",
+      anim:"Animasi",on:"Nyala",off:"Mati",dash:"Panel grafik Beranda",show:"Tampil",hide:"Sembunyi",note:"Tersimpan di perangkat ini.",enNote:"",close:"Tutup",reset:"Kembalikan ke bawaan"},
+    en:{title:"Display settings",ui:"Look",baru:"New",lama:"Previous",neon:"Neon",mode:"Color mode",auto:"Follow device",light:"Light",dark:"Dark",neonDark:"Neon is always dark",
+      lang:"Language",fs:"Text size",s:"Small",m:"Normal",l:"Large",cvd:"Up / down colors",cvd0:"Green – red",cvd1:"Blue – orange",cvdNote:"Blue–orange is easier to tell apart for colorblind users.",
+      anim:"Animations",on:"On",off:"Off",dash:"Home chart panel",show:"Show",hide:"Hide",note:"Saved on this device.",enNote:"English is partly available: longer explanations are still in Indonesian.",close:"Close",reset:"Reset to default"}};
+  var dlg=null;
+  function seg(key,opts,dis){ var T=L[S.lang]||L.id;
+    return '<div class="seg'+(key==="ui"?" uis":"")+'" role="group">'+opts.map(function(o){ var v=o[0], lab=o[1]||T[v]||v;
+      return '<button type="button" data-k="'+key+'" data-v="'+v+'" aria-pressed="'+(S[key]===v)+'"'+(dis?" disabled":"")+'>'+(key==="ui"?'<span class="sw sw-'+v+'"><i></i><i></i><i></i></span>':"")+lab+'</button>'; }).join("")+'</div>'; }
+  function body(){ var T=L[S.lang]||L.id, neon=S.ui==="neon";
+    return '<div class="sb"><div class="sh"><h2>⚙️ '+T.title+'</h2><button type="button" class="x" data-close aria-label="'+T.close+'">✕</button></div>'+
+      '<div class="row"><span>'+T.ui+'</span>'+seg("ui",[["baru"],["lama"],["neon"]])+'</div>'+
+      '<div class="row"><span>'+T.mode+'</span>'+seg("mode",[["auto"],["light"],["dark"]],neon)+(neon?'<small>'+T.neonDark+'</small>':'')+'</div>'+
+      '<div class="row"><span>'+T.lang+'</span>'+seg("lang",[["id","Indonesia"],["en","English"]])+(S.lang==="en"?'<small>'+T.enNote+'</small>':'')+'</div>'+
+      '<div class="row"><span>'+T.fs+'</span>'+seg("fs",[["s"],["m"],["l"]])+'</div>'+
+      '<div class="row"><span>'+T.cvd+'</span>'+seg("cvd",[["0",T.cvd0],["1",T.cvd1]])+'<small>'+T.cvdNote+'</small></div>'+
+      '<div class="row"><span>'+T.anim+'</span>'+seg("anim",[["1",T.on],["0",T.off]])+'</div>'+
+      '<div class="row"><span>'+T.dash+'</span>'+seg("dash",[["1",T.show],["0",T.hide]])+'</div>'+
+      '<div class="ft"><small>'+T.note+'</small><button type="button" class="rs" data-reset>'+T.reset+'</button></div></div>'; }
+  function paint(){ if(dlg){ var f=document.activeElement&&document.activeElement.dataset?document.activeElement.dataset.k+"|"+document.activeElement.dataset.v:null;
+    dlg.innerHTML=body(); if(f){ var b=dlg.querySelector('[data-k="'+f.split("|")[0]+'"][data-v="'+f.split("|")[1]+'"]'); if(b) b.focus(); } } }
+  function rerender(){ try{ if(typeof renderResults==="function") renderResults(); }catch(e){} try{ window.dispatchEvent(new Event("resize")); }catch(e){} }
+  function set(k,v){ if(S[k]===v) return; S[k]=v; apply(); save(); paint(); if(k==="lang") i18n(); if(k!=="lang"&&k!=="fs") rerender(); }
+  function open(){
+    if(!dlg){ dlg=document.createElement("dialog"); dlg.id="cfSet"; document.body.appendChild(dlg);
+      dlg.addEventListener("click",function(e){ var b=e.target.closest?e.target.closest("button"):null;
+        if(e.target===dlg||(b&&b.hasAttribute("data-close"))){ dlg.close(); return; }
+        if(b&&b.hasAttribute("data-reset")){ for(var k in D){ S[k]=D[k]; } apply(); save(); paint(); i18n(); rerender(); return; }
+        if(b&&b.dataset.k) set(b.dataset.k,b.dataset.v); }); }
+    paint(); if(dlg.showModal) dlg.showModal(); else dlg.setAttribute("open","");
+  }
+  window.CFSET={get:function(k){ return S[k]; },set:set,open:open};
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",i18n); else i18n();
+  try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change",function(){ if(S.mode==="auto") rerender(); }); }catch(e){}
+})();
+</script>
 <style>
 /* Layout: trading-desk worksheet. Status bar, tab strip with live pass counts, criteria rail + results table. */
 /* v2: aplikasi sekuritas modern */
@@ -486,23 +638,23 @@ body{transition:padding-right .55s cubic-bezier(.2,.8,.2,1)}
 @media (prefers-reduced-motion:reduce){.flo,.flopanel,.sn-ind,.sn-tip,.kpi>div,.mcard,body{transition:none!important}.flo .orb,.fp-big,.flo .eyes i,.fp-big .eyes i,.kpi.wait>div,.fp-m{animation:none!important}}
 
 /* ---------- v4: tampilan grafik (gaya terminal) + panel grafik Beranda ---------- */
-:root{--bg:#f3f5f8;--surface:#ffffff;--sunk:#eef1f5;--line:#e1e5eb;--fg:#131722;--muted:#5d6675;
+:root:not([data-ui=lama]):not([data-ui=neon]){--bg:#f3f5f8;--surface:#ffffff;--sunk:#eef1f5;--line:#e1e5eb;--fg:#131722;--muted:#5d6675;
   --accent:#2962ff;--accent-ink:#ffffff;--accent-soft:#e5ecff;--ink:#131722;--ink-fg:#ffffff;--sage:#2962ff;
   --good:#0e8a5f;--good-soft:#e2f4ec;--warn:#9a6510;--warn-soft:#f6eedd;--bad:#d93f3c;--bad-soft:#fbe6e5;
   --f-display:"Manrope","Segoe UI",system-ui,sans-serif;--f-body:"Manrope","Segoe UI",system-ui,sans-serif;--f-mono:"JetBrains Mono",ui-monospace,monospace;
   --r:14px;--shadow:0 1px 2px rgba(16,24,40,.05),0 2px 8px rgba(16,24,40,.05);--lift:0 2px 4px rgba(16,24,40,.06),0 14px 30px rgba(16,24,40,.10);
   --d1:#2a78d6;--d-buy:#1baf7a;--d-sell:#e34948;--d-ref:#b07a00;--d-mid:#c9ced8;--d-grid:#e7eaf0;--d-txt:#5d6675}
-@media (prefers-color-scheme: dark){:root:not([data-theme=light]){--bg:#0f141c;--surface:#131924;--sunk:#161c26;--line:#1f2733;--fg:#d9dee7;--muted:#9aa4b4;
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]):not([data-ui=lama]):not([data-ui=neon]){--bg:#0f141c;--surface:#131924;--sunk:#161c26;--line:#1f2733;--fg:#d9dee7;--muted:#9aa4b4;
   --accent:#4c8dff;--accent-ink:#0f141c;--accent-soft:#1a2640;--ink:#e6eaf0;--ink-fg:#0f141c;--sage:#2962ff;
   --good:#26a69a;--good-soft:#11302c;--warn:#f5a623;--warn-soft:#352812;--bad:#ef5350;--bad-soft:#3a1a1c;
   --shadow:0 1px 2px rgba(0,0,0,.4);--lift:0 2px 4px rgba(0,0,0,.45),0 14px 30px rgba(0,0,0,.45);
   --d1:#3987e5;--d-buy:#199e70;--d-sell:#e66767;--d-ref:#c98500;--d-mid:#3a4352;--d-grid:#1f2733;--d-txt:#7d8797;color-scheme:dark}}
-:root[data-theme=dark]{--bg:#0f141c;--surface:#131924;--sunk:#161c26;--line:#1f2733;--fg:#d9dee7;--muted:#9aa4b4;
+:root[data-theme=dark]:not([data-ui=lama]):not([data-ui=neon]){--bg:#0f141c;--surface:#131924;--sunk:#161c26;--line:#1f2733;--fg:#d9dee7;--muted:#9aa4b4;
   --accent:#4c8dff;--accent-ink:#0f141c;--accent-soft:#1a2640;--ink:#e6eaf0;--ink-fg:#0f141c;--sage:#2962ff;
   --good:#26a69a;--good-soft:#11302c;--warn:#f5a623;--warn-soft:#352812;--bad:#ef5350;--bad-soft:#3a1a1c;
   --shadow:0 1px 2px rgba(0,0,0,.4);--lift:0 2px 4px rgba(0,0,0,.45),0 14px 30px rgba(0,0,0,.45);
   --d1:#3987e5;--d-buy:#199e70;--d-sell:#e66767;--d-ref:#c98500;--d-mid:#3a4352;--d-grid:#1f2733;--d-txt:#7d8797;color-scheme:dark}
-.kpi b{font-family:var(--f-mono);font-weight:600}
+:root:not([data-ui=lama]) .kpi b{font-family:var(--f-mono);font-weight:600}
 .dash{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px;margin:0 0 14px}
 .dcard{grid-column:span 6;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:8px}
 .dcard.w8{grid-column:span 8}.dcard.w4{grid-column:span 4}.dcard.w12{grid-column:span 12}
@@ -541,6 +693,51 @@ body{transition:padding-right .55s cubic-bezier(.2,.8,.2,1)}
 .dhx{display:flex;justify-content:space-between;font:10px var(--f-mono);color:var(--muted)}
 @media (max-width:1000px){.dcard,.dcard.w8,.dcard.w4{grid-column:span 12}}
 @media (max-width:600px){.dt,.dtl{font-size:17px}.dash{gap:10px}.dcard{padding:13px}.dheat{grid-template-columns:repeat(2,minmax(0,1fr))}.ddon .ring,.ddon .ring svg{width:128px;height:128px}}
+
+/* ---------- Pengaturan: UI Sebelumnya (v3) — warna grafik ---------- */
+:root[data-ui=lama]{--d1:#2a78d6;--d-buy:#1baf7a;--d-sell:#e34948;--d-ref:#b07a00;--d-mid:#d6d4cc;--d-grid:#ecebe6;--d-txt:#6b6e66}
+@media (prefers-color-scheme: dark){:root[data-ui=lama]:not([data-theme=light]){--d1:#3987e5;--d-buy:#199e70;--d-sell:#e66767;--d-ref:#c98500;--d-mid:#3a3d37;--d-grid:#2c2e2a;--d-txt:#9a9d95}}
+:root[data-ui=lama][data-theme=dark]{--d1:#3987e5;--d-buy:#199e70;--d-sell:#e66767;--d-ref:#c98500;--d-mid:#3a3d37;--d-grid:#2c2e2a;--d-txt:#9a9d95}
+/* ---------- Pengaturan: UI Neon ---------- */
+:root[data-ui=neon]{--bg:#05030f;--surface:#0d0a1f;--sunk:#120e2a;--line:#2a2350;--fg:#e9e6ff;--muted:#a39dcc;
+  --accent:#5cf2ff;--accent-ink:#05030f;--accent-soft:#10303a;--ink:#e9e6ff;--ink-fg:#05030f;--sage:#6a2bd9;
+  --good:#3df5b0;--good-soft:#0e2e27;--warn:#ffc46b;--warn-soft:#33270f;--bad:#ff5ca8;--bad-soft:#3a1230;
+  --f-display:"Sora","Segoe UI",system-ui,sans-serif;--f-body:"Sora","Segoe UI",system-ui,sans-serif;--f-mono:"JetBrains Mono",ui-monospace,monospace;
+  --r:16px;--shadow:0 0 0 1px rgba(92,242,255,.14),0 0 24px rgba(92,242,255,.06);--lift:0 0 0 1px rgba(92,242,255,.4),0 0 32px rgba(255,46,196,.22);
+  --d1:#3987e5;--d-buy:#199e70;--d-sell:#d55181;--d-ref:#c98500;--d-mid:#2a2350;--d-grid:#1d1840;--d-txt:#8c86b8;color-scheme:dark}
+:root[data-ui=neon] body{background:radial-gradient(900px 600px at 90% -10%,rgba(255,46,196,.16),transparent 60%),radial-gradient(900px 700px at 0% 110%,rgba(0,229,255,.12),transparent 60%),#05030f;background-attachment:fixed}
+:root[data-ui=neon] .kpi>div,:root[data-ui=neon] .mcard,:root[data-ui=neon] .dcard,:root[data-ui=neon] .tablebox,:root[data-ui=neon] .rail{border:1px solid rgba(92,242,255,.22)!important;box-shadow:0 0 24px rgba(92,242,255,.07)!important}
+:root[data-ui=neon] .kpi .sg{background:linear-gradient(135deg,#5cf2ff,#ff2ec4)!important;color:#05030f}
+:root[data-ui=neon] .kpi .sg small,:root[data-ui=neon] .kpi .sg b{color:#05030f}
+:root[data-ui=neon] .hello h1,:root[data-ui=neon] .hero h1{background:linear-gradient(90deg,#fff,#5cf2ff 55%,#ff2ec4);-webkit-background-clip:text;background-clip:text;color:transparent}
+:root[data-ui=neon] .kpi b{text-shadow:0 0 18px rgba(92,242,255,.45)}
+/* ---------- Pengaturan: warna naik/turun ramah buta warna ---------- */
+:root[data-cvd="1"]:not(.z1):not(.z2){--good:#1f63c0;--good-soft:#e3edfb;--bad:#b4490c;--bad-soft:#fbeadf;--d-buy:#2a78d6;--d1:#1baf7a;--d-sell:#eb6834}
+@media (prefers-color-scheme: dark){:root[data-cvd="1"]:not([data-theme=light]):not(.z1):not(.z2){--good:#6fa8ff;--good-soft:#14243f;--bad:#f39a5c;--bad-soft:#3a2414;--d-buy:#3987e5;--d1:#199e70;--d-sell:#d95926}}
+:root[data-cvd="1"][data-theme=dark]:not(.z1):not(.z2):not(.z3),:root[data-cvd="1"][data-ui=neon]:not(.z1):not(.z2):not(.z3){--good:#6fa8ff;--good-soft:#14243f;--bad:#f39a5c;--bad-soft:#3a2414;--d-buy:#3987e5;--d1:#199e70;--d-sell:#d95926}
+/* ---------- Pengaturan: ukuran huruf & animasi ---------- */
+:root[data-fs=s]{zoom:.9}:root[data-fs=l]{zoom:1.12}
+:root[data-anim="0"] *,:root[data-anim="0"] *::before,:root[data-anim="0"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+/* ---------- Pengaturan: dialog ---------- */
+#cfSet{border:none;border-radius:20px;padding:0;width:min(520px,calc(100% - 24px));max-height:90vh;overflow:auto;background:var(--surface);color:var(--fg);box-shadow:0 30px 80px rgba(0,0,0,.35)}
+#cfSet::backdrop{background:rgba(10,15,30,.55)}
+#cfSet .sb{padding:20px;display:flex;flex-direction:column;gap:16px}
+#cfSet .sh{display:flex;justify-content:space-between;align-items:center;gap:10px}#cfSet h2{margin:0;font-size:20px;font-family:var(--f-display)}
+#cfSet .x{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--sunk);color:var(--fg);font-size:16px;cursor:pointer}
+#cfSet .row{display:flex;flex-direction:column;gap:8px}#cfSet .row>span{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+#cfSet small{font-size:12.5px;color:var(--muted)}
+#cfSet .seg{display:flex;flex-wrap:wrap;gap:6px}
+#cfSet .seg button{flex:1 1 0;min-width:88px;min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--sunk);color:var(--fg);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:8px 10px}
+#cfSet .seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+#cfSet .seg button:disabled{opacity:.45;cursor:not-allowed}
+#cfSet .seg button:focus-visible,#cfSet .x:focus-visible,#cfSet .rs:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#cfSet .uis button{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 8px}
+#cfSet .sw{display:flex;gap:4px;padding:6px 8px;border-radius:8px}#cfSet .sw i{width:12px;height:12px;border-radius:50%}
+#cfSet .sw-baru{background:#0f141c}#cfSet .sw-baru i:nth-child(1){background:#2962ff}#cfSet .sw-baru i:nth-child(2){background:#26a69a}#cfSet .sw-baru i:nth-child(3){background:#ef5350}
+#cfSet .sw-lama{background:#ebeae5}#cfSet .sw-lama i:nth-child(1){background:#4f6f5c}#cfSet .sw-lama i:nth-child(2){background:#2f8455}#cfSet .sw-lama i:nth-child(3){background:#c4473f}
+#cfSet .sw-neon{background:#05030f}#cfSet .sw-neon i:nth-child(1){background:#5cf2ff;box-shadow:0 0 8px #5cf2ff}#cfSet .sw-neon i:nth-child(2){background:#ff2ec4;box-shadow:0 0 8px #ff2ec4}#cfSet .sw-neon i:nth-child(3){background:#b98cff;box-shadow:0 0 8px #b98cff}
+#cfSet .ft{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:14px}
+#cfSet .rs{min-height:44px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--fg);font:inherit;font-size:13px;font-weight:600;padding:8px 14px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -873,6 +1070,7 @@ function dashHover(){
 
 function dashHTML(list){
   if(typeof IS_CR!=="undefined"&&IS_CR) return "";
+  if(document.documentElement.dataset.dash==="0") return "";
   const DIDX=IS_ID?"IHSG":"S&P 500";
   if(!SER&&!DASH_SER_ASKED){ DASH_SER_ASKED=true; loadSer().then(()=>{ if(tab==="summary") renderResults(); }); }
   dashHover();
@@ -893,7 +1091,7 @@ function dashHTML(list){
   const parts=[[(typeof ST!=="undefined"&&ST.buy)||"Layak beli",nB,CB],["Di Portofolio",nH,C1],["Sinyal jual",nS,CS],["Tanpa sinyal",nN,"var(--d-mid)"]], tot=S.length||1, R=58, Cc=2*Math.PI*R;
   let acc=0; const ring=parts.map(([,v,c])=>{ const len=v/tot*Cc, l2=Math.max(0,len-(v?2:0)); const s=`<circle cx="75" cy="75" r="${R}" style="fill:none;stroke:${c};stroke-width:20px" stroke-dasharray="${l2.toFixed(2)} ${(Cc-l2).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}"><title>${v}</title></circle>`; acc+=len; return v?s:""; }).join("");
   out.push(`<div class="dcard w4"><div class="dh"><div><b>Status ${S.length} saham hari ini</b><small>Gabungan 7 metode</small></div></div>
-    <div class="ddon"><div class="ring"><svg viewBox="0 0 150 150" role="img" aria-label="Sebaran status saham"><g transform="rotate(-90 75 75)">${ring}</g></svg><div><span><b>${nB}</b>layak beli</span></div></div>
+    <div class="ddon"><div class="ring"><svg viewBox="0 0 150 150" role="img" aria-label="Sebaran status saham"><g transform="rotate(-90 75 75)">${ring}</g></svg><div><span><b>${nB}</b>${esc(((typeof ST!=="undefined"&&ST.buy)||"Layak beli").toLowerCase())}</span></div></div>
     <ul>${parts.map(([t,v,c])=>`<li><i style="background:${c}"></i><span>${t}</span><b>${v}</b><em>${nf(v/tot*100,0)}%</em></li>`).join("")}</ul></div></div>`);
 
   // 3. Kesehatan pasar (% di atas MA200)
@@ -2575,9 +2773,8 @@ $("syr").setAttribute("aria-pressed",String(syrOnly));
 $("syr").addEventListener("click",()=>{ syrOnly=!syrOnly; store.set("si.syr",syrOnly?"1":"0"); $("syr").setAttribute("aria-pressed",String(syrOnly)); renderTabs(); renderResults(); });
 
 $("mainnav").addEventListener("click",ev=>{ const b=ev.target.closest("[data-g]"); if(!b) return; const g=GROUPS.find(x=>x.id===b.dataset.g); const last=store.get(WP+"g."+g.id); goTab(g.tabs.includes(last)?last:g.tabs[0]); window.scrollTo({top:0}); });
-(function(){ const b=$("theme"); const cur=()=>document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
-  const paint=()=>{ b.textContent=cur()==="dark"?"☀️":"🌙"; }; paint();
-  b.addEventListener("click",()=>{ const t=cur()==="dark"?"light":"dark"; document.documentElement.dataset.theme=t; try{localStorage.setItem("theme",t)}catch(e){} paint(); if(tab==="cycles") renderResults(); }); })();
+(function(){ const b=$("theme"); if(!b) return; b.textContent="⚙️"; b.setAttribute("aria-label","Pengaturan tampilan"); b.title="Pengaturan";
+  b.addEventListener("click",()=>{ if(window.CFSET) window.CFSET.open(); }); })();
 // ---------- aplikasi (PWA) ----------
 (function(){
   const btn=$("install"); let ev=null;
@@ -2674,7 +2871,7 @@ document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==
 window.addEventListener("online",()=>autoCheck(true));
 // ---------- Tampilan v3: sapaan, kartu angka, animasi, Flo ----------
 (function(){
-  const RM=matchMedia("(prefers-reduced-motion:reduce)").matches, DESK=()=>matchMedia("(min-width:1100px)").matches, PHONE=()=>matchMedia("(max-width:760px)").matches;
+  const RM=matchMedia("(prefers-reduced-motion:reduce)").matches||document.documentElement.dataset.anim==="0", DESK=()=>matchMedia("(min-width:1100px)").matches, PHONE=()=>matchMedia("(max-width:760px)").matches;
   const EASE="cubic-bezier(.2,.8,.2,1)";
   const CR=typeof IS_CR!=="undefined"&&IS_CR, MK=CR?"kripto":IS_ID?"id":"us";
   const UNIT=CR?"koin":"saham", IDX=CR?"BTC":IS_ID?"IHSG":"S&P 500", EX=CR?"BTC":IS_ID?"BBCA":"AAPL";

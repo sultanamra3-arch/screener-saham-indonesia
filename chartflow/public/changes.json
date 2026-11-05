@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-11-05",
+  "t": "⚙️ Menu Pengaturan tampilan",
+  "x": "Tombol ⚙️ kini membuka Pengaturan: tampilan Baru, Sebelumnya, atau Neon; mode terang/gelap/ikut HP; bahasa Indonesia atau English (sebagian); ukuran huruf; warna naik/turun ramah buta warna; animasi; dan panel grafik Beranda."
+ },
+ {
+  "d": "2026-11-05",
   "t": "📈 Beranda penuh grafik dan tampilan baru",
   "x": "Beranda saham BEI dan AS kini menampilkan grafik indeks dengan rata-rata 200 hari, Kesehatan pasar 6 bulan, sebaran status saham, jumlah per metode, perubahan harga per sektor, dan jarak harga dari rata-rata 200 hari; seluruh aplikasi juga berganti ke tampilan baru bergaya terminal grafik, terang maupun gelap."
  },
