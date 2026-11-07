@@ -2591,9 +2591,19 @@ function renderUji(box){
     IS_ID&&C?row("Beli di tanggal cum, jual di tanggal ex",`${C.years}: rata-rata ${pct(C.avg,2)} per transaksi setelah pajak 10% & biaya, untung ${C.win}%; dipegang 5–10 hari setelah ex, hilang`,verd(1,"untungnya tipis")):"",
     IS_ID?row("Beli saham yang sedang jatuh (pantulan, Swing, Hammer)","Di BEI, saham yang turun cenderung terus turun; yang naik cenderung lanjut naik",verd(-1)):""
   ].join("");
+  const CB=LT.combo, cbRows=CB?Object.entries(CB.rows).sort((a,b)=>b[1].cagr-a[1].cagr):[], cbBest=cbRows[0];
+  const cbT=CB?`<div class="mcard" style="margin-top:12px;gap:8px"><h4><span>🧩 Gabungan metode (${CB.from.slice(0,4)}–${CB.to.slice(0,4)})</span></h4>
+      <p class="note" style="margin:0">Simulasi portofolio harian ${nf(CB.n,0)} saham: saham dipegang selama <b>semua</b> metode dalam gabungan memegangnya, bobot sama, biaya beli/jual dihitung. "Pasar sehat" = ${IS_ID?"IHSG":"S&amp;P 500"} di atas rata-rata 200 hari; "tren MA200" = harga saham di atas rata-rata 200 harinya. CAN SLIM hanya bagian teknikal${IS_ID?"; Value, Growth, Quality belum bisa diuji":""}.</p>
+      <div>${IS_ID?`✅ Paling bagus: <b>Momentum + tren MA200 + pasar sehat</b>: hasil lebih besar dari Momentum saja dan turun terdalamnya hampir separuh. ⚠️ Menumpuk metode (lolos ≥2 metode, atau Momentum + Swing) justru rugi besar.`:`✅ <b>Momentum saja</b> paling besar hasilnya. Saringan pasar sehat mengecilkan turun terdalam, tapi hasilnya juga turun. ⚠️ Momentum + CAN SLIM rugi.`}</div>
+      <div class="tablebox" style="margin:0"><table><thead><tr><th>Gabungan</th><th class="num">Per tahun</th><th class="num">Turun terdalam</th><th class="num">Tahun untung</th><th class="num">Rata-rata dipegang</th></tr></thead><tbody>
+      ${cbRows.map(([k,v])=>`<tr${v===cbBest[1]?' style="background:var(--good-soft)"':""}><td>${esc(k)}</td><td class="num"><b class="${v.cagr>=CB.base.cagr?"ok":v.cagr<0?"no":""}">${pct(v.cagr,1)}</b></td><td class="num">${nf(v.dd,0)}%</td><td class="num">${v.yp}/${v.y}</td><td class="num">${nf(v.pos,1)} saham</td></tr>`).join("")}
+      <tr><td class="note">Semua saham (bobot sama)</td><td class="num">${pct(CB.base.cagr,1)}</td><td class="num">${nf(CB.base.dd,0)}%</td><td class="num">${CB.base.yp}/${CB.base.y}</td><td class="num">–</td></tr>
+      <tr><td class="note">${IS_ID?"IHSG":"S&amp;P 500"}</td><td class="num">${pct(CB.index.cagr,1)}</td><td class="num">${nf(CB.index.dd,0)}%</td><td class="num">${CB.index.yp}/${CB.index.y}</td><td class="num">–</td></tr>
+      </tbody></table></div>
+      <p class="note" style="margin:0">Saham yang diuji adalah daftar hari ini (yang sudah bangkrut tidak ikut), jadi angka mutlaknya terlalu bagus${IS_ID?" (rata-rata semua saham jauh di atas IHSG)":""}; bandingkan antargabungan saja. Hasil masa lalu tidak menjamin hasil berikutnya.</p></div>`:"";
   box.innerHTML=`<div class="rhead"><div class="l"><h2>📏 Hasil uji: apa yang terbukti</h2>
       <p class="note">Rangkuman uji mundur ${yrs} (${nf(LT.n||0,0)} saham${IS_ID?" BEI":""}) yang dipakai di web ini. Setiap hasil dibandingkan dengan asal beli atau dengan rata-rata pasar di hari yang sama, dan diperiksa per tahun supaya bukan kebetulan.</p></div></div>
-    <div class="dgrid">${rows}</div>
+    <div class="dgrid">${rows}</div>${cbT}
     <div class="mcard" style="margin-top:12px;font-size:14px;gap:6px"><h4><span>${T("👉 Pegangan","👉 Ringkasnya")}</span></h4>
       <div>✅ ${T("Ikuti arah utama: beli saham yang trennya naik, saat pasar tidak lesu, dengan batas rugi.","Yang terbukti: saham bertren naik, saat pasar tidak lesu, dengan batas rugi.")}</div>
       <div>😐 ${T("Garis tren, Jalur, Fibonacci, dan pola candle cukup untuk melihat gambar, bukan alasan beli.","Garis tren, Jalur, Fibonacci, dan pola candle tidak terbukti sebagai sinyal.")}</div>
