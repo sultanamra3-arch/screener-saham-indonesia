@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-11-15",
+  "t": "⏳ Waktu Fibonacci: calon lembah",
+  "x": "Halaman baru di menu Saham yang mendaftar saham yang hampir menyentuh garis waktu Fibonacci sementara harganya sedang turun, bisa digabung dengan metode Value, Dividen, Quality, atau Swing, beserta sisa hari bursa dan riwayat ketepatannya per saham; uji setahun terakhir menunjukkan hanya sebagian kecil tanggal benar menjadi titik balik, jadi daftar ini pengingat, bukan sinyal."
+ },
+ {
+  "d": "2026-11-15",
   "t": "🔺🔻 Tebakan arah tanggal Fibonacci",
   "x": "Setiap tanggal Fibonacci kini diberi label calon puncak atau calon lembah dari tren 10 hari; uji setahun terakhir di BEI: hanya sekitar 16% tanggal benar menjadi titik balik, tetapi bila jadi, tebakan arahnya benar sekitar 79%."
  },
