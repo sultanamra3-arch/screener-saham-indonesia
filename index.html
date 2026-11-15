@@ -1596,6 +1596,7 @@ function renderCycles(box){
         <input type="search" id="cyQ" list="cyList" placeholder="Kode saham" aria-label="Pilih saham" value="${isIdx?"":esc(sel)}" style="width:130px">
         <datalist id="cyList">${Object.keys(CYC.stocks).map(t=>`<option value="${esc(t)}">`).join("")}</datalist></div></div>
     ${cycleGuide(idxName)}${saranBox(isIdx?saranMarket({cyc:true}).html:`${o?saranStock(o)+`<p style="margin:6px 0 10px">${calcBtn(o.ticker)}</p>`:""}`+saranMarket({cyc:true}).head)}<div style="height:12px"></div>
+    <div style="margin-bottom:12px">${isIdx?tzCard(idxTz(a,sel),sel,sel,{idx:1}):tzCard(a,idxName,sel)}</div>
     <div class="tablebox" id="cyBox" style="padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
       <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
       <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span><span style="color:#0f9d58">╱ garis tren</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
@@ -1626,8 +1627,7 @@ function renderCycles(box){
       <div class="mcard"><h4><span>Zona support</span></h4>${zoneRows(a.sup,"support")}</div>
       <div class="mcard"><h4><span>Zona resistance</span></h4>${zoneRows(a.res,"resistance")}</div>
       ${isIdx?rawanCard(a,sel)
-      :`${tzCard(a,idxName,sel)}
-        ${o?`<div class="mcard"><h4><span>Status di 7 metode</span></h4><div class="dl">${M.map(m=>{const st=uv(o,m.id);return `<div><span>${esc(m.name)}</span>${uchip(st)}</div>`}).join("")}</div></div>`:""}`}
+      :`${o?`<div class="mcard"><h4><span>Status di 7 metode</span></h4><div class="dl">${M.map(m=>{const st=uv(o,m.id);return `<div><span>${esc(m.name)}</span>${uchip(st)}</div>`}).join("")}</div></div>`:""}`}
       ${isIdx?`<div class="mcard"><h4><span>Kalender 3 bulan</span></h4><div class="dl" style="max-height:320px;overflow:auto">${(a.events||[]).map(e=>`<div><span>${TYPE_ICON[e.type]||""} ${esc(e.what)}</span><span class="num">${tgl(e.d)}</span></div>`).join("")}</div></div>`:""}
       ${b?`<div class="mcard"><h4><span>Kesehatan pasar (${b.n} saham)</span></h4><div class="dl">
         <div><span>Di atas SMA200</span><span class="num ${b.above200>=50?"ok":"no"}">${nf(b.above200,1)}%</span></div>
@@ -2262,14 +2262,24 @@ function tzGuide(a,idxName,sel){
 }
 const dirTxt=d=>d==="H"?"🔺 calon puncak":d==="L"?"🔻 calon lembah":"";
 function tzStat(){ const t=CYC&&CYC.tzstat; if(!t||!t.n||!t.dn) return null; return {hit:t.hit/t.n*100,dir:t.dok/t.dn*100,n:t.n,dn:t.dn}; }
-function tzCard(a,idxName,sel){
-  const fz=verdOf(idxName,"Fibonacci time zone"), TS=tzStat();
+// Tanggal Fibonacci indeks: diambil dari kalender (jenis fibtime) supaya sama persis dengan hitungan server.
+function idxTz(a,sel){
+  const piv=a.piv||[], tz=[];
+  (a.events||[]).filter(e=>e.type==="fibtime").forEach(e=>{ const m=/(\d+) hari bursa dari (puncak|lembah) (\d\d)\/(\d\d)\/(\d{4})/.exec(e.what||""); if(!m) return;
+    const pd=`${m[5]}-${m[4]}-${m[3]}`, pv=piv.find(x=>x[0]===pd); tz.push([e.d,+m[1],pd,m[2]==="puncak"?"H":"L",pv?pv[1]:null]); });
+  tz.sort((x,y)=>x[0].localeCompare(y[0])||x[1]-y[1]);
+  let dir=null; const v=SER&&SER.idx&&SER.idx[sel]; if(v){ const L=v.filter(x=>x!=null); if(L.length>11) dir=L[L.length-1]>L[L.length-11]?"H":"L"; }
+  return Object.assign({},a,{tz:tz.slice(0,8),tzdir:dir,tzp:[]});
+}
+function tzCard(a,idxName,sel,opt){
+  const IX=!!(opt&&opt.idx), U=IX?(v=>nf(v,v>1000?0:2)):usd;
+  const fz=verdOf(idxName,"Fibonacci time zone"), TS=IX?null:tzStat();
   const rowsTz=(a.tz||[]).map(x=>{ const [d,f,pd,ty,pv]=x;
-    return `<div><span><b>${tgl(d,1)}</b>${a.tzdir?` <span class="st ${a.tzdir==="H"?"sell":"buy"}" style="font-size:11.5px">${dirTxt(a.tzdir)}</span>`:""}${pd?`<br><span class="note">${f} hari bursa dari ${ty==="H"?"puncak":"lembah"} ${tgl(pd,1)}${pv!=null?" ("+usd(pv)+")":""}</span>`:""}</span><span class="num">${f} hari</span></div>`; }).join("");
-  return `<div class="mcard"><h4><span>Fibonacci time zone saham ini</span>${verdChip(idxName,"Fibonacci time zone")}</h4>
+    return `<div><span><b>${tgl(d,1)}</b>${a.tzdir?` <span class="st ${a.tzdir==="H"?"sell":"buy"}" style="font-size:11.5px">${dirTxt(a.tzdir)}</span>`:""}${pd?`<br><span class="note">${f} hari bursa dari ${ty==="H"?"puncak":"lembah"} ${tgl(pd,1)}${pv!=null?" ("+U(pv)+")":""}</span>`:""}</span><span class="num">${f} hari</span></div>`; }).join("");
+  return `<div class="mcard"><h4><span>⏳ Fibonacci time zone ${IX?esc(sel):"saham ini"}</span>${verdChip(idxName,"Fibonacci time zone")}</h4>
     <p class="note" style="margin:0 0 6px"><b>Apa ini?</b> Tanggal ketika harga <b>mungkin</b> berbalik arah, dihitung 13–144 hari bursa dari puncak dan lembah terakhir. Arahnya ditebak dari tren 10 hari: harga sedang naik = <b>🔺 calon puncak</b>, sedang turun = <b>🔻 calon lembah</b>${a.tzdir?" (menurut tren sekarang; bisa berubah menjelang tanggalnya)":""}.${TS?` Di ${/kripto/.test(location.pathname)?"pasar kripto":IS_ID?"BEI":"saham AS"}, ${nf(TS.hit,0)}% tanggal Fibonacci benar menjadi titik balik; bila jadi, tebakan arahnya benar ${nf(TS.dir,0)}%.`:""}${fz?(TS?(fz.verdict!=="berguna"?` Uji di ${esc(idxName)} tidak lebih baik dari tanggal acak, jadi tanggal ini hanya <b>pengingat untuk mengecek grafik</b>.`:""):` Di ${esc(idxName)} teknik ini tepat ${nf(fz.hit,1)}% dari kejadian, tanggal acak ${nf(fz.base,1)}%${fz.verdict!=="berguna"?", jadi tanggal ini hanya <b>pengingat untuk mengecek grafik</b>":""}.`):""}</p>
     ${rowsTz?`<div class="dl">${rowsTz}</div>`:`<p class="note">Tidak ada dalam 2 bulan ke depan.</p>`}
-    <p class="note">Dihitung dari 3 puncak/lembah terakhir saham ini: maju 13, 21, 34, 55, 89, 144 hari bursa (toleransi ±1–2 hari).</p>
+    <p class="note">Dihitung dari 3 puncak/lembah terakhir ${IX?"indeks":"saham"} ini: maju 13, 21, 34, 55, 89, 144 hari bursa (toleransi ±1–2 hari).</p>
     ${(()=>{ const P=a.tzp||[]; if(!P.length) return ""; const J=P.filter(x=>x[6]!=null), H=J.filter(x=>x[6]===1), W=P.filter(x=>x[6]==null);
       const D=H.filter(x=>x[10]), DO=D.filter(x=>x[10]===x[8]);
       const row=x=>{ const [d,f,pd,ty,pv,px,res,hd,hty,hv,gd]=x;
@@ -2278,7 +2288,7 @@ function tzCard(a,idxName,sel){
         <p style="margin:8px 0;font-size:14px">Di ${esc(sel||"")}: <b>${H.length} dari ${J.length}</b> tanggal tepat menjadi titik balik${J.length?` (${nf(H.length/J.length*100,0)}%)`:""}${W.length?`; ${W.length} belum bisa dinilai`:""}.${D.length?` Dari yang tepat, tebakan arahnya benar <b>${DO.length} dari ${D.length}</b>.`:""}${J.length&&H.length/J.length<0.3?" Sebagian besar tanggal lewat begitu saja.":""}</p>
         <div class="dl" style="gap:8px;max-height:420px;overflow:auto">${P.map(row).join("")}</div>
         <p class="note" style="margin:6px 0 0">Tepat = ada puncak atau lembah dalam ±2 hari bursa dari tanggal itu. Tebakan arah = tren 10 hari, diukur 3 hari bursa sebelum tanggalnya. Dihitung dari puncak/lembah setahun terakhir. Sedikit contoh, jadi persentasenya bisa berubah-ubah.</p></details>`; })()}
-    ${(()=>{ try{ return tzGuide(a,idxName,sel); }catch(e){ return ""; } })()}</div>`;
+    ${IX?"":(()=>{ try{ return tzGuide(a,idxName,sel); }catch(e){ return ""; } })()}</div>`;
 }
 function rawanCard(a,sel){
   const L=(a.rawan||[]).slice(0,8);
