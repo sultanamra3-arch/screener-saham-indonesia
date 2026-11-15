@@ -72,7 +72,7 @@ jobs:
         if: steps.chk.outputs.ready == 'true'
         run: |
           sudo apt-get install -y -qq lftp > /dev/null
-          LFTP_PASSWORD="$FTP_PASSWORD" lftp -c "set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3; set net:timeout 30; \
+          LFTP_PASSWORD="$FTP_PASSWORD" lftp -c "set ftp:ssl-allow yes; set ssl:verify-certificate no; set ssl:priority NORMAL:-VERS-TLS1.3; set net:max-retries 3; set net:timeout 30; \
             open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\"; \
             mirror -R --parallel=4 --exclude-glob db.json chartflow/public ${FTP_DIR:-.}"
           echo "### Beranda dan login terpasang di $SITE" >> "$GITHUB_STEP_SUMMARY"

@@ -32,7 +32,7 @@ jobs:
         if: steps.chk.outputs.ready == 'true'
         run: |
           sudo apt-get install -y -qq lftp > /dev/null
-          OPEN="set ftp:ssl-allow yes; set ssl:verify-certificate no; set net:max-retries 3; set net:timeout 30; open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\""
+          OPEN="set ftp:ssl-allow yes; set ssl:verify-certificate no; set ssl:priority NORMAL:-VERS-TLS1.3; set net:max-retries 3; set net:timeout 30; open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\""
           # akun FTP bisa berawal di folder home (ada public_html) atau langsung di dalam public_html
           if LFTP_PASSWORD="$FTP_PASSWORD" lftp -c "$OPEN; cd public_html" 2>/dev/null; then T="$LINK_DIR"; else T="${LINK_DIR#public_html/}"; fi
           echo "Tujuan: $T"
