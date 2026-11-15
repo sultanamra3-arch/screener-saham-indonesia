@@ -598,6 +598,29 @@ def run(close: pd.DataFrame, indices: dict[str, str], long: dict[str, pd.Series]
                 if 1 <= k <= len(fut):
                     tz.append([fut[k - 1], f, s.index[i].strftime("%Y-%m-%d"), ty, rt(v, tick)])
         a["tz"] = sorted(tz)[:8]
+        # Tanggal Fibonacci yang sudah lewat (±1 tahun terakhir) dan apakah benar menjadi titik balik (±2 hari bursa).
+        # Baris: [tanggal, f, tanggal asal, jenis asal, harga asal, harga di tanggal itu, hasil, tanggal titik balik, jenis, harga]
+        # hasil: 1 = tepat, 0 = lewat, None = belum bisa dinilai (terlalu dekat dengan hari ini).
+        tent_ = a.get("tent")
+        turns = [(i, v, ty) for i, v, ty in piv]
+        if tent_ and n - 1 - s.index.get_loc(pd.Timestamp(tent_[0])) >= 5:  # ekstrem yang baru terjadi belum tentu titik balik
+            turns.append((s.index.get_loc(pd.Timestamp(tent_[0])), tent_[1], tent_[2]))
+        last_i = turns[-1][0] if turns else 0
+        past = []
+        for i, v, ty in piv:
+            if i < n - 260:
+                continue
+            for f in FIB_TIME:
+                k = i + f
+                if k > n - 1:
+                    continue
+                hit = [x for x in turns if x[0] != i and abs(x[0] - k) <= 2]
+                res = 1 if hit else (None if k > last_i - 2 or k > n - 3 else 0)
+                h = hit[0] if hit else None
+                past.append([s.index[k].strftime("%Y-%m-%d"), f, s.index[i].strftime("%Y-%m-%d"), ty, rt(v, tick),
+                             rt(float(s.iloc[k]), tick), res,
+                             s.index[h[0]].strftime("%Y-%m-%d") if h else None, h[2] if h else None, rt(h[1], tick) if h else None])
+        a["tzp"] = sorted(past, reverse=True)[:30]
         out["stocks"][t] = a
         vals = close[t].iloc[-260:]
         series["stocks"][t] = [None if not ok(x) else (int(round(x)) if tick else round(float(x), 2)) for x in vals.tolist()]

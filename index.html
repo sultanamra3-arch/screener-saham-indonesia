@@ -2265,6 +2265,13 @@ function tzCard(a,idxName,sel){
     <p class="note" style="margin:0 0 6px"><b>Apa ini?</b> Tanggal ketika harga <b>mungkin</b> berbalik arah, dihitung 13–144 hari bursa dari puncak dan lembah terakhir. Yang diperkirakan hanya <b>waktu</b>, bukan arah: arahnya tergantung tren saat tanggal itu tiba.${fz?` Di ${esc(idxName)} teknik ini tepat ${nf(fz.hit,1)}% dari kejadian, tanggal acak ${nf(fz.base,1)}%${fz.verdict!=="berguna"?", jadi tanggal ini hanya <b>pengingat untuk mengecek grafik</b>":""}.`:""}</p>
     ${rowsTz?`<div class="dl">${rowsTz}</div>`:`<p class="note">Tidak ada dalam 2 bulan ke depan.</p>`}
     <p class="note">Dihitung dari 3 puncak/lembah terakhir saham ini: maju 13, 21, 34, 55, 89, 144 hari bursa (toleransi ±1–2 hari).</p>
+    ${(()=>{ const P=a.tzp||[]; if(!P.length) return ""; const J=P.filter(x=>x[6]!=null), H=J.filter(x=>x[6]===1), W=P.filter(x=>x[6]==null);
+      const row=x=>{ const [d,f,pd,ty,pv,px,res,hd,hty,hv]=x;
+        return `<div><span><b>${res===1?"✅":res===0?"❌":"⏳"} ${tgl(d,1)}</b> <span class="note">· harga ${usd(px)}</span><br><span class="note">${f} hari bursa dari ${ty==="H"?"puncak":"lembah"} ${tgl(pd,1)} (${usd(pv)})</span><br><span style="font-size:13px">${res===1?`<b class="ok">Tepat:</b> ${hty==="H"?"puncak":"lembah"} ${usd(hv)} pada ${tgl(hd,1)}`:res===0?`<span class="na">Lewat: tidak ada titik balik di sekitarnya</span>`:`<span class="note">Belum bisa dinilai: titik balik baru terlihat beberapa hari kemudian</span>`}</span></span></div>`; };
+      return `<details style="margin-top:6px"><summary style="cursor:pointer"><b>🕘 Tanggal yang sudah lewat</b> <span class="note">(klik untuk membuka)</span></summary>
+        <p style="margin:8px 0;font-size:14px">Di ${esc(sel||"")}: <b>${H.length} dari ${J.length}</b> tanggal tepat menjadi titik balik${J.length?` (${nf(H.length/J.length*100,0)}%)`:""}${W.length?`; ${W.length} belum bisa dinilai`:""}.${J.length&&H.length/J.length<0.3?" Sebagian besar tanggal lewat begitu saja.":""}</p>
+        <div class="dl" style="gap:8px;max-height:420px;overflow:auto">${P.map(row).join("")}</div>
+        <p class="note" style="margin:6px 0 0">Tepat = ada puncak atau lembah dalam ±2 hari bursa dari tanggal itu. Dihitung dari puncak/lembah setahun terakhir. Sedikit contoh, jadi persentasenya bisa berubah-ubah.</p></details>`; })()}
     ${(()=>{ try{ return tzGuide(a,idxName,sel); }catch(e){ return ""; } })()}</div>`;
 }
 function rawanCard(a,sel){
