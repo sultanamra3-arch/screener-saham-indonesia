@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-11-15",
+  "t": "🔺🔻 Tebakan arah tanggal Fibonacci",
+  "x": "Setiap tanggal Fibonacci kini diberi label calon puncak atau calon lembah dari tren 10 hari; uji setahun terakhir di BEI: hanya sekitar 16% tanggal benar menjadi titik balik, tetapi bila jadi, tebakan arahnya benar sekitar 79%."
+ },
+ {
+  "d": "2026-11-15",
   "t": "🕘 Tanggal Fibonacci yang sudah lewat",
   "x": "Kartu Fibonacci time zone kini menampilkan tanggal yang sudah lewat dalam setahun terakhir beserta hasilnya (tepat jadi puncak/lembah dalam ±2 hari bursa, lewat, atau belum bisa dinilai), sehingga ketepatan teknik ini bisa dinilai per saham."
  },

@@ -2225,6 +2225,8 @@ function tzGuide(a,idxName,sel){
   const qtyTxt=n=>unit==="koin"?nf(n,4)+" koin":nf(n,0)+" "+unit;
   let html=`<div class="tzg" style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px;display:grid;gap:8px;font-size:14px">
     <div><b>🧭 Panduan tanggal terdekat: ${tgl(d0,1)}</b> <span class="st hold">${lagi}</span><br><span class="note">${f0} hari bursa dari ${ty0==="H"?"puncak":"lembah"} ${usd(pv0)} (${tgl(pd0,1)})${near?`. Berdekatan dengan ${tgl(near[0],1)} (${near[1]} hari dari ${near[3]==="H"?"puncak":"lembah"} ${usd(near[4])})`:""}.</span></div>`;
+  const TS=tzStat(), gd=a.tzdir;
+  if(gd) html+=`<div><b>Tebakan arah: ${dirTxt(gd)}</b>. Harga ${gd==="H"?"sedang naik, jadi bila tanggal ini menjadi titik balik, kemungkinan <b>kenaikan berhenti</b>":"sedang turun, jadi bila tanggal ini menjadi titik balik, kemungkinan <b>penurunan berhenti</b>"}.${TS?` <span class="note">Peluang tanggal ini benar menjadi titik balik hanya sekitar ${nf(TS.hit,0)}%; bila jadi, tebakan arah benar ${nf(TS.dir,0)}%.</span>`:""}</div>`;
   if(pos) html+=`<div><b>Posisimu:</b> ${qtyTxt(pos.q)}, harga beli ${usd(pos.buy)}, sekarang ${usd(p)}, <b class="${pos.pl>=0?"ok":"no"}">${pos.pl>=0?"untung":"rugi"} ${rp(pos.pl)}${pc(pos.pl)}</b></div>`;
   if(kond) html+=`<div><b>Kondisi:</b> ${kond}.${rng}</div>`;
   // Stop loss yang disarankan: di bawah S1 bila itu masih mengunci untung, selain itu di bawah S2.
@@ -2238,7 +2240,7 @@ function tzGuide(a,idxName,sel){
   if(R1){ const up=R2?`Target berikutnya <b>R2 ${usd(R2.mid)}</b>${pos?`; di sana ${pos.plAt(R2.mid)>=0?"untung":"rugi"} sekitar ${rp(pos.plAt(R2.mid))}${pc(pos.plAt(R2.mid))}`:""}.`:"Belum ada resistance berikutnya yang tercatat.";
     const sv=pos?`<b>Sudah punya:</b> tahan. Naikkan stop loss ke <b>${usd(brk(R1.lo))}</b> (bekas resistance biasanya berubah jadi support)${pos.plAt(brk(R1.lo))>=0?`, sehingga untung sekitar ${rp(pos.plAt(brk(R1.lo)))} terkunci`:""}.${R2&&pos.plAt(R2.mid)>0&&pos.pl<0?" Di R2 posisimu kembali untung; pertimbangkan jual sebagian di sana.":""}`
       :`<b>Belum punya:</b> boleh beli kecil setelah harga <i>ditutup</i> di atas ${usd(R1.hi)}, bukan saat baru menyentuh. Stop loss di ${usd(brk(R1.lo))}.`;
-    html+=`<div>✅ <b>Ditutup di atas ${usd(R1.hi)} (R1 ${zt(R1)})</b>: kenaikan berlanjut. ${up}<br>💡 ${sv}</div>`; }
+    html+=`<div>✅ <b>Ditutup di atas ${usd(R1.hi)} (R1 ${zt(R1)})</b>${gd==="L"?' <span class="st hold">sesuai tebakan: lembah terbentuk</span>':""}: kenaikan berlanjut. ${up}<br>💡 ${sv}</div>`; }
   // Skenario 2: jebol ke bawah S1
   if(S1){ const dn=S2?`Harga bisa turun ke <b>S2 ${usd(S2.mid)}</b>`:`Belum ada support berikutnya; harga bisa kembali ke lembah ${usd((a.piv||[]).filter(x=>x[2]==="L").slice(-1).map(x=>x[1])[0]||S1.lo)}`;
     let sv;
@@ -2246,7 +2248,7 @@ function tzGuide(a,idxName,sel){
       sv=sAll?`<b>Sudah punya:</b> jual semua. ${atS1>=0?`Untung sekitar ${rp(atS1)} lebih baik daripada`:`Rugi sekitar ${rp(atS1)} lebih kecil daripada`} menunggu harga turun lebih jauh${pos.buy>S1.lo?"":" ke bawah harga belimu"}.`
         :`<b>Sudah punya:</b> jual ${qtyTxt(half)} untuk mengurangi risiko. Sisanya dijual bila tembus stop ${usd(sStop)}.`; }
     else sv=`<b>Belum punya:</b> jangan beli dulu. Tunggu harga berhenti turun dan bertahan di ${S2?"S2 "+usd(S2.mid):"lembah berikutnya"}.`;
-    html+=`<div>⚠️ <b>Ditutup di bawah ${usd(S1.lo)} (S1 ${zt(S1)})</b>: ${naik?"kenaikan gagal":"penurunan berlanjut"}. ${dn}.<br>💡 ${sv}</div>`; }
+    html+=`<div>⚠️ <b>Ditutup di bawah ${usd(S1.lo)} (S1 ${zt(S1)})</b>${gd==="H"?' <span class="st hold">sesuai tebakan: puncak terbentuk</span>':""}: ${naik?"kenaikan gagal":"penurunan berlanjut"}. ${dn}.<br>💡 ${sv}</div>`; }
   // Skenario 3: di antara
   if(S1&&R1){ let sv;
     if(pos&&pos.w>20&&pos.pl>0){ const n=unit==="koin"?pos.q/2:Math.max(1,Math.floor(pos.q/2)), sold=pos.val*(n/pos.q), w2=(pos.val-sold)/(pos.tot-sold)*100;
@@ -2257,21 +2259,24 @@ function tzGuide(a,idxName,sel){
   html+=`<p class="note" style="margin:0">${acak?"Karena teknik ini tidak terbukti lebih baik dari acak, ":""}keputusan diambil karena harga menembus level, bukan karena tanggalnya. Angka untung/rugi sudah termasuk perkiraan biaya jual, belum termasuk dividen. Ini hitungan mekanis, bukan saran investasi.</p></div>`;
   return html;
 }
+const dirTxt=d=>d==="H"?"🔺 calon puncak":d==="L"?"🔻 calon lembah":"";
+function tzStat(){ const t=CYC&&CYC.tzstat; if(!t||!t.n||!t.dn) return null; return {hit:t.hit/t.n*100,dir:t.dok/t.dn*100,n:t.n,dn:t.dn}; }
 function tzCard(a,idxName,sel){
-  const fz=verdOf(idxName,"Fibonacci time zone");
+  const fz=verdOf(idxName,"Fibonacci time zone"), TS=tzStat();
   const rowsTz=(a.tz||[]).map(x=>{ const [d,f,pd,ty,pv]=x;
-    return `<div><span><b>${tgl(d,1)}</b>${pd?`<br><span class="note">${f} hari bursa dari ${ty==="H"?"puncak":"lembah"} ${tgl(pd,1)}${pv!=null?" ("+usd(pv)+")":""}</span>`:""}</span><span class="num">${f} hari</span></div>`; }).join("");
+    return `<div><span><b>${tgl(d,1)}</b>${a.tzdir?` <span class="st ${a.tzdir==="H"?"sell":"buy"}" style="font-size:11.5px">${dirTxt(a.tzdir)}</span>`:""}${pd?`<br><span class="note">${f} hari bursa dari ${ty==="H"?"puncak":"lembah"} ${tgl(pd,1)}${pv!=null?" ("+usd(pv)+")":""}</span>`:""}</span><span class="num">${f} hari</span></div>`; }).join("");
   return `<div class="mcard"><h4><span>Fibonacci time zone saham ini</span>${verdChip(idxName,"Fibonacci time zone")}</h4>
-    <p class="note" style="margin:0 0 6px"><b>Apa ini?</b> Tanggal ketika harga <b>mungkin</b> berbalik arah, dihitung 13–144 hari bursa dari puncak dan lembah terakhir. Yang diperkirakan hanya <b>waktu</b>, bukan arah: arahnya tergantung tren saat tanggal itu tiba.${fz?` Di ${esc(idxName)} teknik ini tepat ${nf(fz.hit,1)}% dari kejadian, tanggal acak ${nf(fz.base,1)}%${fz.verdict!=="berguna"?", jadi tanggal ini hanya <b>pengingat untuk mengecek grafik</b>":""}.`:""}</p>
+    <p class="note" style="margin:0 0 6px"><b>Apa ini?</b> Tanggal ketika harga <b>mungkin</b> berbalik arah, dihitung 13–144 hari bursa dari puncak dan lembah terakhir. Arahnya ditebak dari tren 10 hari: harga sedang naik = <b>🔺 calon puncak</b>, sedang turun = <b>🔻 calon lembah</b>${a.tzdir?" (menurut tren sekarang; bisa berubah menjelang tanggalnya)":""}.${TS?` Di ${/kripto/.test(location.pathname)?"pasar kripto":IS_ID?"BEI":"saham AS"}, ${nf(TS.hit,0)}% tanggal Fibonacci benar menjadi titik balik; bila jadi, tebakan arahnya benar ${nf(TS.dir,0)}%.`:""}${fz?(TS?(fz.verdict!=="berguna"?` Uji di ${esc(idxName)} tidak lebih baik dari tanggal acak, jadi tanggal ini hanya <b>pengingat untuk mengecek grafik</b>.`:""):` Di ${esc(idxName)} teknik ini tepat ${nf(fz.hit,1)}% dari kejadian, tanggal acak ${nf(fz.base,1)}%${fz.verdict!=="berguna"?", jadi tanggal ini hanya <b>pengingat untuk mengecek grafik</b>":""}.`):""}</p>
     ${rowsTz?`<div class="dl">${rowsTz}</div>`:`<p class="note">Tidak ada dalam 2 bulan ke depan.</p>`}
     <p class="note">Dihitung dari 3 puncak/lembah terakhir saham ini: maju 13, 21, 34, 55, 89, 144 hari bursa (toleransi ±1–2 hari).</p>
     ${(()=>{ const P=a.tzp||[]; if(!P.length) return ""; const J=P.filter(x=>x[6]!=null), H=J.filter(x=>x[6]===1), W=P.filter(x=>x[6]==null);
-      const row=x=>{ const [d,f,pd,ty,pv,px,res,hd,hty,hv]=x;
-        return `<div><span><b>${res===1?"✅":res===0?"❌":"⏳"} ${tgl(d,1)}</b> <span class="note">· harga ${usd(px)}</span><br><span class="note">${f} hari bursa dari ${ty==="H"?"puncak":"lembah"} ${tgl(pd,1)} (${usd(pv)})</span><br><span style="font-size:13px">${res===1?`<b class="ok">Tepat:</b> ${hty==="H"?"puncak":"lembah"} ${usd(hv)} pada ${tgl(hd,1)}`:res===0?`<span class="na">Lewat: tidak ada titik balik di sekitarnya</span>`:`<span class="note">Belum bisa dinilai: titik balik baru terlihat beberapa hari kemudian</span>`}</span></span></div>`; };
+      const D=H.filter(x=>x[10]), DO=D.filter(x=>x[10]===x[8]);
+      const row=x=>{ const [d,f,pd,ty,pv,px,res,hd,hty,hv,gd]=x;
+        return `<div><span><b>${res===1?"✅":res===0?"❌":"⏳"} ${tgl(d,1)}</b> <span class="note">· harga ${usd(px)}</span><br><span class="note">${f} hari bursa dari ${ty==="H"?"puncak":"lembah"} ${tgl(pd,1)} (${usd(pv)})</span><br><span style="font-size:13px">${res===1?`<b class="ok">Tepat:</b> ${hty==="H"?"puncak":"lembah"} ${usd(hv)} pada ${tgl(hd,1)}${gd?` · tebakan ${gd==="H"?"puncak":"lembah"} ${gd===hty?'<b class="ok">✓ benar</b>':'<b class="no">✗ salah</b>'}`:""}`:res===0?`<span class="na">Lewat: tidak ada titik balik di sekitarnya</span>`:`<span class="note">Belum bisa dinilai: titik balik baru terlihat beberapa hari kemudian</span>`}</span></span></div>`; };
       return `<details style="margin-top:6px"><summary style="cursor:pointer"><b>🕘 Tanggal yang sudah lewat</b> <span class="note">(klik untuk membuka)</span></summary>
-        <p style="margin:8px 0;font-size:14px">Di ${esc(sel||"")}: <b>${H.length} dari ${J.length}</b> tanggal tepat menjadi titik balik${J.length?` (${nf(H.length/J.length*100,0)}%)`:""}${W.length?`; ${W.length} belum bisa dinilai`:""}.${J.length&&H.length/J.length<0.3?" Sebagian besar tanggal lewat begitu saja.":""}</p>
+        <p style="margin:8px 0;font-size:14px">Di ${esc(sel||"")}: <b>${H.length} dari ${J.length}</b> tanggal tepat menjadi titik balik${J.length?` (${nf(H.length/J.length*100,0)}%)`:""}${W.length?`; ${W.length} belum bisa dinilai`:""}.${D.length?` Dari yang tepat, tebakan arahnya benar <b>${DO.length} dari ${D.length}</b>.`:""}${J.length&&H.length/J.length<0.3?" Sebagian besar tanggal lewat begitu saja.":""}</p>
         <div class="dl" style="gap:8px;max-height:420px;overflow:auto">${P.map(row).join("")}</div>
-        <p class="note" style="margin:6px 0 0">Tepat = ada puncak atau lembah dalam ±2 hari bursa dari tanggal itu. Dihitung dari puncak/lembah setahun terakhir. Sedikit contoh, jadi persentasenya bisa berubah-ubah.</p></details>`; })()}
+        <p class="note" style="margin:6px 0 0">Tepat = ada puncak atau lembah dalam ±2 hari bursa dari tanggal itu. Tebakan arah = tren 10 hari, diukur 3 hari bursa sebelum tanggalnya. Dihitung dari puncak/lembah setahun terakhir. Sedikit contoh, jadi persentasenya bisa berubah-ubah.</p></details>`; })()}
     ${(()=>{ try{ return tzGuide(a,idxName,sel); }catch(e){ return ""; } })()}</div>`;
 }
 function rawanCard(a,sel){
@@ -2636,6 +2641,7 @@ function flowCards(o){
 // ---------- 📏 Hasil uji: rangkuman semua uji jangka panjang (data/longtest.json) ----------
 function renderUji(box){
   if(!LT){ box.innerHTML=`<div class="tablebox"><div class="empty">Memuat hasil uji…</div></div>`; return; }
+  if(!CYC&&!CYC_ERR&&typeof loadCycles==="function") loadCycles().then(()=>{ if(tab==="uji") renderResults(); });
   const M_=LT.methods||{}, D=LT.div, C=LT.cum, A=LT.area, Tt=LT.trend, yrs=ltYrs(), idx=IS_ID?"IHSG":"S&P 500";
   const nm={canslim:"CAN SLIM",momentum:"Momentum",swing:"Swing"};
   const verd=(ok,txt)=>`<span class="st ${ok===1?"buy":ok===0?"hold":"wait"}">${ok===1?"✅ terbukti":ok===0?"😐 tidak terbukti":"⚠️ hindari"}</span>${txt?` <span class="note">${txt}</span>`:""}`;
@@ -2657,6 +2663,7 @@ function renderUji(box){
     IS_ID?row("Ramai hari ini (volume melonjak)","10 tahun: tidak lebih bagus dari pasar; saham turun ≥7% sehari cenderung tertinggal 1,5–2,8%",verd(0,"untuk memantau")):"",
     IS_ID?row("Arus asing (KSEI)","Apr 2024 – Sep 2026: tidak ada pola yang konsisten",verd(0,"data baru 2,5 tahun")):"",
     IS_ID&&C?row("Beli di tanggal cum, jual di tanggal ex",`${C.years}: rata-rata ${pct(C.avg,2)} per transaksi setelah pajak 10% & biaya, untung ${C.win}%; dipegang 5–10 hari setelah ex, hilang`,verd(1,"untungnya tipis")):"",
+    (()=>{ const TS=tzStat(); if(!TS) return ""; return row("Fibonacci time zone: tanggal dan tebakan arah",`Setahun terakhir, ${nf(TS.n,0)} tanggal: ${nf(TS.hit,0)}% benar menjadi puncak/lembah (±2 hari bursa). Dari yang jadi, tebakan arah dari tren 10 hari benar ${nf(TS.dir,0)}% (${nf(TS.dn,0)} kejadian).`,verd(0,"arahnya sering benar, tetapi tanggalnya jarang tepat")); })(),
     IS_ID?row("Beli saham yang sedang jatuh (pantulan, Swing, Hammer)","Di BEI, saham yang turun cenderung terus turun; yang naik cenderung lanjut naik",verd(-1)):""
   ].join("");
   const CB=LT.combo, cbRows=CB?Object.entries(CB.rows).sort((a,b)=>b[1].cagr-a[1].cagr):[], cbBest=cbRows[0];

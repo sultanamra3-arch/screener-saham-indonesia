@@ -548,6 +548,13 @@ def watch(stocks: dict, state: dict, today: date, tick=None) -> dict:
 
 
 # ---------------------------------------------------------------- jalankan
+def tdir(s: pd.Series, m: int, lb: int = 10):
+    """Tebakan arah titik balik: 'H' bila harga naik dalam lb hari sampai indeks m, 'L' bila turun."""
+    if m - lb < 0 or m >= len(s):
+        return None
+    return "H" if float(s.iloc[m]) > float(s.iloc[m - lb]) else "L"
+
+
 def analyse(s: pd.Series, cfg: dict, today: date, tick=None):
     s = s.dropna()
     thr = zz_threshold(s)
@@ -584,6 +591,7 @@ def run(close: pd.DataFrame, indices: dict[str, str], long: dict[str, pd.Series]
                 out["tests"][name] = run_tests(long[name], cfg)
             except Exception as e:  # uji tidak boleh menggagalkan seluruh pembaruan
                 out["tests"][name] = {"error": str(e)[:200]}
+    tzs = {"n": 0, "hit": 0, "dn": 0, "dok": 0}
     for t in stock_cols:
         if t not in close or close[t].dropna().shape[0] < 120:
             continue
@@ -599,7 +607,8 @@ def run(close: pd.DataFrame, indices: dict[str, str], long: dict[str, pd.Series]
                     tz.append([fut[k - 1], f, s.index[i].strftime("%Y-%m-%d"), ty, rt(v, tick)])
         a["tz"] = sorted(tz)[:8]
         # Tanggal Fibonacci yang sudah lewat (±1 tahun terakhir) dan apakah benar menjadi titik balik (±2 hari bursa).
-        # Baris: [tanggal, f, tanggal asal, jenis asal, harga asal, harga di tanggal itu, hasil, tanggal titik balik, jenis, harga]
+        # Baris: [tanggal, f, tanggal asal, jenis asal, harga asal, harga di tanggal itu, hasil, tanggal titik balik, jenis, harga, tebakan arah]
+        # Tebakan arah: tren 10 hari diukur 3 hari bursa sebelum tanggal itu (naik = calon puncak 'H', turun = calon lembah 'L').
         # hasil: 1 = tepat, 0 = lewat, None = belum bisa dinilai (terlalu dekat dengan hari ini).
         tent_ = a.get("tent")
         turns = [(i, v, ty) for i, v, ty in piv]
@@ -619,13 +628,24 @@ def run(close: pd.DataFrame, indices: dict[str, str], long: dict[str, pd.Series]
                 h = hit[0] if hit else None
                 past.append([s.index[k].strftime("%Y-%m-%d"), f, s.index[i].strftime("%Y-%m-%d"), ty, rt(v, tick),
                              rt(float(s.iloc[k]), tick), res,
-                             s.index[h[0]].strftime("%Y-%m-%d") if h else None, h[2] if h else None, rt(h[1], tick) if h else None])
+                             s.index[h[0]].strftime("%Y-%m-%d") if h else None, h[2] if h else None, rt(h[1], tick) if h else None,
+                             tdir(s, k - 3)])
         a["tzp"] = sorted(past, reverse=True)[:30]
+        a["tzdir"] = tdir(s, n - 1)  # tebakan arah untuk tanggal mendatang, menurut tren sekarang
+        for x in past:
+            if x[6] is not None:
+                tzs["n"] += 1
+                if x[6] == 1:
+                    tzs["hit"] += 1
+                    if x[10]:
+                        tzs["dn"] += 1
+                        tzs["dok"] += int(x[10] == x[8])
         out["stocks"][t] = a
         vals = close[t].iloc[-260:]
         series["stocks"][t] = [None if not ok(x) else (int(round(x)) if tick else round(float(x), 2)) for x in vals.tolist()]
     out["breadth"] = breadth(close, breadth_cols)
     out["watch"] = watch(out["stocks"], state, today, tick)
+    out["tzstat"] = tzs  # rangkuman: tanggal dinilai, tepat jadi titik balik, tebakan arah dinilai, tebakan arah benar
     return out, series
 
 
