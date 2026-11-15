@@ -1625,7 +1625,7 @@ function renderCycles(box){
       <div class="mcard"><h4><span>Zona support</span></h4>${zoneRows(a.sup,"support")}</div>
       <div class="mcard"><h4><span>Zona resistance</span></h4>${zoneRows(a.res,"resistance")}</div>
       ${isIdx?rawanCard(a,sel)
-      :`${tzCard(a,idxName)}
+      :`${tzCard(a,idxName,sel)}
         ${o?`<div class="mcard"><h4><span>Status di 7 metode</span></h4><div class="dl">${M.map(m=>{const st=uv(o,m.id);return `<div><span>${esc(m.name)}</span>${uchip(st)}</div>`}).join("")}</div></div>`:""}`}
       ${isIdx?`<div class="mcard"><h4><span>Kalender 3 bulan</span></h4><div class="dl" style="max-height:320px;overflow:auto">${(a.events||[]).map(e=>`<div><span>${TYPE_ICON[e.type]||""} ${esc(e.what)}</span><span class="num">${tgl(e.d)}</span></div>`).join("")}</div></div>`:""}
       ${b?`<div class="mcard"><h4><span>Kesehatan pasar (${b.n} saham)</span></h4><div class="dl">
@@ -2197,14 +2197,75 @@ function cycleGuide(idxName){
     <div><span><b>Kesimpulan uji</b>: <span class="st buy">berguna</span> = terbukti lebih sering tepat daripada tanggal acak; <span class="st hold">lemah</span> = sedikit lebih baik, belum meyakinkan; <span class="st wait">tidak berbeda dari acak</span> = sama saja dengan menebak. <b>Pakai tanggal sebagai pengingat untuk memantau lebih teliti, bukan alasan membeli atau menjual.</b> Keputusan tetap dari zona harga dan sinyal metode.</span></div>
     </div></details>`;
 }
-function tzCard(a,idxName){
+// Panduan tanggal Fibonacci terdekat: kondisi, level S1/R1, dan saran sesuai posisi di Portofolio.
+function tzGuide(a,idxName,sel){
+  const _n=new Date(), today=new Date(_n-_n.getTimezoneOffset()*6e4).toISOString().slice(0,10), L=(a.tz||[]).filter(x=>x[0]>=today); if(!L.length) return "";
+  const [d0,f0,pd0,ty0,pv0]=L[0], near=L.slice(1).find(x=>(new Date(x[0])-new Date(d0))/864e5<=4);
+  const fz=verdOf(idxName,"Fibonacci time zone"), acak=!fz||fz.verdict!=="berguna";
+  const o=rows.find(x=>x.ticker===sel), p=o&&o.price||a.price; if(!p) return "";
+  const sup=(a.sup||[]).filter(z=>z.hi<p).sort((x,y)=>y.hi-x.hi), res=(a.res||[]).filter(z=>z.lo>p).sort((x,y)=>x.lo-y.lo);
+  const S1=sup[0], S2=sup[1], R1=res[0], R2=res[1];
+  const dd=Math.round((new Date(d0)-new Date(today))/864e5), lagi=dd<=0?"hari ini":dd+" hari lagi";
+  const brk=v=>floorTick(v*0.99), zt=z=>z.lo===z.hi?usd(z.lo):`${usd(z.lo)}–${usd(z.hi)}`;
+  // Tren: dari puncak/lembah terakhir (termasuk yang sementara) ke harga sekarang.
+  const pv=(a.piv||[]).slice(-1)[0], tn=a.tent; let ref=pv, naik=pv&&pv[2]==="L";
+  if(tn){ if(tn[2]==="H"){ if(p>=tn[1]*0.98) naik=true; else { ref=tn; naik=false; } } else { if(p<=tn[1]*1.02) naik=false; else { ref=tn; naik=true; } } }
+  const chg=ref?(p/ref[1]-1)*100:null;
+  const kond=ref?`harga ${naik?"naik":"turun"} ${nf(Math.abs(chg),0)}% dari ${ref[2]==="L"?"lembah":"puncak"} ${usd(ref[1])} (${tgl(ref[0],1)})`:"";
+  const rng=S1&&R1?` Sekarang di antara S1 ${usd(S1.mid)} dan R1 ${usd(R1.mid)}.`:"";
+  // Posisi di Portofolio
+  let pos=null;
+  try{ const P=porto(), all=P.open.map(ps=>({ps,e:posEval(ps)})), mine=all.filter(x=>x.ps.code===sel&&x.e.val!=null);
+    if(mine.length){ const q=mine.reduce((s,x)=>s+(+x.ps.qty||0),0), cost=mine.reduce((s,x)=>s+x.e.cost,0), val=mine.reduce((s,x)=>s+x.e.val,0), pl=mine.reduce((s,x)=>s+x.e.pl,0);
+      const sh=mine.reduce((s,x)=>s+(x.e.sh!=null?x.e.sh:+x.ps.qty||0),0), buy=mine.reduce((s,x)=>s+x.ps.price*(+x.ps.qty||0),0)/(q||1);
+      const tot=all.filter(x=>x.e.val!=null).reduce((s,x)=>s+x.e.val,0), k=sh&&p?val/(sh*p):1, stop=mine.map(x=>x.ps.stop||x.e.stop).find(Boolean)||null;
+      pos={q,sh,cost,val,pl,buy,stop,k,w:tot?val/tot*100:0,tot,plAt:X=>sh*X*k-cost}; } }catch(e){}
+  const unit=IS_ID&&typeof UNAME!=="undefined"&&!/kripto/.test(location.pathname)?UNAME:(/kripto/.test(location.pathname)?"koin":"lembar");
+  const rp=v=>`${v>=0?"+":"−"}${usd(Math.abs(v))}`, pc=v=>pos&&pos.cost?` (${v>=0?"+":"−"}${nf(Math.abs(v/pos.cost*100),0)}%)`:"";
+  const qtyTxt=n=>unit==="koin"?nf(n,4)+" koin":nf(n,0)+" "+unit;
+  let html=`<div class="tzg" style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px;display:grid;gap:8px;font-size:14px">
+    <div><b>🧭 Panduan tanggal terdekat: ${tgl(d0,1)}</b> <span class="st hold">${lagi}</span><br><span class="note">${f0} hari bursa dari ${ty0==="H"?"puncak":"lembah"} ${usd(pv0)} (${tgl(pd0,1)})${near?`. Berdekatan dengan ${tgl(near[0],1)} (${near[1]} hari dari ${near[3]==="H"?"puncak":"lembah"} ${usd(near[4])})`:""}.</span></div>`;
+  if(pos) html+=`<div><b>Posisimu:</b> ${qtyTxt(pos.q)}, harga beli ${usd(pos.buy)}, sekarang ${usd(p)}, <b class="${pos.pl>=0?"ok":"no"}">${pos.pl>=0?"untung":"rugi"} ${rp(pos.pl)}${pc(pos.pl)}</b></div>`;
+  if(kond) html+=`<div><b>Kondisi:</b> ${kond}.${rng}</div>`;
+  // Stop loss yang disarankan: di bawah S1 bila itu masih mengunci untung, selain itu di bawah S2.
+  let sStop=null, sAll=false;
+  if(pos&&S1){ if(S1.lo>=pos.buy||!S2){ sStop=brk(S1.lo); sAll=true; } else sStop=brk(S2.lo); }
+  if(pos&&!pos.stop&&sStop) html+=`<div class="no">⚠️ <b>Belum ada stop loss.</b> Pasang di <b>${usd(sStop)}</b>; bila tersentuh, ${pos.plAt(sStop)>=0?"masih untung":"rugi"} sekitar ${rp(pos.plAt(sStop))}${pc(pos.plAt(sStop))}.</div>`;
+  if(pos&&pos.w>20) html+=`<div class="no">⚠️ <b>Porsi ${esc(sel)} ${nf(pos.w,1)}% dari portofolio</b> (batas aman 20%).</div>`;
+  if(!S1&&!R1) return html+`<p class="note">Belum ada zona support/resistance di dekat harga, jadi belum ada level untuk dipantau.</p></div>`;
+  html+=`<div><b>Yang dicek setelah ${tgl(d0)}</b> <span class="note">(pakai harga penutupan, bukan harga sesaat)</span>:</div>`;
+  // Skenario 1: tembus ke atas R1
+  if(R1){ const up=R2?`Target berikutnya <b>R2 ${usd(R2.mid)}</b>${pos?`; di sana ${pos.plAt(R2.mid)>=0?"untung":"rugi"} sekitar ${rp(pos.plAt(R2.mid))}${pc(pos.plAt(R2.mid))}`:""}.`:"Belum ada resistance berikutnya yang tercatat.";
+    const sv=pos?`<b>Sudah punya:</b> tahan. Naikkan stop loss ke <b>${usd(brk(R1.lo))}</b> (bekas resistance biasanya berubah jadi support)${pos.plAt(brk(R1.lo))>=0?`, sehingga untung sekitar ${rp(pos.plAt(brk(R1.lo)))} terkunci`:""}.${R2&&pos.plAt(R2.mid)>0&&pos.pl<0?" Di R2 posisimu kembali untung; pertimbangkan jual sebagian di sana.":""}`
+      :`<b>Belum punya:</b> boleh beli kecil setelah harga <i>ditutup</i> di atas ${usd(R1.hi)}, bukan saat baru menyentuh. Stop loss di ${usd(brk(R1.lo))}.`;
+    html+=`<div>✅ <b>Ditutup di atas ${usd(R1.hi)} (R1 ${zt(R1)})</b>: kenaikan berlanjut. ${up}<br>💡 ${sv}</div>`; }
+  // Skenario 2: jebol ke bawah S1
+  if(S1){ const dn=S2?`Harga bisa turun ke <b>S2 ${usd(S2.mid)}</b>`:`Belum ada support berikutnya; harga bisa kembali ke lembah ${usd((a.piv||[]).filter(x=>x[2]==="L").slice(-1).map(x=>x[1])[0]||S1.lo)}`;
+    let sv;
+    if(pos){ const atS1=pos.plAt(brk(S1.lo)), half=unit==="koin"?pos.q/2:Math.max(1,Math.floor(pos.q/2));
+      sv=sAll?`<b>Sudah punya:</b> jual semua. ${atS1>=0?`Untung sekitar ${rp(atS1)} lebih baik daripada`:`Rugi sekitar ${rp(atS1)} lebih kecil daripada`} menunggu harga turun lebih jauh${pos.buy>S1.lo?"":" ke bawah harga belimu"}.`
+        :`<b>Sudah punya:</b> jual ${qtyTxt(half)} untuk mengurangi risiko. Sisanya dijual bila tembus stop ${usd(sStop)}.`; }
+    else sv=`<b>Belum punya:</b> jangan beli dulu. Tunggu harga berhenti turun dan bertahan di ${S2?"S2 "+usd(S2.mid):"lembah berikutnya"}.`;
+    html+=`<div>⚠️ <b>Ditutup di bawah ${usd(S1.lo)} (S1 ${zt(S1)})</b>: ${naik?"kenaikan gagal":"penurunan berlanjut"}. ${dn}.<br>💡 ${sv}</div>`; }
+  // Skenario 3: di antara
+  if(S1&&R1){ let sv;
+    if(pos&&pos.w>20&&pos.pl>0){ const n=unit==="koin"?pos.q/2:Math.max(1,Math.floor(pos.q/2)), sold=pos.val*(n/pos.q), w2=(pos.val-sold)/(pos.tot-sold)*100;
+      sv=`<b>Sudah punya:</b> jual ${qtyTxt(n)} untuk mengamankan sebagian untung; porsi turun ke sekitar ${nf(w2,0)}%. Pasang alarm di ${usd(S1.lo)} dan ${usd(R1.hi)}.`; }
+    else if(pos) sv=`<b>Sudah punya:</b> tidak perlu bertindak. Pasang alarm harga di ${usd(S1.lo)} dan ${usd(R1.hi)}.`;
+    else sv=`<b>Belum punya:</b> tunggu salah satu level tertembus. Membeli di tengah rentang punya risiko dan peluang yang sama besar.`;
+    html+=`<div>➖ <b>Bergerak di antara ${usd(S1.lo)} dan ${usd(R1.hi)}</b>: belum ada arah, tanggal ini tidak berarti apa-apa.<br>💡 ${sv}</div>`; }
+  html+=`<p class="note" style="margin:0">${acak?"Karena teknik ini tidak terbukti lebih baik dari acak, ":""}keputusan diambil karena harga menembus level, bukan karena tanggalnya. Angka untung/rugi sudah termasuk perkiraan biaya jual, belum termasuk dividen. Ini hitungan mekanis, bukan saran investasi.</p></div>`;
+  return html;
+}
+function tzCard(a,idxName,sel){
   const fz=verdOf(idxName,"Fibonacci time zone");
   const rowsTz=(a.tz||[]).map(x=>{ const [d,f,pd,ty,pv]=x;
     return `<div><span><b>${tgl(d,1)}</b>${pd?`<br><span class="note">${f} hari bursa dari ${ty==="H"?"puncak":"lembah"} ${tgl(pd,1)}${pv!=null?" ("+usd(pv)+")":""}</span>`:""}</span><span class="num">${f} hari</span></div>`; }).join("");
   return `<div class="mcard"><h4><span>Fibonacci time zone saham ini</span>${verdChip(idxName,"Fibonacci time zone")}</h4>
+    <p class="note" style="margin:0 0 6px"><b>Apa ini?</b> Tanggal ketika harga <b>mungkin</b> berbalik arah, dihitung 13–144 hari bursa dari puncak dan lembah terakhir. Yang diperkirakan hanya <b>waktu</b>, bukan arah: arahnya tergantung tren saat tanggal itu tiba.${fz?` Di ${esc(idxName)} teknik ini tepat ${nf(fz.hit,1)}% dari kejadian, tanggal acak ${nf(fz.base,1)}%${fz.verdict!=="berguna"?", jadi tanggal ini hanya <b>pengingat untuk mengecek grafik</b>":""}.`:""}</p>
     ${rowsTz?`<div class="dl">${rowsTz}</div>`:`<p class="note">Tidak ada dalam 2 bulan ke depan.</p>`}
-    <p class="note">Dihitung dari 3 puncak/lembah terakhir saham ini: maju 13, 21, 34, 55, 89, 144 hari bursa. Di sekitar tanggal itu harga <b>mungkin</b> berbalik arah, tetapi arahnya tidak diketahui.
-    ${fz?`Di ${esc(idxName)}, teknik ini tepat ${nf(fz.hit,1)}% dari kejadian, sedangkan tanggal acak ${nf(fz.base,1)}% (${(VERD[fz.verdict]||["–"])[0]}). `:""}Jadikan pengingat untuk memantau, bukan alasan transaksi.</p></div>`;
+    <p class="note">Dihitung dari 3 puncak/lembah terakhir saham ini: maju 13, 21, 34, 55, 89, 144 hari bursa (toleransi ±1–2 hari).</p>
+    ${(()=>{ try{ return tzGuide(a,idxName,sel); }catch(e){ return ""; } })()}</div>`;
 }
 function rawanCard(a,sel){
   const L=(a.rawan||[]).slice(0,8);
