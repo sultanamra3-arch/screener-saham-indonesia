@@ -833,7 +833,7 @@ const M = [
   cols:[["rsi2","RSI(2)"],["sma200","vs SMA200",1],["perf1m","1 bln",1]]},
 ];
 const MID = Object.fromEntries(M.map(m=>[m.id,m]));
-const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"},{id:"porto",name:"Portofolio",k:"Posisi Anda"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"calc",name:"Kalkulator",k:"Return & risiko"},{id:"divcal",name:"Kalender dividen",k:"Ex-dividen"},{id:"hot",name:"Ramai hari ini",k:"Momentum"},{id:"uji",name:"📏 Hasil uji",k:"Apa yang terbukti"},{id:"screen",name:"Filter sendiri",k:"Aturan Anda"},{id:"fibtime",name:"Waktu Fibonacci",k:"Calon lembah"}])
+const TABS = [{id:"summary",name:"Ringkasan",k:"Gabungan"},{id:"watch",name:"Watchlist pribadi",k:"Area support"},{id:"porto",name:"Portofolio",k:"Posisi Anda"},{id:"fibtime",name:"Waktu Fibonacci",k:"Calon lembah"}].concat(M.map((m,i)=>({id:m.id,name:m.name,k:(m.kind==="inv"?"Investor":"Trader")+" · "+(i+1)}))).concat([{id:"cycles",name:"Siklus",k:"Waktu · Fibonacci"},{id:"calc",name:"Kalkulator",k:"Return & risiko"},{id:"divcal",name:"Kalender dividen",k:"Ex-dividen"},{id:"hot",name:"Ramai hari ini",k:"Momentum"},{id:"uji",name:"📏 Hasil uji",k:"Apa yang terbukti"},{id:"screen",name:"Filter sendiri",k:"Aturan Anda"}])
 const ST = {buy:"Layak beli",hold:"Tahan",sell:"Jual",late:"Terlambat",wait:"Tunggu",na:"Tidak dinilai"};
 const PRI = {buy:0,sell:1,hold:2,late:3,wait:4,na:5};
 const REASON = {stop:"stop loss −7%",be:"kembali ke harga beli",target:"target +20%","8w":"8 minggu selesai",sma5:"di atas SMA5",rank:"keluar 20% teratas"};
@@ -944,7 +944,7 @@ function tabCount(t,list){
     else if(t.id==="uji") c="Terbukti / tidak";
     else if(t.id==="hot") { const n=hotLists(list).spike.length; c=n?`<b>${n}</b> volume melonjak`:"Volume & momentum"; }
     else if(t.id==="calc") c="Lot, untung, rugi";
-    else if(t.id==="fibtime") { if(CYC&&CYC.stocks){ const n=ftList(ftState()).res.length; c=`<b>${n}</b> dekat garis`; } else c="Calon lembah"; }
+    else if(t.id==="fibtime") { if(CYC&&CYC.stocks){ const n=ftList(ftState()).res.length; c=`<b>${n}</b> dekat garis`; } else { c="Calon lembah"; if(!CYC&&!CYC_ERR&&!window.__ftL){ window.__ftL=1; loadCycles().then(()=>{ if(CYC) renderTabs(); }); } } }
     else if(t.id==="screen") c=`<b>${fstate().cur.length}</b> aturan · ${fstate().saved.length} favorit`;
     else if(t.id==="divcal") { const td=(DATA&&DATA.priceDate)||""; const n=list.filter(o=>o.dv&&o.dv.ex>=td&&o.dv.ex<=new Date(new Date(td).getTime()+14*864e5).toISOString().slice(0,10)).length; c=`<b>${n}</b> dalam 2 minggu`; }
     else if(t.id==="porto") { const P=porto(); if(!P.open.length) c="Catat & pantau"; else { const nd=P.open.filter(ps=>posEval(ps).acts.some(a=>a.lv<=1)).length; c=`<b>${P.open.length}</b> posisi${nd?` · ⚠ ${nd} perlu tindakan`:""}`; } }
@@ -2562,7 +2562,7 @@ function addToPorto(st){ store.set(WP+"porto.pre",JSON.stringify({code:st.code,p
 
 
 // ---------- navigasi v2 ----------
-const GROUPS=[{id:"home",ic:"🏠",name:"Beranda",tabs:["summary"]},{id:"saham",ic:"🔍",name:"Saham",tabs:M.map(m=>m.id).concat(["screen","fibtime"])},
+const GROUPS=[{id:"home",ic:"🏠",name:"Beranda",tabs:["summary"]},{id:"saham",ic:"🔍",name:"Saham",tabs:["fibtime"].concat(M.map(m=>m.id),["screen"])},
   {id:"watch",ic:"📍",name:"Watchlist",tabs:["watch"]},{id:"porto",ic:"💼",name:"Portofolio",tabs:["porto"]},{id:"alat",ic:"🧰",name:"Alat",tabs:["calc","cycles","hot","divcal","uji"]}];
 const groupOf=t=>GROUPS.find(g=>g.tabs.includes(t))||GROUPS[0];
 function renderSide(g,nd){
