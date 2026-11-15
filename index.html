@@ -2694,13 +2694,18 @@ const FKEY=WP+"flt";
 const FF=[["pe","PER","x"],["pb","PBV","x"],["roe","ROE","%"],["div","Dividend yield","%"],["payout","Payout dividen","%"],["de","Utang/ekuitas (DER)","x"],
   ["epsG","Pertumbuhan laba/th","%"],["salesG","Pertumbuhan penjualan/th","%"],["mcap",IS_ID?"Kapitalisasi (Rp miliar)":"Kapitalisasi ($ juta)",""],["price","Harga",""],
   ["rsi14","RSI (14)",""],["sma50","Jarak dari MA50","%"],["sma200","Jarak dari MA200","%"],["hi52","Jarak dari puncak 52 minggu","%"],
-  ["perf1m","Kinerja 1 bulan","%"],["perf3m","Kinerja 3 bulan","%"],["perf1y","Kinerja 1 tahun","%"],...(IS_ID?[["adv","Transaksi/hari (Rp miliar)",""]]:[]),["nbuy","Layak beli di ≥ N metode",""]];
+  ["perf1m","Kinerja 1 bulan","%"],["perf3m","Kinerja 3 bulan","%"],["perf1y","Kinerja 1 tahun","%"],...(IS_ID?[["adv","Transaksi/hari (Rp miliar)",""]]:[]),["nbuy","Layak beli di ≥ N metode",""],
+  ["mom","Status Momentum (1 = layak beli/tahan)",""],["mkt",`Pasar sehat (1 = ${IS_ID?"IHSG":"S&P 500"} di atas MA200)`,""]];
 const FFM=Object.fromEntries(FF.map(f=>[f[0],f]));
 const FPRE=[["Murah & berkualitas",[["pe","<",12],["pe",">",0],["roe",">",15]]],["Dividen tinggi",[["div",">",5],["payout","<",90]]],
-  ["Jenuh jual di tren naik",[["rsi14","<",35],["sma200",">",0]]],["Momentum kuat",[["perf3m",">",10],["sma50",">",0],["sma200",">",0]]],["Dekat titik terendah",[["hi52","<",-30],["roe",">",10]]]];
+  ["Jenuh jual di tren naik",[["rsi14","<",35],["sma200",">",0]]],["Momentum kuat",[["perf3m",">",10],["sma50",">",0],["sma200",">",0]]],["Dekat titik terendah",[["hi52","<",-30],["roe",">",10]]],
+  ["🏆 Momentum + MA200 + pasar sehat",[["mom",">",0],["sma200",">",0],["mkt",">",0]]]];
+const CB_KEY="Momentum + tren MA200 + pasar sehat";
+const mktOk=()=>{ const m=(DATA&&DATA.market)||{}; return m.above200===true?1:m.above200===false?0:null; };
 let RSI14=null;
 function rsiMap(){ if(RSI14||!SER||!SER.stocks) return RSI14; RSI14={}; for(const [t,v] of Object.entries(SER.stocks)){ const r=rsiOf(v); RSI14[t]=lastOf(r)[0]; } return RSI14; }
-function fval(o,k){ if(k==="rsi14"){ const m=rsiMap(); return m?m[o.ticker]??null:null; } if(k==="nbuy") return M.filter(m=>uv(o,m.id).s==="buy").length; const v=o[k]; return typeof v==="number"&&isFinite(v)?v:null; }
+function fval(o,k){ if(k==="rsi14"){ const m=rsiMap(); return m?m[o.ticker]??null:null; } if(k==="nbuy") return M.filter(m=>uv(o,m.id).s==="buy").length;
+  if(k==="mom"){ const st=uv(o,"momentum").s; return st==="buy"||st==="hold"?1:0; } if(k==="mkt") return mktOk(); const v=o[k]; return typeof v==="number"&&isFinite(v)?v:null; }
 function fstate(){ try{ const j=JSON.parse(store.get(FKEY)||"null"); if(j&&Array.isArray(j.cur)) return j; }catch(e){} return {cur:FPRE[0][1].map(r=>r.slice()),saved:[]}; }
 function fsave(s){ store.set(FKEY,JSON.stringify(s)); }
 function renderScreen(box){
@@ -2708,10 +2713,21 @@ function renderScreen(box){
   const needR=R.some(r=>r[0]==="rsi14");
   if(needR&&!SER){ box.innerHTML=`<div class="tablebox"><div class="empty">Memuat data RSI…</div></div>`; loadSer().then(()=>{ if(tab==="screen") renderResults(); }); return; }
   const base=filtered(), ok=R.filter(r=>FFM[r[0]]&&r[2]!==""&&r[2]!=null&&isFinite(+r[2]));
-  const res=base.filter(o=>ok.every(([k,op,v])=>{ const x=fval(o,k); return x!=null&&(op==="<"?x<+v:x>+v); }))
+  // Aturan "pasar sehat" berlaku untuk semua saham sekaligus: bila pasar tidak sehat, saham yang lolos aturan lain tetap ditampilkan sebagai pantauan.
+  const mR=ok.filter(r=>r[0]==="mkt"), mPass=!mR.length||mR.every(([k,op,v])=>{ const x=mktOk(); return x!=null&&(op==="<"?x<+v:x>+v); });
+  const ok2=ok.filter(r=>r[0]!=="mkt");
+  const res=base.filter(o=>ok2.every(([k,op,v])=>{ const x=fval(o,k); return x!=null&&(op==="<"?x<+v:x>+v); }))
     .map(o=>({o,nb:fval(o,"nbuy")})).sort((a,b)=>b.nb-a.nb||(b.o.mcap||0)-(a.o.mcap||0));
-  const keys=[...new Set(ok.map(r=>r[0]).filter(k=>k!=="nbuy"))];
-  const fmtv=(k,v)=>v==null?"–":k==="price"?usd(v):k==="mcap"||k==="adv"?nf(v,0):(FFM[k][2]==="%"&&v>0&&/^(sma|hi|perf)/.test(k)?"+":"")+nf(v,FFM[k][2]==="x"?1:1)+(FFM[k][2]==="%"?"%":FFM[k][2]==="x"?"×":"");
+  const keys=[...new Set(ok2.map(r=>r[0]).filter(k=>k!=="nbuy"))];
+  const isCB=ok.some(r=>r[0]==="mom")&&ok.some(r=>r[0]==="sma200")&&mR.length, cb=isCB&&LT&&LT.combo&&LT.combo.rows&&LT.combo.rows[CB_KEY], cbM=isCB&&LT&&LT.combo&&LT.combo.rows&&LT.combo.rows["Momentum"];
+  const IXN=IS_ID?"IHSG":"S&amp;P 500", mk=(DATA&&DATA.market)||{};
+  const cbBox=isCB?`<div class="mcard" style="margin-top:12px;gap:6px;border-left:4px solid var(--good)"><b>🏆 Momentum + tren MA200 + pasar sehat</b>
+    <span style="font-size:14px">Pegang saham yang <b>layak beli atau tahan menurut Momentum</b> dan harganya <b>di atas rata-rata 200 harinya</b>, tetapi hanya selama <b>${IXN} di atas rata-rata 200 harinya</b>. Saham yang tidak lagi memenuhi syarat dijual.</span>
+    ${cb?`<span style="font-size:14px">Uji ${LT.combo.from.slice(0,4)}–${LT.combo.to.slice(0,4)}: <b class="ok">${pct(cb.cagr,1)} per tahun</b>, turun terdalam ${nf(cb.dd,0)}%, untung ${cb.yp} dari ${cb.y} tahun${cbM?`; Momentum saja ${pct(cbM.cagr,1)} per tahun dengan turun terdalam ${nf(cbM.dd,0)}%`:""}.${cbM&&cbM.cagr>cb.cagr?" Di pasar ini hasilnya lebih kecil dari Momentum saja; kelebihannya hanya turun terdalam yang lebih dangkal.":""}</span>`:""}
+    <span class="note">Hasil uji masa lalu tidak menjamin hasil berikutnya. Rinciannya di halaman 📏 Hasil uji.</span></div>`:"";
+  const mBox=!mPass?`<div class="mcard" style="margin-top:12px;gap:4px;border-left:4px solid var(--bad)"><b class="no">⏸️ Pasar sedang tidak sehat: aturan ini menyuruh menunggu</b>
+    <span style="font-size:14px">${mk.text?esc(mk.text)+". ":""}Selama ${IXN} di bawah rata-rata 200 hari, gabungan ini tidak membeli saham baru${isCB?" dan posisi lama dijual":""}. Daftar di bawah hanya <b>pantauan</b>: saham yang lolos aturan lain, siap dicek saat pasar kembali sehat.</span></div>`:"";
+  const fmtv=(k,v)=>v==null?"–":k==="mom"?(v?"✓":"–"):k==="price"?usd(v):k==="mcap"||k==="adv"?nf(v,0):(FFM[k][2]==="%"&&v>0&&/^(sma|hi|perf)/.test(k)?"+":"")+nf(v,FFM[k][2]==="x"?1:1)+(FFM[k][2]==="%"?"%":FFM[k][2]==="x"?"×":"");
   const rule=(r,i)=>`<div class="frule"><select data-fk="${i}">${FF.map(f=>`<option value="${f[0]}" ${f[0]===r[0]?"selected":""}>${esc(f[1])}</option>`).join("")}</select>
     <select data-fo="${i}"><option value="<" ${r[1]==="<"?"selected":""}>&lt;</option><option value=">" ${r[1]===">"?"selected":""}>&gt;</option></select>
     <input type="text" data-fv="${i}" inputmode="decimal" value="${r[2]??""}" placeholder="nilai"><button type="button" data-fd="${i}" aria-label="Hapus aturan">✕</button></div>`;
@@ -2721,7 +2737,8 @@ function renderScreen(box){
       <p style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0"><button type="button" id="fAdd">➕ Tambah aturan</button><button type="button" id="fSave">💾 Simpan sebagai favorit</button></p>
       ${S.saved.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"><span class="note" style="align-self:center">Favorit:</span>${S.saved.map((f,i)=>`<span class="fav"><button type="button" data-fs="${i}">⭐ ${esc(f.name)}</button><button type="button" data-fx="${i}" aria-label="Hapus favorit">✕</button></span>`).join("")}</div>`:""}
       ${needR?`<p class="note" style="margin:8px 0 0">RSI hanya tersedia untuk saham yang punya grafik${IS_ID?" (saham likuid)":""}.</p>`:""}</div>
-    <div class="rhead" style="margin-top:14px"><div class="l"><h2>${res.length} saham cocok</h2><p class="note">Diurutkan dari yang paling banyak metode layak beli. Klik baris untuk rincian.</p></div></div>
+    ${cbBox}${mBox}
+    <div class="rhead" style="margin-top:14px"><div class="l"><h2>${res.length} saham ${mPass?"cocok":"dipantau"}</h2><p class="note">Diurutkan dari yang paling banyak metode layak beli. Klik baris untuk rincian.</p></div></div>
     <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th>${keys.map(k=>`<th class="num">${esc(FFM[k][1])}</th>`).join("")}<th>Layak beli menurut</th></tr></thead><tbody>
     ${res.length?res.slice(0,150).map(({o,nb})=>`<tr class="row" data-t="${esc(o.ticker)}" tabindex="0">${stockCell(o)}<td class="num">${usd(o.price)}</td>${keys.map(k=>`<td class="num">${fmtv(k,fval(o,k))}</td>`).join("")}
       <td style="font-size:13px">${nb?`<b class="ok">${nb} metode:</b> ${esc(M.filter(m=>uv(o,m.id).s==="buy").map(m=>m.name).join(", "))}`:'<span class="na">–</span>'}</td></tr>`).join("")
