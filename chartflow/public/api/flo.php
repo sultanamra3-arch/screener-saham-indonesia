@@ -16,6 +16,14 @@ const FLO_ALL_DAY = 900;    // batas semua akun per hari (menjaga kuota gratis)
 
 $u = session_user();
 if (!$u) json_out(['ok' => false, 'msg' => 'login'], 401);
+// pemilik bisa melihat pertanyaan yang belum bisa dijawab Flo (untuk memperbaiki datanya)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['miss'])) {
+    [$fh, $db] = db_open(); db_close($fh);
+    $c0 = $db['codes'][$u['code']] ?? [];
+    $own = !empty($c0['owner']) || (!empty($c0['tg']) && (string)$c0['tg'] === (string)CF_CHAT_ID);
+    if (!$own) json_out(['ok' => false], 403);
+    json_out(['ok' => true, 'miss' => array_reverse(array_slice($db['flo_miss'] ?? [], -50))]);
+}
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !same_origin()) json_out(['ok' => false], 400);
 $GEM = defined('CF_GEMINI_KEY') ? CF_GEMINI_KEY : '';
 $GRQ = defined('CF_GROQ_KEY') ? CF_GROQ_KEY : '';
@@ -23,7 +31,7 @@ if ($GEM === '' && $GRQ === '') json_out(['ok' => false, 'msg' => 'off']);
 
 $b = body();
 $q = trim(mb_substr((string)($b['q'] ?? ''), 0, 400));
-$ctx = mb_substr((string)($b['ctx'] ?? ''), 0, 23000);
+$ctx = mb_substr((string)($b['ctx'] ?? ''), 0, 40000);
 $mk = in_array($b['market'] ?? '', ['id', 'us', 'kripto'], true) ? $b['market'] : 'id';
 $hist = array_slice(is_array($b['hist'] ?? null) ? $b['hist'] : [], -4);
 if ($q === '') json_out(['ok' => false, 'msg' => 'kosong'], 422);
@@ -47,8 +55,9 @@ $left = $lim - $mine - 1;
 $pasar = ['id' => 'saham Bursa Efek Indonesia', 'us' => 'saham Amerika (S&P 500 dan Nasdaq-100)', 'kripto' => '50 koin kripto terbesar di Indodax'][$mk];
 $buy = $owner ? '"Layak beli"' : '"Memenuhi syarat" (jangan pakai kata "layak beli")';
 $sys = "Anda adalah Flo, asisten di aplikasi screener ChartFlow untuk $pasar. Jawab dalam bahasa Indonesia sehari-hari yang sopan, singkat (maksimal sekitar 120 kata), boleh memakai daftar pendek.\n"
+ . "DATA berisi HALAMAN YANG SEDANG DIBUKA pengguna (grafik, zona, indikator, tanggal Fibonacci, teks di layar) dan data aplikasi lainnya. Bila pertanyaan memakai kata 'ini', 'grafik', 'saham ini', atau tidak menyebut kode, anggap yang dimaksud adalah saham/indeks di halaman yang sedang dibuka. Cari jawabannya di seluruh DATA sebelum menyatakan tidak tersedia.\n"
  . "Aturan:\n"
- . "1. Gunakan HANYA angka dan fakta dari bagian DATA. Bila yang ditanyakan tidak ada di DATA, katakan terus terang bahwa datanya tidak tersedia di ChartFlow. Jangan mengarang harga, berita, laporan keuangan, atau tanggal.\n"
+ . "1. Gunakan HANYA angka dan fakta dari bagian DATA. Bila yang ditanyakan benar-benar tidak ada di DATA, awali jawaban dengan [TIDAK ADA DATA], lalu katakan terus terang bahwa datanya tidak tersedia di ChartFlow dan sebutkan hal terdekat yang bisa Anda jawab. Jangan mengarang harga, berita, laporan keuangan, atau tanggal.\n"
  . "2. Jelaskan status dan aturan metode, bukan menyuruh membeli atau menjual. Jangan memberi ramalan harga, janji untung, atau saran alokasi uang pribadi. Untuk status beli gunakan istilah $buy.\n"
  . "3. Bila ditanya hal di luar saham, kripto, atau ChartFlow, tolak dengan sopan dan arahkan kembali.\n"
  . ($mk === 'kripto' ? "4. Selalu ingatkan bahwa kripto berisiko sangat tinggi.\n" : "4. Ingatkan singkat bahwa ini bukan saran investasi bila pertanyaannya tentang membeli atau menjual.\n")
@@ -127,4 +136,13 @@ if ($text === '') {
     db_save($fh, $db);
     json_out(['ok' => false, 'msg' => 'gagal', 'why' => implode(' | ', array_slice($WHY, 0, 4))]);
 }
+// catat pertanyaan yang tidak bisa dijawab, supaya pemilik tahu data apa yang perlu ditambah
+if (preg_match('/\[TIDAK ADA DATA\]|tidak tersedia di ChartFlow/iu', $text)) {
+    [$fh, $db] = db_open();
+    $m = $db['flo_miss'] ?? [];
+    $m[] = ['d' => (new DateTime('now', new DateTimeZone('Asia/Jakarta')))->format('Y-m-d H:i'), 'q' => mb_substr($q, 0, 200), 'mk' => $mk];
+    $db['flo_miss'] = array_slice($m, -200);
+    db_save($fh, $db);
+}
+$text = trim(preg_replace('/\[TIDAK ADA DATA\]\s*/u', '', $text));
 json_out(['ok' => true, 'text' => mb_substr($text, 0, 3000), 'src' => $src, 'left' => $left]);

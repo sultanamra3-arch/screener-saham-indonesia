@@ -177,6 +177,24 @@
    "mention": [
     "calon puncak"
    ]
+  },
+  {
+   "name": "Flo membaca halaman",
+   "mention": [
+    "halaman yang sedang dibuka"
+   ]
+  },
+  {
+   "name": "Tanggal Fibonacci di grafik",
+   "mention": [
+    "Waktu Fib"
+   ]
+  },
+  {
+   "name": "Penjelasan bisa dilipat",
+   "mention": [
+    "Buka semua penjelasan"
+   ]
   }
  ],
  "removed": [
