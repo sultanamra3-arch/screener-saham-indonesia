@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-11-18",
+  "t": "📈 Pullback Tren di Watchlist",
+  "x": "Aturan baru untuk saham BEI: beli saat tren naik tapi sedang koreksi tajam (RSI 3 hari < 15) selama IHSG di atas rata-rata 50 hari, jual saat memantul di atas SMA5; tampil paling atas di Watchlist dengan hasil uji dan rekam jejaknya, Area beli dipindah ke bawah dalam tombol, dan tanda beli/jualnya bisa dinyalakan di grafik."
+ },
+ {
+  "d": "2026-11-18",
   "t": "📚 Mode belajar garis Fibonacci",
   "x": "Tombol ⏳ Waktu Fib kini punya pilihan Akan datang, + Yang tepat, dan Semua (belajar) yang menampilkan semua tanggal Fibonacci yang sudah lewat di grafik saham dan IHSG, lengkap dengan asal puncak/lembah dan apakah tanggal itu tepat menjadi titik balik."
  },
