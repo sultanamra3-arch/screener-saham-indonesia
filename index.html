@@ -309,6 +309,12 @@ tbody tr:last-child td{border-bottom:none}
 .fmini{display:inline-block;margin:4px 6px 0 0;vertical-align:top}.fmini>summary{list-style:none;cursor:pointer;display:inline-flex}.fmini>summary::-webkit-details-marker{display:none}
 .fmini>summary::after{content:attr(data-l) " ▾"}.fmini[open]{display:block;width:100%}.fmini[open]>summary::after{content:attr(data-l) " ▴"}
 .fmini>.fold-c{margin-top:8px}
+.fibm{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:2px 0 8px;font-size:13px}.fibm button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 11px;font:inherit;font-weight:600;cursor:pointer;color:var(--fg)}
+.fibm button[aria-pressed=true]{background:#ff9f1c;border-color:#ff9f1c;color:#131722}.fibm .note{width:100%;margin:0}
+.fib-n{position:absolute;pointer-events:auto;min-width:20px;height:15px;padding:0 3px;border:none;border-radius:4px;color:#fff;font:700 9.5px/15px sans-serif;text-align:center;cursor:pointer}
+.fib-tag{position:absolute;top:2px;color:#fff;font:700 10px/16px sans-serif;padding:0 5px;border-radius:4px;white-space:nowrap}
+.fib-info{position:absolute;left:10px;bottom:46px;max-width:min(290px,80%);background:var(--surface);color:var(--fg);border:2px solid;border-radius:12px;padding:9px 30px 9px 12px;font-size:13px;line-height:1.45;box-shadow:var(--shadow);pointer-events:auto}
+.fib-x{position:absolute;right:6px;top:4px;border:none;background:none;font-size:14px;cursor:pointer;color:var(--muted)}
 .mcard:has(>.fmini){flex-direction:row;flex-wrap:wrap;align-items:flex-start}.mcard:has(>.fmini)>*{width:100%}.mcard:has(>.fmini)>.fmini:not([open]){width:auto;margin:0}
 .srbox:not(.sr-open) .sv>:not(.svh),.srbox:not(.sr-open) .sr-in>:not(.sv):not(.svh){display:none}.srbox:not(.sr-open) .sv+.sv{margin-top:6px}
 .sr-more{border:none;background:none;padding:0;cursor:pointer;margin-top:6px;align-self:flex-start}.srbox.sr-open .sr-more::after{content:"Ringkas ▴"}.sr-more::after{content:"Selengkapnya ▾"}
@@ -1555,7 +1561,8 @@ function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   ch.timeScale().setVisibleLogicalRange({from:Math.max(0,B.length-150),to:B.length+Math.min(fut.length,Math.max(45,(x.path&&x.path.vis)||0))});
   watchSize(ch,el,pxObs);
   infoLines(ch,s,T.concat(fut),el,opt.dkey,idr);
-  if(on.has("fib")&&opt.tz) fibDraw(ch,el,opt.tz,good,warn);
+  if(opt.fibBox) opt.fibBox.innerHTML="";
+  if(on.has("fib")&&opt.tz) fibDraw(ch,el,opt.tz,good,warn,opt.fibBox,isIdxU(opt));
   // panel bawah
   const P=opt.panels; const all=[ch];
   if(P){ P.innerHTML="";
@@ -1577,25 +1584,58 @@ function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   if(opt.read){ if(!x.macd&&on.has("macd")) x.macd=macdA(C); const lines=indRead(on,B,C,hasV,x);
     opt.read.innerHTML=lines.length?`<div class="dl" style="font-size:14px;gap:6px">${lines.map(l=>`<div><span>${l}</span></div>`).join("")}</div><p class="note">Dibaca otomatis dari harga terakhir${candle?"":" (grafik garis: data candle saham ini belum tersedia)"}. Semua ini hanya alat bantu; keputusan beli tetap dari sinyal metode dan area support.</p>`:`<p class="note">Pilih indikator di atas grafik.</p>`; }
 }
-// garis tanggal Fibonacci: yang akan datang (oranye putus-putus), yang lalu dan tepat (hijau), yang belum bisa dinilai (kuning)
-function fibDraw(ch,el,tz,good,warn){
-  const ORG="#ff9f1c", today=(()=>{ const n=new Date(); return new Date(n-n.getTimezoneOffset()*6e4).toISOString().slice(0,10); })();
-  const fut=(tz.tz||[]).filter(x=>x[0]>=today).slice(0,6), past=(tz.tzp||[]).filter(x=>x[0]<today&&x[6]!==0);
+// garis tanggal Fibonacci. Tiga tampilan: hanya yang akan datang, + yang tepat (bawaan), atau semua tanggal lalu (mode belajar).
+// tz.tz = tanggal mendatang [tgl, f, tgl asal, H/L, harga asal]; tz.tzp = tanggal lalu [tgl, f, tgl asal, H/L, harga asal, harga, hasil 1/0/null, tgl titik balik, jenis, harga, tebakan arah]
+const FIB_N=[13,21,34,55,89,144];
+function pastTz(a,dates,vals){ // hitung tanggal Fibonacci yang sudah lewat (untuk indeks; saham sudah dihitung di server), aturan sama dengan cycles.py
+  const D=[], V=[]; (dates||[]).forEach((d,i)=>{ if(vals&&vals[i]!=null){ D.push(d); V.push(vals[i]); } }); const n=D.length; if(n<30) return [];
+  const at=d=>{ let lo=0,hi=n-1; while(lo<hi){ const m=(lo+hi)>>1; if(D[m]<d) lo=m+1; else hi=m; } return D[lo]===d?lo:-1; };
+  const piv=(a.piv||[]).map(p=>[at(p[0]),p[1],p[2]]).filter(p=>p[0]>=0), turns=piv.slice();
+  if(a.tent){ const ti=at(a.tent[0]); if(ti>=0&&n-1-ti>=5) turns.push([ti,a.tent[1],a.tent[2]]); }
+  const lastI=turns.length?Math.max(...turns.map(x=>x[0])):0, dir=k=>k>=10?(V[k]>V[k-10]?"H":"L"):null, out=[];
+  piv.forEach(([i,v,ty])=>{ if(i<n-260) return; FIB_N.forEach(f=>{ const k=i+f; if(k>n-1) return;
+    const h=turns.find(x=>x[0]!==i&&Math.abs(x[0]-k)<=2), res=h?1:(k>lastI-2||k>n-3?null:0);
+    out.push([D[k],f,D[i],ty,v,V[k],res,h?D[h[0]]:null,h?h[2]:null,h?h[1]:null,dir(k-3)]); }); });
+  return out.sort((x,y)=>x[0]<y[0]?1:-1).slice(0,40); }
+function isIdxU(opt){ return opt.isIdx?null:usd; }
+function fibDraw(ch,el,tz,good,warn,box,U){
+  const ORG="#ff9f1c", GRY="#8a93a3", today=(()=>{ const n=new Date(); return new Date(n-n.getTimezoneOffset()*6e4).toISOString().slice(0,10); })();
+  let mode=store.get(WP+"fibm")||"hit"; if(!["next","hit","all"].includes(mode)) mode="hit";
+  const fut=(tz.tz||[]).filter(x=>x[0]>=today).slice(0,6), allPast=(tz.tzp||[]).filter(x=>x[0]<today);
+  const past=mode==="all"?allPast:mode==="hit"?allPast.filter(x=>x[6]!==0):[];
+  const nT=allPast.filter(x=>x[6]===1).length, nX=allPast.filter(x=>x[6]===0).length, nW=allPast.filter(x=>x[6]==null).length;
+  const fmt=U||(v=>nf(v,v>1000?0:2));
+  if(box){ box.innerHTML=`<div class="fibm" role="group" aria-label="Tampilan tanggal Fibonacci"><b>⏳ Waktu Fib:</b>${[["next","Akan datang"],["hit","+ Yang tepat"],["all","📚 Semua (belajar)"]].map(([k,t])=>`<button type="button" data-fm="${k}" aria-pressed="${mode===k}">${t}</button>`).join("")}
+      <span class="note">${allPast.length?`${nT} tepat · ${nX} lewat · ${nW} belum dinilai${mode==="all"?" · angka = hari bursa, ketuk untuk rinciannya":""}`:"belum ada tanggal yang lewat"}</span></div>`;
+    box.querySelectorAll("[data-fm]").forEach(b=>b.addEventListener("click",()=>{ store.set(WP+"fibm",b.dataset.fm); el.dispatchEvent(new CustomEvent("fibredraw")); })); }
   if(!fut.length&&!past.length) return;
   if(getComputedStyle(el).position==="static") el.style.position="relative";
-  const lay=document.createElement("div"); lay.className="fib-lay"; lay.setAttribute("aria-hidden","true");
+  const lay=document.createElement("div"); lay.className="fib-lay";
   lay.style.cssText="position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden"; el.appendChild(lay);
-  const tsc=ch.timeScale();
+  const tsc=ch.timeScale(); let sel=null;
+  const info=x=>{ const [d,f,pd,ty,pv,px,res,hd,hty,hv,gd]=x, jn=t=>t==="H"?"puncak":"lembah";
+    return `<div class="fib-info" style="border-color:${res===1?good:res===0?GRY:warn}"><button type="button" class="fib-x" aria-label="Tutup">✕</button>
+      <b>${res===1?"✅":res===0?"❌":"⏳"} ${tgl(d,1)} · ${res===1?"tepat":res===0?"lewat":"belum bisa dinilai"}</b><br>
+      ${f} hari bursa dari ${jn(ty)} ${tgl(pd,1)} (${fmt(pv)})${px!=null?`<br>Harga di tanggal itu: ${fmt(px)}`:""}
+      ${res===1?`<br>Titik balik: ${jn(hty)} ${fmt(hv)} pada ${tgl(hd,1)}${gd?` · tebakan ${jn(gd)} ${gd===hty?"✓ benar":"✗ salah"}`:""}`:res===0?"<br>Tidak ada puncak/lembah dalam ±2 hari bursa.":"<br>Titik balik baru terlihat beberapa hari kemudian."}</div>`; };
   const place=()=>{ let W=el.clientWidth, H=el.clientHeight; try{ W-=ch.priceScale("right").width(); H-=tsc.height(); }catch(e){ W-=78; H-=28; }
-    const xs=[], ln=(x,css,top=20)=>`<i style="position:absolute;left:${x}px;top:${top}px;height:${H-top}px;${css}"></i>`; let h="";
-    past.forEach(p=>{ const x=tsc.timeToCoordinate(p[0]); if(x==null||x<2||x>W) return; if(xs.some(v=>Math.abs(v-x)<3)) return; xs.push(x);
-      const ok=p[6]===1, c=ok?good:warn; h+=ln(x,`border-left:${ok?2:1}px solid ${c};opacity:${ok?.9:.7}`)+`<b style="position:absolute;left:${x-6}px;top:${H-14}px;width:12px;height:12px;border-radius:50%;background:${c};color:#fff;font:800 9px/12px sans-serif;text-align:center">${ok?"✓":""}</b>`; });
+    const xs=[], ln=(x,css,top=20)=>`<i style="position:absolute;left:${x}px;top:${top}px;height:${H-top}px;${css}"></i>`; let h="", tail="";
+    past.forEach((p,ix)=>{ const x=tsc.timeToCoordinate(p[0]); if(x==null||x<2||x>W) return; const ok=p[6]===1, no=p[6]===0, c=ok?good:no?GRY:warn, hl=sel===ix;
+      h+=ln(x,`border-left:${ok||hl?2:1}px ${no?"dashed":"solid"} ${c};opacity:${hl?1:no?.55:.9}`);
+      if(mode==="all"){ if(xs.some(v=>Math.abs(v-x)<14)&&!hl) return; xs.push(x);
+        h+=`<button type="button" class="fib-n" data-fi="${ix}" style="left:${x-10}px;top:${H-17}px;background:${c}${hl?";outline:2px solid var(--fg)":""}" aria-label="${tgl(p[0],1)}, ${p[1]} hari bursa">${p[1]}</button>`; }
+      else if(ok) h+=`<b style="position:absolute;left:${x-6}px;top:${H-14}px;width:12px;height:12px;border-radius:50%;background:${c};color:#fff;font:800 9px/12px sans-serif;text-align:center">✓</b>`; });
+    if(sel!=null&&past[sel]){ const p=past[sel], x=tsc.timeToCoordinate(p[0]), x0=tsc.timeToCoordinate(p[2]);
+      if(x0!=null&&x0>0&&x0<W){ h+=ln(x0,"border-left:2px solid var(--accent)")+`<b class="fib-tag" style="left:${Math.max(0,x0-30)}px;background:var(--accent)">${p[3]==="H"?"puncak":"lembah"} awal</b>`;
+        if(x!=null){ const a=Math.min(x0,x), w=Math.abs(x-x0); h+=`<i style="position:absolute;left:${a}px;top:44px;width:${w}px;border-top:2px solid var(--accent)"></i><b class="fib-tag" style="left:${a+w/2-30}px;top:34px;background:var(--surface);color:var(--accent);border:1px solid var(--accent)">${p[1]} hari bursa</b>`; } }
+      tail=info(p); }
     const tx=tsc.timeToCoordinate(today);
-    if(tx!=null&&tx>0&&tx<W) h+=ln(tx,"border-left:1.5px solid var(--fg);opacity:.55",20)+`<b style="position:absolute;left:${Math.max(0,tx-22)}px;top:0;background:var(--fg);color:var(--bg);font:700 10px/16px sans-serif;padding:0 5px;border-radius:4px">hari ini</b>`;
+    if(tx!=null&&tx>0&&tx<W) h+=ln(tx,"border-left:1.5px solid var(--fg);opacity:.55",20)+`<b class="fib-tag" style="left:${Math.max(0,tx-22)}px;background:var(--fg);color:var(--bg)">hari ini</b>`;
     const fx=[]; fut.forEach(f=>{ const x=tsc.timeToCoordinate(f[0]); if(x==null||x<2||x>W) return; h+=ln(x,`border-left:2px dashed ${ORG}`);
       if(fx.some(v=>Math.abs(v-x)<18)) return; fx.push(x); const up=tz.tzdir==="H";
       h+=`<b title="${tgl(f[0],1)} · ${f[1]} hari bursa" style="position:absolute;left:${x-9}px;top:20px;width:18px;height:18px;border-radius:5px;background:${ORG};color:#131722;font:800 11px/18px sans-serif;text-align:center">${tz.tzdir?(up?"▲":"▼"):"⏳"}</b>`; });
-    lay.innerHTML=h; };
+    lay.innerHTML=h+tail; };
+  lay.addEventListener("click",ev=>{ if(ev.target.closest(".fib-x")){ sel=null; place(); return; } const b=ev.target.closest("[data-fi]"); if(!b) return; ev.stopPropagation(); const k=+b.dataset.fi; sel=sel===k?null:k; place(); });
   place(); tsc.subscribeVisibleLogicalRangeChange(()=>requestAnimationFrame(place));
   const ro=new ResizeObserver(()=>requestAnimationFrame(place)); ro.observe(el); pxObs.push(ro);
 }
@@ -1636,7 +1676,7 @@ function renderCycles(box){
       <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
       <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span><span style="color:#0f9d58">╱ garis tren</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
       <div class="indbar" id="indBar">${(()=>{ const on=indOn(); return IND.map(([k,n,c])=>`<button type="button" data-ind="${k}" aria-pressed="${on.has(k)}"><i style="background:${c}"></i>${n}</button>`).join(""); })()}<span class="il-sep"></span><button type="button" id="ilBtn" aria-pressed="false" title="Ukur perubahan harga antara dua titik">📏 Garis info</button><button type="button" id="tlBtn" aria-pressed="false" title="Tarik garis tren sendiri; diperpanjang ke depan">✏️ Tarik garis</button><button type="button" id="ilClr" hidden title="Hapus semua garis yang Anda buat">🗑️</button><button type="button" id="tvBtn" title="Grafik TradingView: harga lebih baru (tertunda ±15 menit), alat gambar dan indikator lengkap">📺 TradingView</button></div>
-      <div id="tvBox"></div><p class="note" id="ilHint" style="margin:0 0 6px;min-height:0"></p>
+      <div id="tvBox"></div><div id="fibMode"></div><p class="note" id="ilHint" style="margin:0 0 6px;min-height:0"></p>
       <div id="cyChart" style="width:100%;min-height:400px"></div>
       <div id="cyPanels"></div></div>
     <p class="note" style="margin:14px 2px 0;font-weight:700;letter-spacing:.04em">PENJELASAN (KETUK UNTUK MEMBUKA)</p>
@@ -1679,8 +1719,8 @@ function renderCycles(box){
   faTxt(); fa.addEventListener("click",()=>{ const all=fds().every(d=>d.open); fds().forEach(d=>d.open=!all); const sb=box.querySelector(".srbox"); if(sb){ sb.classList.toggle("sr-open",!all); store.set(WP+"fold.saran",all?"0":"1"); } setTimeout(faTxt,40); });
   box.addEventListener("toggle",ev=>{ if(ev.target.matches&&ev.target.matches("details[data-fold]")){ faTxt(); if(ev.target.open&&b&&ev.target.querySelector("#cyBreadth")&&window.LightweightCharts) drawBreadth($("cyBreadth"),b); } },true);
   $("cyQ").addEventListener("change",ev=>{ const v=ev.target.value.trim().toUpperCase(); if(CYC.stocks[v]){ store.set(WP+"cy.sel",v); renderResults(); } });
-  let bars=null; const draw=()=>drawChart($("cyChart"),SER.dates,vals,a,isIdx?(a.rawan||[]).filter(r=>(r.why||[]).some(w=>{ const k=testKey(w), t=k&&verdOf(sel,k); return !t||t.verdict!=="acak"; })):null,CYC.future,!isIdx&&usd(1).startsWith("Rp"),{bars,panels:$("cyPanels"),read:$("cyRead"),dkey:sel,tz:isIdx?idxTz(a,sel):a});
-  IL_MODE=false;
+  let bars=null; const draw=()=>drawChart($("cyChart"),SER.dates,vals,a,isIdx?(a.rawan||[]).filter(r=>(r.why||[]).some(w=>{ const k=testKey(w), t=k&&verdOf(sel,k); return !t||t.verdict!=="acak"; })):null,CYC.future,!isIdx&&usd(1).startsWith("Rp"),{bars,panels:$("cyPanels"),read:$("cyRead"),dkey:sel,isIdx,fibBox:$("fibMode"),tz:isIdx?Object.assign(idxTz(a,sel),{tzp:pastTz(a,SER.dates,vals)}):a});
+  IL_MODE=false; $("cyChart").addEventListener("fibredraw",()=>draw());
   const tvSym=IS_ID?(isIdx?"IDX:COMPOSITE":"IDX:"+sel):({"S&P 500":"SP:SPX","Nasdaq-100":"NASDAQ:NDX"}[sel]||sel);
   const tvSet=on=>{ $("cyBox").classList.toggle("tv-on",on); $("tvBtn").textContent=on?"📈 Grafik ChartFlow":"📺 TradingView"; $("tvBtn").setAttribute("aria-pressed",on);
     if(on){ IL_MODE=false; ilBar(); tvWidget($("tvBox"),tvSym); } else $("tvBox").innerHTML=""; };

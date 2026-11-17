@@ -1,5 +1,10 @@
 [
  {
+  "d": "2026-11-18",
+  "t": "📚 Mode belajar garis Fibonacci",
+  "x": "Tombol ⏳ Waktu Fib kini punya pilihan Akan datang, + Yang tepat, dan Semua (belajar) yang menampilkan semua tanggal Fibonacci yang sudah lewat di grafik saham dan IHSG, lengkap dengan asal puncak/lembah dan apakah tanggal itu tepat menjadi titik balik."
+ },
+ {
   "d": "2026-11-17",
   "t": "🫧 Flo membaca halaman yang dibuka",
   "x": "Flo kini selalu menerima isi halaman yang sedang dibuka (grafik, zona, indikator, tanggal Fibonacci) dan data ChartFlow lainnya, bukan hanya saat pertanyaan memuat kata tertentu, serta punya tombol pertanyaan yang menyesuaikan halaman."
