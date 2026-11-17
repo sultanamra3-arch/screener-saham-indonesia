@@ -643,6 +643,11 @@ def main():
     import trend
     trend.run(DATA, 0.004, skip=("IHSG",), log=log)  # garis tren: statistik & rekam jejak sinyal
     _track(True, (0.0015, 0.0025))
+    try:
+        import pbt
+        pbt.run(DATA, log=log)  # Pullback Tren (tab Watchlist & grafik)
+    except Exception as e:
+        log(f"  Pullback Tren gagal: {e}")
     log(f"Selesai dalam {(time.time() - t0) / 60:.1f} menit -> {OUT_FILE.relative_to(ROOT)}")
 
     lc = out["liqCount"]

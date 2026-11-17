@@ -1315,7 +1315,7 @@ function crossed(a,b,k=3){ // 1 = a memotong ke atas b dalam k bar terakhir, -1 
   const n=a.length; for(let i=n-1;i>=Math.max(1,n-k);i--){ if([a[i],b[i],a[i-1],b[i-1]].some(x=>x==null)) continue;
     if(a[i-1]<=b[i-1]&&a[i]>b[i]) return 1; if(a[i-1]>=b[i-1]&&a[i]<b[i]) return -1; } return 0; }
 const IND=[["ma20","MA20","#f59e0b",1],["ma50","MA50","#0ea5e9",1],["ma200","MA200","#e11d48",1],["ema9","EMA9","#14b8a6",0],["bb","Bollinger","#64748b",0],["vwap","VWAP 20","#a855f7",0],
-  ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1],["path","〰️ Jalur","#7c3aed",0],["fib","⏳ Waktu Fib","#ff9f1c",0]];
+  ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1],["path","〰️ Jalur","#7c3aed",0],["fib","⏳ Waktu Fib","#ff9f1c",0],["pbt","📈 Pullback Tren","#0e8a5f",0]];
 function indOn(){ let s=null; try{ s=JSON.parse(store.get(WP+"ind")||"null"); }catch(e){}
   if(Array.isArray(s)&&!store.get(WP+"ind.tr")){ if(!s.includes("trend")) s.push("trend"); store.set(WP+"ind",JSON.stringify(s)); store.set(WP+"ind.tr","1"); }
   return new Set(s||IND.filter(x=>x[3]).map(x=>x[0])); }
@@ -1562,6 +1562,8 @@ function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   watchSize(ch,el,pxObs);
   infoLines(ch,s,T.concat(fut),el,opt.dkey,idr);
   if(opt.fibBox) opt.fibBox.innerHTML="";
+  if(opt.pbtBox) opt.pbtBox.innerHTML="";
+  if(on.has("pbt")&&IS_ID&&typeof PBT!=="undefined"&&PBT&&opt.dkey&&typeof pbtDraw==="function") pbtDraw(ch,T,opt.dkey,opt.pbtBox,good,bad);
   if(on.has("fib")&&opt.tz) fibDraw(ch,el,opt.tz,good,warn,opt.fibBox,isIdxU(opt));
   // panel bawah
   const P=opt.panels; const all=[ch];
@@ -1597,6 +1599,19 @@ function pastTz(a,dates,vals){ // hitung tanggal Fibonacci yang sudah lewat (unt
     const h=turns.find(x=>x[0]!==i&&Math.abs(x[0]-k)<=2), res=h?1:(k>lastI-2||k>n-3?null:0);
     out.push([D[k],f,D[i],ty,v,V[k],res,h?D[h[0]]:null,h?h[2]:null,h?h[1]:null,dir(k-3)]); }); });
   return out.sort((x,y)=>x[0]<y[0]?1:-1).slice(0,40); }
+// tanda BELI/JUAL Pullback Tren: panah tanpa teks agar tidak bertumpuk; rinciannya di daftar bawah tombol
+function pbtDraw(ch,T,t,box,good,bad){
+  const L=(PBT.trades||{})[t]||[], ts=new Set(T), op=(PBT.open||[]).find(x=>x.t===t), nw=(PBT.now||[]).find(x=>x.t===t);
+  const z=ch.addLineSeries({color:"rgba(0,0,0,0)",lineVisible:false,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false,autoscaleInfoProvider:()=>null});
+  const pts={}, mk=[];
+  L.forEach(([ed,ep,xd,xp,r])=>{ if(ts.has(ed)){ pts[ed]=ep; mk.push({time:ed,position:"belowBar",color:"#0e8a5f",shape:"arrowUp"}); } if(ts.has(xd)){ pts[xd]=xp; mk.push({time:xd,position:"aboveBar",color:r>0?good:bad,shape:"arrowDown"}); } });
+  if(op&&ts.has(op.d)){ pts[op.d]=op.p; mk.push({time:op.d,position:"belowBar",color:"#0e8a5f",shape:"arrowUp",text:"BELI"}); }
+  z.setData(Object.keys(pts).sort().map(d=>({time:d,value:pts[d]}))); mk.sort((a,b)=>a.time<b.time?-1:a.time>b.time?1:0); z.setMarkers(mk);
+  if(!box) return; const w=L.filter(x=>x[4]>0).length, pc=v=>`<b class="${v>0?"ok":"no"}">${v>0?"+":""}${nf(v,1)}%</b>`;
+  box.innerHTML=`<div class="fibm" style="display:block;font-size:13px;margin:2px 0 8px"><b>📈 Pullback Tren di ${esc(t)}:</b> ${L.length?`${L.length} transaksi sejak data tersedia, ${w} untung. Panah hijau ▲ = beli, panah ▼ = jual (hijau untung, merah rugi).`:"belum ada transaksi."}
+    ${nw?` <span class="st buy">${T("Sinyal beli hari ini","Memenuhi syarat hari ini")}</span>`:""}${op?` <span class="st hold">Berjalan sejak ${tgl(op.d,1)} (${op.cur>0?"+":""}${nf(op.cur,1)}%)</span>`:""}${PBT.mkt&&!PBT.mkt.ok?` <span class="note">· sinyal baru ditunda: IHSG di bawah rata-rata ${PBT.rule.idx} hari</span>`:""}
+    ${L.length?`<details style="margin-top:4px"><summary class="note" style="cursor:pointer">Rincian transaksi</summary><div class="dl" style="margin-top:6px">${L.slice().reverse().slice(0,12).map(x=>`<div><span>${tgl(x[0],1)} ${usd(x[1])} → ${tgl(x[2],1)} ${usd(x[3])}</span><span class="num">${pc(x[4])}</span></div>`).join("")}</div></details>`:""}</div>`;
+}
 function isIdxU(opt){ return opt.isIdx?null:usd; }
 function fibDraw(ch,el,tz,good,warn,box,U){
   const ORG="#ff9f1c", GRY="#8a93a3", today=(()=>{ const n=new Date(); return new Date(n-n.getTimezoneOffset()*6e4).toISOString().slice(0,10); })();
@@ -1675,8 +1690,8 @@ function renderCycles(box){
     <div class="tablebox" id="cyBox" style="padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
       <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
       <span class="legend"><span style="color:var(--good)">— support</span><span style="color:var(--bad)">— resistance</span><span style="color:var(--warn)">- - ZigZag ${nf(a.thr,1)}%</span><span style="color:#0f9d58">╱ garis tren</span>${isIdx?`<span style="color:var(--warn)">▼ tanggal rawan</span>`:""}</span></div>
-      <div class="indbar" id="indBar">${(()=>{ const on=indOn(); return IND.map(([k,n,c])=>`<button type="button" data-ind="${k}" aria-pressed="${on.has(k)}"><i style="background:${c}"></i>${n}</button>`).join(""); })()}<span class="il-sep"></span><button type="button" id="ilBtn" aria-pressed="false" title="Ukur perubahan harga antara dua titik">📏 Garis info</button><button type="button" id="tlBtn" aria-pressed="false" title="Tarik garis tren sendiri; diperpanjang ke depan">✏️ Tarik garis</button><button type="button" id="ilClr" hidden title="Hapus semua garis yang Anda buat">🗑️</button><button type="button" id="tvBtn" title="Grafik TradingView: harga lebih baru (tertunda ±15 menit), alat gambar dan indikator lengkap">📺 TradingView</button></div>
-      <div id="tvBox"></div><div id="fibMode"></div><p class="note" id="ilHint" style="margin:0 0 6px;min-height:0"></p>
+      <div class="indbar" id="indBar">${(()=>{ const on=indOn(); return IND.filter(x=>x[0]!=="pbt"||IS_ID).map(([k,n,c])=>`<button type="button" data-ind="${k}" aria-pressed="${on.has(k)}"><i style="background:${c}"></i>${n}</button>`).join(""); })()}<span class="il-sep"></span><button type="button" id="ilBtn" aria-pressed="false" title="Ukur perubahan harga antara dua titik">📏 Garis info</button><button type="button" id="tlBtn" aria-pressed="false" title="Tarik garis tren sendiri; diperpanjang ke depan">✏️ Tarik garis</button><button type="button" id="ilClr" hidden title="Hapus semua garis yang Anda buat">🗑️</button><button type="button" id="tvBtn" title="Grafik TradingView: harga lebih baru (tertunda ±15 menit), alat gambar dan indikator lengkap">📺 TradingView</button></div>
+      <div id="tvBox"></div><div id="pbtBox"></div><div id="fibMode"></div><p class="note" id="ilHint" style="margin:0 0 6px;min-height:0"></p>
       <div id="cyChart" style="width:100%;min-height:400px"></div>
       <div id="cyPanels"></div></div>
     <p class="note" style="margin:14px 2px 0;font-weight:700;letter-spacing:.04em">PENJELASAN (KETUK UNTUK MEMBUKA)</p>
@@ -1719,7 +1734,7 @@ function renderCycles(box){
   faTxt(); fa.addEventListener("click",()=>{ const all=fds().every(d=>d.open); fds().forEach(d=>d.open=!all); const sb=box.querySelector(".srbox"); if(sb){ sb.classList.toggle("sr-open",!all); store.set(WP+"fold.saran",all?"0":"1"); } setTimeout(faTxt,40); });
   box.addEventListener("toggle",ev=>{ if(ev.target.matches&&ev.target.matches("details[data-fold]")){ faTxt(); if(ev.target.open&&b&&ev.target.querySelector("#cyBreadth")&&window.LightweightCharts) drawBreadth($("cyBreadth"),b); } },true);
   $("cyQ").addEventListener("change",ev=>{ const v=ev.target.value.trim().toUpperCase(); if(CYC.stocks[v]){ store.set(WP+"cy.sel",v); renderResults(); } });
-  let bars=null; const draw=()=>drawChart($("cyChart"),SER.dates,vals,a,isIdx?(a.rawan||[]).filter(r=>(r.why||[]).some(w=>{ const k=testKey(w), t=k&&verdOf(sel,k); return !t||t.verdict!=="acak"; })):null,CYC.future,!isIdx&&usd(1).startsWith("Rp"),{bars,panels:$("cyPanels"),read:$("cyRead"),dkey:sel,isIdx,fibBox:$("fibMode"),tz:isIdx?Object.assign(idxTz(a,sel),{tzp:pastTz(a,SER.dates,vals)}):a});
+  let bars=null; const draw=()=>drawChart($("cyChart"),SER.dates,vals,a,isIdx?(a.rawan||[]).filter(r=>(r.why||[]).some(w=>{ const k=testKey(w), t=k&&verdOf(sel,k); return !t||t.verdict!=="acak"; })):null,CYC.future,!isIdx&&usd(1).startsWith("Rp"),{bars,panels:$("cyPanels"),read:$("cyRead"),dkey:sel,isIdx,fibBox:$("fibMode"),pbtBox:isIdx?null:$("pbtBox"),tz:isIdx?Object.assign(idxTz(a,sel),{tzp:pastTz(a,SER.dates,vals)}):a});
   IL_MODE=false; $("cyChart").addEventListener("fibredraw",()=>draw());
   const tvSym=IS_ID?(isIdx?"IDX:COMPOSITE":"IDX:"+sel):({"S&P 500":"SP:SPX","Nasdaq-100":"NASDAQ:NDX"}[sel]||sel);
   const tvSet=on=>{ $("cyBox").classList.toggle("tv-on",on); $("tvBtn").textContent=on?"📈 Grafik ChartFlow":"📺 TradingView"; $("tvBtn").setAttribute("aria-pressed",on);
@@ -1729,7 +1744,7 @@ function renderCycles(box){
     if(ev.target.closest("#ilClr")){ if(window.__ilClear) window.__ilClear(); return; }
     const bt=ev.target.closest("[data-ind]"); if(!bt) return; const on=indOn(), k=bt.dataset.ind; on.has(k)?on.delete(k):on.add(k);
     store.set(WP+"ind",JSON.stringify([...on])); $("indBar").querySelectorAll("[data-ind]").forEach(b=>b.setAttribute("aria-pressed",on.has(b.dataset.ind))); draw(); });
-  Promise.all([loadLWC(),loadOhlc(sel),loadTrendStats()]).then(([,bb])=>{ if(tab!=="cycles") return; bars=bb; draw(); { const tb=$("trBox"); if(tb) tb.innerHTML=trendCard(); } if(store.get(WP+"tv")==="1") tvSet(true); if(b) drawBreadth($("cyBreadth"),b); })
+  Promise.all([loadLWC(),loadOhlc(sel),loadTrendStats(),typeof loadPbt==="function"?loadPbt():null]).then(([,bb])=>{ if(tab!=="cycles") return; bars=bb; draw(); { const tb=$("trBox"); if(tb) tb.innerHTML=trendCard(); } if(store.get(WP+"tv")==="1") tvSet(true); if(b) drawBreadth($("cyBreadth"),b); })
     .catch(()=>{ $("cyChart").innerHTML=`<p class="note">Grafik tidak bisa dimuat (pustaka grafik gagal diunduh).</p>`; });
 }
 
@@ -1991,6 +2006,38 @@ function planList(byT){
   out.sort((a,b)=>(a.pl.kind==="now"?0:1)-(b.pl.kind==="now"?0:1)||(a.pl.kind==="now"?(b.pl.rr??9)-(a.pl.rr??9):b.pl.dist-a.pl.dist));
   return {list:out,skip};
 }
+// ---------- Pullback Tren (hanya BEI): data dari scripts/pbt.py ----------
+let PBT=null, PBT_P=null;
+function loadPbt(){ if(!IS_ID) return Promise.resolve(null); if(PBT_P) return PBT_P;
+  PBT_P=fetch("data/pbt.json?v="+encodeURIComponent((DATA&&DATA.priceDate)||""),{cache:"no-cache"}).then(r=>r.ok?r.json():null).catch(()=>null).then(j=>(PBT=j||{})); return PBT_P; }
+const pbtWhy={sma5:"tutup di atas SMA5",["15hari"]:"15 hari bursa",stop:"kena stop 20%"};
+function pbtSection(){
+  if(!PBT) return `<div class="tablebox" style="margin-top:12px"><div class="empty">Memuat Pullback Tren…</div></div>`;
+  if(!PBT.date) return "";
+  const P=PBT, R=P.rule||{}, ok=P.mkt&&P.mkt.ok, now=P.now||[], op=P.open||[], ts=P.test||{}, lv=P.live||{};
+  const pc=v=>`<b class="${v>0?"ok":"no"}">${v>0?"+":""}${nf(v,1)}%</b>`, byT=Object.fromEntries(rows.map(o=>[o.ticker,o]));
+  const cell=t=>byT[t]?stockCell(byT[t]):`<td><span class="tk">${esc(t)}</span></td>`;
+  const head=ok?T(`📈 Pullback Tren: ${now.length} sinyal beli · ${op.length} berjalan`,`📈 Pullback Tren: ${now.length} memenuhi syarat · ${op.length} berjalan`):`📈 Pullback Tren: ditunda dulu${op.length?` · ${op.length} berjalan`:""}`;
+  return `<div class="rhead" style="margin-top:12px"><div class="l"><h2>${head}</h2>
+    ${ok?"":`<p style="margin:4px 0 6px">⏸️ <b>IHSG ${nf(P.mkt.ihsg,0)} di bawah rata-rata ${R.idx} harinya (${nf(P.mkt.sma,0)})</b>, jadi sinyal beli baru tidak dikeluarkan. Posisi yang sudah berjalan tetap dinilai.</p>`}
+    <p class="note">${T("Beli","Syarat beli")}: harga di atas EMA${R.ema} dan EMA200, RSI ${R.rsi} hari di bawah ${nf(R.rsiBuy,0)}, IHSG di atas rata-rata ${R.idx} hari; dibeli di harga pembukaan besok. ${T("Jual","Keluar")}: tutup di atas SMA${R.exit}, ${R.max} hari bursa, atau stop ${nf(R.stop,0)}% di bawah harga beli. Rata-rata dipegang ±${ts.days||4} hari.</p></div></div>
+    ${now.length?`<div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga tutup</th><th class="num">Stop darurat</th><th></th></tr></thead><tbody>
+      ${now.map(x=>`<tr class="row wrow" data-go="${esc(x.t)}" tabindex="0">${cell(x.t)}<td class="num">${usd(x.p)}</td><td class="num no">&lt; ${usd(x.p*(1-R.stop/100))}</td><td><button type="button" class="calcbtn" data-calc="${esc(x.t)}" data-e="${x.p}" data-s="${Math.round(x.p*(1-R.stop/100))}">🧮</button></td></tr>`).join("")}</tbody></table></div>`:""}
+    ${op.length?`<div class="tablebox" style="margin-top:10px"><div style="padding:10px 12px 0"><b>Posisi berjalan</b></div><table><thead><tr><th>Saham</th><th class="num">Beli</th><th class="num">Sekarang</th><th>Status</th></tr></thead><tbody>
+      ${op.map(x=>`<tr class="row wrow" data-go="${esc(x.t)}" tabindex="0">${cell(x.t)}<td class="num">${usd(x.p)}<br><span class="note">${tgl(x.d,1)}</span></td><td class="num">${pc(x.cur)}<br><span class="note">hari ke-${x.bars}</span></td><td style="font-size:13px">${x.exit?`<span class="st sell">${T("Jual besok pagi","Keluar besok pagi")}</span><br><span class="note">${pbtWhy[x.exit]||""}</span>`:`<span class="st hold">tahan</span><br><span class="note">stop ${usd(x.stop)}</span>`}</td></tr>`).join("")}</tbody></table></div>`:""}
+    <div class="dgrid" style="margin-top:12px">
+      <div class="mcard"><h4><span>📏 Hasil uji ${esc(ts.from||"")}–${esc(ts.to||"")}</span></h4><div class="dl">
+        <div><span>Transaksi (${nf(ts.stocks||0,0)} saham likuid)</span><span class="num">${nf(ts.n||0,0)}</span></div>
+        <div><span>Untung</span><span class="num ok">${nf(ts.win||0,0)}%</span></div>
+        <div><span>Rata-rata per transaksi (setelah biaya)</span><span class="num">${pc(ts.avg||0)}</span></div>
+        <div><span>Data 2024–2026 (tidak dipakai menyetel)</span><span class="num">${nf(ts.test_win||0,0)}% · ${pc(ts.test_avg||0)}</span></div>
+        <div><span>Tahun 2026 (pasar jatuh)</span><span class="num">${pc(ts.y2026||0)}</span></div></div>
+        <p class="note">Hasil masa lalu tidak menjamin hasil berikutnya. Strategi ini sering untung kecil dan sesekali rugi besar.</p></div>
+      <div class="mcard"><h4><span>📈 Rekam jejak sejak ${tgl(P.start,1)}</span></h4>${lv.n?`<div class="dl"><div><span>Selesai</span><span class="num">${lv.n}</span></div><div><span>Untung</span><span class="num ok">${lv.win} (${nf(lv.win/lv.n*100,0)}%)</span></div><div><span>Rata-rata per transaksi</span><span class="num">${pc(lv.avg)}</span></div></div>`:`<p class="note">Belum ada transaksi yang selesai sejak fitur ini dipasang.</p>`}</div>
+    </div>
+    ${(P.recent||[]).length?fold("pbtlast","🕘 Transaksi terakhir",`${(P.recent||[]).length} transaksi menurut aturan ini, terbaru dulu`,`<div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Beli</th><th class="num">Jual</th><th class="num">Hasil</th></tr></thead><tbody>
+      ${(P.recent||[]).slice(0,20).map(x=>`<tr class="row wrow" data-go="${esc(x[0])}" tabindex="0"><td><span class="tk">${esc(x[0])}</span></td><td class="num">${usd(x[2])}<br><span class="note">${tgl(x[1],1)}</span></td><td class="num">${usd(x[4])}<br><span class="note">${tgl(x[3],1)}</span></td><td class="num">${pc(x[5])}<br><span class="note">${pbtWhy[x[6]]||""}</span></td></tr>`).join("")}</tbody></table></div>`):""}`;
+}
 function renderWatch(box){
   if(!CYC&&!CYC_ERR){ box.innerHTML=`<div class="tablebox"><div class="empty">Memuat data area support…</div></div>`; loadCycles().then(()=>{ if(tab==="watch"){ renderTabs(); renderResults(); } }); return; }
   if(CYC_ERR||!CYC.watch){ box.innerHTML=`<div class="tablebox"><div class="empty">Data area support belum tersedia. Akan terisi setelah pembaruan data berikutnya.</div></div>`; return; }
@@ -2015,9 +2062,11 @@ function renderWatch(box){
   const st=stars(), starred=[...st].map(t=>({t,o:rows.find(x=>x.ticker===t),z:nearZones(t)})).filter(x=>x.o);
   const broken=(W.broken||[]).filter(b=>byT[b.t]);
   const idxName=Object.keys(CYC.indices)[0], zs=((CYC.score||{})[idxName]||{}).zones||{};
+  if(IS_ID&&!PBT_P) loadPbt().then(()=>{ if(tab==="watch") renderResults(); });
+  const wrapArea=h=>IS_ID&&PBT&&PBT.date?`<p class="note" style="margin:16px 2px 0;font-weight:700;letter-spacing:.04em">RENCANA BELI DARI ZONA SUPPORT</p>${fold("area","📍 Area beli",pause?`ditunda saat pasar lesu · ${list.length} dipantau`:`${nNow} ${T("beli sekarang","di area beli")} · ${nQ} antrean`,h)}`:h;
   box.innerHTML=saranBox(`${saranMarket().head}<ul class="sl"><li>📋 Daftar di bawah hanya berisi saham pilihan ${r.k==="tertekan"?"<b>Dividen, Value, dan Quality</b> (yang paling tahan saat pasar lesu)":esc(allow.map(id=>MID[id].name).join(", "))}.</li>
       <li>⚖️ Syaratnya: masih bisa naik minimal ${UP_MIN}% dan calon untungnya minimal ${RR_MIN}× calon rugi.</li><li>🛑 ${T("Kalau harga ditutup di bawah angka <b>Stop</b>, jual atau batalkan antrean.","<b>Stop</b> = batas rugi menurut aturan (harga penutupan).")}</li></ul>`)+`
-    <div class="rhead" style="margin-top:12px"><div class="l"><h2>${pause?T(`Rencana beli: ditunda dulu · ${list.length} saham dipantau`,`Area beli: ditunda saat pasar lesu · ${list.length} dipantau`):T(`Rencana beli: ${nNow} beli sekarang · ${nQ} antrean`,`Area beli: ${nNow} di area · ${nQ} menunggu`)+(nW?` · ${nW} ${T("tunggu tren","menunggu tren")}`:"")}</h2>
+    ${IS_ID?pbtSection():""}${wrapArea(`<div class="rhead" style="margin-top:12px"><div class="l"><h2>${pause?T(`Rencana beli: ditunda dulu · ${list.length} saham dipantau`,`Area beli: ditunda saat pasar lesu · ${list.length} dipantau`):T(`Rencana beli: ${nNow} beli sekarang · ${nQ} antrean`,`Area beli: ${nNow} di area · ${nQ} menunggu`)+(nW?` · ${nW} ${T("tunggu tren","menunggu tren")}`:"")}</h2>
       ${pause?`<p style="margin:4px 0 6px">⏸️ <b>${T("Pasar sedang lesu, jadi belum ada saran beli.","Pasar sedang lesu; aturan menunda pembelian baru.")}</b> ${r.b!=null?`Hanya ${nf(r.b,0)}% saham yang masih dalam tren naik. `:""}${T("Saat pasar seperti ini, beli di area support sering langsung kena batas rugi. Daftar di bawah tetap ditampilkan sebagai pantauan; statusnya kembali ke “Beli sekarang” begitu pasar membaik.","Daftar di bawah hanya pantauan. Status beli aktif kembali saat pasar membaik.")}</p>`:""}
       <p class="note">${pause?"":T("<b>✅ Beli sekarang</b> = harga sudah di zona support dan hitungannya layak. <b>⏳ Pasang antrean</b> = pasang order beli di harga itu dan tunggu. ","<b>✅ Di area beli</b> = harga sudah di zona support dan memenuhi syarat metode. <b>⏳ Menunggu area beli</b> = area beli menurut aturan ada di bawah harga sekarang. ")}${skip?`${skip} saham lain di area support dilewati karena ruang naiknya sempit. `:""}${!pause&&nW?`${nW} saham ditandai “tunggu tren” karena harganya masih di bawah rata-rata 200 hari. `:""}${zs.n?`Rekam jejak zona ${esc(idxName)}: ${zs.hit} dari ${zs.n} zona yang tersentuh bertahan.`:""}</p></div></div>
     ${arNote}<div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th>${T("Aksi","Status")}</th><th class="num">${T("Beli di","Area beli")}</th><th class="num">Stop</th><th class="num">Target</th><th class="num">R:R</th><th>Sinyal</th><th></th></tr></thead><tbody>
@@ -2028,7 +2077,7 @@ function renderWatch(box){
       <div><span><b>Stop</b>: bila harga <b>ditutup</b> di bawah angka ini, support dianggap jebol; jual atau batalkan antrean.</span></div>
       <div><span><b>Target</b>: resistance kuat/sedang terdekat (R1), tempat kenaikan biasanya tertahan. <b>R:R</b> = potensi untung dibagi potensi rugi; 1 : 2 artinya untung dua kali rugi.</span></div>
       <div><span><b>S1, S2, S3</b>: support pertama, kedua, ketiga dari puncak terakhir. Grafiknya ada di tab Siklus (klik baris).</span></div>
-      <div><span>🧮 membuka Kalkulator dengan harga beli, stop, dan target sudah terisi, untuk menghitung jumlah lot.</span></div></div></details>
+      <div><span>🧮 membuka Kalkulator dengan harga beli, stop, dan target sudah terisi, untuk menghitung jumlah lot.</span></div></div></details>`)}
     <div class="rhead" style="margin-top:16px"><div class="l"><h2>★ Saham yang Anda tandai</h2><p class="note">Klik ☆ di tabel mana pun untuk menandai.</p></div></div>
     <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">Support terdekat</th><th class="num">Jarak</th><th class="num">R1</th><th>Status</th></tr></thead><tbody>
     ${starred.length?starred.map(x=>{ const z=x.z&&x.z.s, w=W.in[x.t], r1=x.z?strongRes(x.z.a):null, pl=list.find(y=>y.t===x.t); return `<tr class="row wrow" data-go="${esc(x.t)}" tabindex="0">${stockCell(x.o)}<td class="num">${usd(x.o.price)}</td>
@@ -3419,6 +3468,8 @@ window.addEventListener("online",()=>autoCheck(true));
     await add(/support|resist|dekat|lantai|atap|pantul|area beli|tembus/i,()=>nearList(q));
     { const wp=PORTQ.test(q)||(portFollow&&q.length<60); portFollow=PORTQ.test(q); if(wp) S.push([0,portCtx()]); }
     try{ const v=await otherCtx(q); if(v) S.push([1,v]); }catch(e){}
+    try{ if(typeof PBT!=="undefined"&&IS_ID){ if(!PBT) await loadPbt(); const P=PBT||{}; if(P.date){ const R=P.rule||{}, ts=P.test||{};
+      S.push([/pullback|pbt|sinyal|watchlist|rsi|beli/i.test(q)?1:3,`\nPULLBACK TREN (tab Watchlist; beli: harga di atas EMA${R.ema} & EMA200, RSI${R.rsi} < ${R.rsiBuy}, IHSG di atas rata-rata ${R.idx} hari; jual: tutup di atas SMA${R.exit}, ${R.max} hari bursa, atau stop ${R.stop}%): status ${P.mkt&&P.mkt.ok?"aktif":"DITUNDA karena IHSG di bawah rata-rata "+R.idx+" hari"}. Sinyal beli hari ini: ${(P.now||[]).map(x=>x.t).join(", ")||"tidak ada"}. Posisi berjalan: ${(P.open||[]).map(x=>`${x.t} sejak ${x.d} ${x.cur}%`).join("; ")||"tidak ada"}. Uji ${ts.from}–${ts.to}: ${ts.n} transaksi, ${ts.win}% untung, rata-rata ${ts.avg}% per transaksi, 2026 ${ts.y2026}%. Transaksi terakhir: ${(P.recent||[]).slice(0,8).map(x=>`${x[0]} ${x[1]}→${x[3]} ${x[5]}%`).join("; ")}.`]); } } }catch(e){}
     S.push([2,"\nCatatan: zona support/resistance dihitung ChartFlow dari Fibonacci, titik balik, rata-rata bergerak, dan angka bulat; kekuatan: kuat/sedang/lemah."]);
     S.sort((x,y)=>x[0]-y[0]);
     let out=L.filter(Boolean).join("\n")+pg; for(const [,v] of S){ if(!v) continue; if(out.length+v.length>38000) continue; out+="\n"+v; }
