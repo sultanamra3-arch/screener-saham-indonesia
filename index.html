@@ -302,6 +302,16 @@ tbody tr:last-child td{border-bottom:none}
 #cyChart.il-on{cursor:crosshair}.il-sep{width:1px;background:var(--line);margin:0 4px;align-self:stretch}
 #ilBtn[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .sv .svh{font-size:16px;font-weight:700;line-height:1.35}.sv-g{color:var(--good)}.sv-r{color:var(--bad)}.sv-y{color:var(--warn)}.sv-o{color:var(--accent)}.sv-n{color:var(--fg)}
+.fold{margin-top:12px}.fold>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer}.fold>summary::-webkit-details-marker{display:none}
+.fold-t{display:flex;flex-direction:column;gap:2px;min-width:0}.fold-t .note{font-weight:400}
+.fold-b::after,.fmini>summary::after,.sr-more::after{content:"Tampilkan ▾";background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:700;white-space:nowrap}
+.fold[open]>summary .fold-b::after,.fmini[open]>summary::after{content:"Tutup ▴"}.fold[open]>summary{margin-bottom:8px}
+.fmini{display:inline-block;margin:4px 6px 0 0;vertical-align:top}.fmini>summary{list-style:none;cursor:pointer;display:inline-flex}.fmini>summary::-webkit-details-marker{display:none}
+.fmini>summary::after{content:attr(data-l) " ▾"}.fmini[open]{display:block;width:100%}.fmini[open]>summary::after{content:attr(data-l) " ▴"}
+.fmini>.fold-c{margin-top:8px}
+.mcard:has(>.fmini){flex-direction:row;flex-wrap:wrap;align-items:flex-start}.mcard:has(>.fmini)>*{width:100%}.mcard:has(>.fmini)>.fmini:not([open]){width:auto;margin:0}
+.srbox:not(.sr-open) .sv>:not(.svh),.srbox:not(.sr-open) .sr-in>:not(.sv):not(.svh){display:none}.srbox:not(.sr-open) .sv+.sv{margin-top:6px}
+.sr-more{border:none;background:none;padding:0;cursor:pointer;margin-top:6px;align-self:flex-start}.srbox.sr-open .sr-more::after{content:"Ringkas ▴"}.sr-more::after{content:"Selengkapnya ▾"}
 .sv .svh b{font-weight:700}ul.sl{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:5px}ul.sl li{line-height:1.45}
 .frule{display:grid;grid-template-columns:minmax(0,2fr) 64px minmax(0,1fr) auto;gap:6px;margin-bottom:6px}.frule select,.frule input{min-width:0;width:100%;box-sizing:border-box}
 .fav{display:inline-flex;gap:2px}.fav button:last-child{padding:3px 7px}
@@ -1299,7 +1309,7 @@ function crossed(a,b,k=3){ // 1 = a memotong ke atas b dalam k bar terakhir, -1 
   const n=a.length; for(let i=n-1;i>=Math.max(1,n-k);i--){ if([a[i],b[i],a[i-1],b[i-1]].some(x=>x==null)) continue;
     if(a[i-1]<=b[i-1]&&a[i]>b[i]) return 1; if(a[i-1]>=b[i-1]&&a[i]<b[i]) return -1; } return 0; }
 const IND=[["ma20","MA20","#f59e0b",1],["ma50","MA50","#0ea5e9",1],["ma200","MA200","#e11d48",1],["ema9","EMA9","#14b8a6",0],["bb","Bollinger","#64748b",0],["vwap","VWAP 20","#a855f7",0],
-  ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1],["path","〰️ Jalur","#7c3aed",0]];
+  ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1],["path","〰️ Jalur","#7c3aed",0],["fib","⏳ Waktu Fib","#ff9f1c",0]];
 function indOn(){ let s=null; try{ s=JSON.parse(store.get(WP+"ind")||"null"); }catch(e){}
   if(Array.isArray(s)&&!store.get(WP+"ind.tr")){ if(!s.includes("trend")) s.push("trend"); store.set(WP+"ind",JSON.stringify(s)); store.set(WP+"ind.tr","1"); }
   return new Set(s||IND.filter(x=>x[3]).map(x=>x[0])); }
@@ -1498,6 +1508,7 @@ function extFut(arr,last){ // tanggal ke depan ±6 bulan; setelah kalender resmi
   return a; }
 function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   pxObs.forEach(o=>o.disconnect()); pxObs=[];
+  if(el) el.querySelectorAll(".fib-lay").forEach(x=>x.remove());
   pxCharts.forEach(c=>{try{c.remove()}catch(e){}}); pxCharts=[];
   const L=window.LightweightCharts; if(!L||!vals) return;
   opt=opt||{};
@@ -1544,6 +1555,7 @@ function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   ch.timeScale().setVisibleLogicalRange({from:Math.max(0,B.length-150),to:B.length+Math.min(fut.length,Math.max(45,(x.path&&x.path.vis)||0))});
   watchSize(ch,el,pxObs);
   infoLines(ch,s,T.concat(fut),el,opt.dkey,idr);
+  if(on.has("fib")&&opt.tz) fibDraw(ch,el,opt.tz,good,warn);
   // panel bawah
   const P=opt.panels; const all=[ch];
   if(P){ P.innerHTML="";
@@ -1564,6 +1576,28 @@ function drawChart(el, dates, vals, a, rawan, future, idr, opt){
     const r0=ch.timeScale().getVisibleLogicalRange(); all.slice(1).forEach(d=>d.timeScale().setVisibleLogicalRange(r0)); }
   if(opt.read){ if(!x.macd&&on.has("macd")) x.macd=macdA(C); const lines=indRead(on,B,C,hasV,x);
     opt.read.innerHTML=lines.length?`<div class="dl" style="font-size:14px;gap:6px">${lines.map(l=>`<div><span>${l}</span></div>`).join("")}</div><p class="note">Dibaca otomatis dari harga terakhir${candle?"":" (grafik garis: data candle saham ini belum tersedia)"}. Semua ini hanya alat bantu; keputusan beli tetap dari sinyal metode dan area support.</p>`:`<p class="note">Pilih indikator di atas grafik.</p>`; }
+}
+// garis tanggal Fibonacci: yang akan datang (oranye putus-putus), yang lalu dan tepat (hijau), yang belum bisa dinilai (kuning)
+function fibDraw(ch,el,tz,good,warn){
+  const ORG="#ff9f1c", today=(()=>{ const n=new Date(); return new Date(n-n.getTimezoneOffset()*6e4).toISOString().slice(0,10); })();
+  const fut=(tz.tz||[]).filter(x=>x[0]>=today).slice(0,6), past=(tz.tzp||[]).filter(x=>x[0]<today&&x[6]!==0);
+  if(!fut.length&&!past.length) return;
+  if(getComputedStyle(el).position==="static") el.style.position="relative";
+  const lay=document.createElement("div"); lay.className="fib-lay"; lay.setAttribute("aria-hidden","true");
+  lay.style.cssText="position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden"; el.appendChild(lay);
+  const tsc=ch.timeScale();
+  const place=()=>{ let W=el.clientWidth, H=el.clientHeight; try{ W-=ch.priceScale("right").width(); H-=tsc.height(); }catch(e){ W-=78; H-=28; }
+    const xs=[], ln=(x,css,top=20)=>`<i style="position:absolute;left:${x}px;top:${top}px;height:${H-top}px;${css}"></i>`; let h="";
+    past.forEach(p=>{ const x=tsc.timeToCoordinate(p[0]); if(x==null||x<2||x>W) return; if(xs.some(v=>Math.abs(v-x)<3)) return; xs.push(x);
+      const ok=p[6]===1, c=ok?good:warn; h+=ln(x,`border-left:${ok?2:1}px solid ${c};opacity:${ok?.9:.7}`)+`<b style="position:absolute;left:${x-6}px;top:${H-14}px;width:12px;height:12px;border-radius:50%;background:${c};color:#fff;font:800 9px/12px sans-serif;text-align:center">${ok?"✓":""}</b>`; });
+    const tx=tsc.timeToCoordinate(today);
+    if(tx!=null&&tx>0&&tx<W) h+=ln(tx,"border-left:1.5px solid var(--fg);opacity:.55",20)+`<b style="position:absolute;left:${Math.max(0,tx-22)}px;top:0;background:var(--fg);color:var(--bg);font:700 10px/16px sans-serif;padding:0 5px;border-radius:4px">hari ini</b>`;
+    const fx=[]; fut.forEach(f=>{ const x=tsc.timeToCoordinate(f[0]); if(x==null||x<2||x>W) return; h+=ln(x,`border-left:2px dashed ${ORG}`);
+      if(fx.some(v=>Math.abs(v-x)<18)) return; fx.push(x); const up=tz.tzdir==="H";
+      h+=`<b title="${tgl(f[0],1)} · ${f[1]} hari bursa" style="position:absolute;left:${x-9}px;top:20px;width:18px;height:18px;border-radius:5px;background:${ORG};color:#131722;font:800 11px/18px sans-serif;text-align:center">${tz.tzdir?(up?"▲":"▼"):"⏳"}</b>`; });
+    lay.innerHTML=h; };
+  place(); tsc.subscribeVisibleLogicalRangeChange(()=>requestAnimationFrame(place));
+  const ro=new ResizeObserver(()=>requestAnimationFrame(place)); ro.observe(el); pxObs.push(ro);
 }
 function drawBreadth(el,b){
   const L=window.LightweightCharts; if(!L||!b||!b.series) return;
@@ -1594,8 +1628,9 @@ function renderCycles(box){
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
         <div class="seg" role="group" aria-label="Indeks">${names.map(n=>`<button type="button" data-cy="${esc(n)}" aria-pressed="${n===sel}">${esc(n)}</button>`).join("")}</div>
         <input type="search" id="cyQ" list="cyList" placeholder="Kode saham" aria-label="Pilih saham" value="${isIdx?"":esc(sel)}" style="width:130px">
-        <datalist id="cyList">${Object.keys(CYC.stocks).map(t=>`<option value="${esc(t)}">`).join("")}</datalist></div></div>
-    ${cycleGuide(idxName)}${saranBox(isIdx?saranMarket({cyc:true}).html:`${o?saranStock(o)+`<p style="margin:6px 0 10px">${calcBtn(o.ticker)}</p>`:""}`+saranMarket({cyc:true}).head)}<div style="height:12px"></div>
+        <datalist id="cyList">${Object.keys(CYC.stocks).map(t=>`<option value="${esc(t)}">`).join("")}</datalist>
+        <button type="button" id="foldAll">📖 Buka semua penjelasan</button></div></div>
+    ${cycleGuide(idxName)}${saranBox(isIdx?saranMarket({cyc:true}).html:`${o?saranStock(o)+`<p style="margin:6px 0 10px">${calcBtn(o.ticker)}</p>`:""}`+saranMarket({cyc:true}).head,1)}<div style="height:12px"></div>
     <div style="margin-bottom:12px">${isIdx?tzCard(idxTz(a,sel),sel,sel,{idx:1}):tzCard(a,idxName,sel)}</div>
     <div class="tablebox" id="cyBox" style="padding:10px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
       <b>${esc(isIdx?sel:sel+(o?" · "+(o.company||""):""))} <span class="num">${isIdx?nf(a.price,isIdx&&a.price>1000?0:2):usd(a.price)}</span></b>
@@ -1604,8 +1639,9 @@ function renderCycles(box){
       <div id="tvBox"></div><p class="note" id="ilHint" style="margin:0 0 6px;min-height:0"></p>
       <div id="cyChart" style="width:100%;min-height:400px"></div>
       <div id="cyPanels"></div></div>
-    <div class="mcard" style="margin-top:12px"><h4><span>📐 Garis tren dan jalur: bisa dipercaya atau tidak?</span></h4><div id="trBox"><p class="note">Memuat…</p></div></div>
-    <div class="mcard" style="margin-top:12px"><h4><span>📊 Bacaan indikator</span></h4><div id="cyRead"><p class="note">Memuat…</p></div>
+    <p class="note" style="margin:14px 2px 0;font-weight:700;letter-spacing:.04em">PENJELASAN (KETUK UNTUK MEMBUKA)</p>
+    ${fold("trend","📐 Garis tren &amp; jalur: bisa dipercaya?","hasil uji 10 tahun",`<div id="trBox"><p class="note">Memuat…</p></div>`)}
+    ${fold("read","📊 Bacaan indikator","MA, volume, RSI, garis tren",`<div id="cyRead"><p class="note">Memuat…</p></div>
       <details style="margin-top:8px"><summary class="note" style="cursor:pointer">Penjelasan singkat tiap indikator</summary><div class="dl" style="font-size:13.5px;margin-top:6px;gap:6px">
       <div><span><b>Candlestick</b>: satu batang = satu hari. Hijau = ditutup lebih tinggi dari pembukaan, merah = lebih rendah. Sumbu tipis = harga tertinggi dan terendah hari itu.</span></div>
       <div><span><b>MA20 / MA50 / MA200</b>: rata-rata harga 20, 50, 200 hari (tren pendek, menengah, panjang). Golden cross = MA50 memotong ke atas MA200; death cross = sebaliknya.</span></div>
@@ -1616,8 +1652,8 @@ function renderCycles(box){
       <div><span><b>RSI (14)</b>: kekuatan naik vs turun, 0–100. Di atas 70 jenuh beli, di bawah 30 jenuh jual.</span></div>
       <div><span><b>MACD (12, 26, 9)</b>: selisih EMA12 dan EMA26 (biru) dengan garis sinyal (oranye). Memotong ke atas = momentum naik; batang = jarak keduanya.</span></div>
       <div><span><b>Stoch RSI (14 14 3 3)</b>: rumus Stochastic yang diterapkan pada RSI, sangat sensitif. Di bawah 20 jenuh jual, di atas 80 jenuh beli; sinyal = %K (hijau) memotong %D (merah). Sering salah saat tren kuat, jadi pakai bersama zona support.</span></div>
-      </div></details></div>
-    <div class="dgrid" style="margin-top:12px">
+      </div></details></div>`)}
+    ${fold("zona",isIdx?"🧱 Zona, kalender &amp; kesehatan pasar":"🧱 Zona support &amp; resistance, status metode",(a.sup&&a.sup[0]?`S1 ${isIdx?nf(a.sup[0].lo,0):usd(a.sup[0].lo)}`:"")+(a.res&&a.res[0]?` · R1 ${isIdx?nf(a.res[0].lo,0):usd(a.res[0].lo)}`:""),`<div class="dgrid">
       ${isIdx&&rg?`<div class="mcard"><h4><span>Rentang minggu depan</span></h4><div class="dl">
         <div><span>Peluang 68% di antara</span><span class="num">${nf(rg.r68[0],0)} – ${nf(rg.r68[1],0)}</span></div>
         <div><span>Peluang 95% di antara</span><span class="num">${nf(rg.r95[0],0)} – ${nf(rg.r95[1],0)}</span></div>
@@ -1635,13 +1671,15 @@ function renderCycles(box){
         <div><span>Naik / turun hari ini</span><span class="num">${b.adv} / ${b.dec}</span></div>
         <div><span>Titik tertinggi / terendah 52 minggu baru</span><span class="num">${b.newHi} / ${b.newLo}</span></div></div>
         <div id="cyBreadth" style="width:100%;margin-top:6px"></div><p class="note">Grafik: % saham di atas SMA200 setahun terakhir. Di bawah 50% = mayoritas saham dalam tren turun.</p></div>`:""}
-    </div>
-    ${isIdx?`<div class="mcard" style="margin-top:12px"><h4><span>Uji ketepatan: ${esc(sel)}</span></h4>${testTable(CYC.tests[sel])}</div>
-      <div class="mcard" style="margin-top:12px"><h4><span>Papan skor ramalan: ${esc(sel)}</span></h4>${scoreCard((CYC.score||{})[sel])}</div>`
+    </div>`)}
+    ${isIdx?fold("uji","🧪 Uji ketepatan: "+esc(sel),"apakah tiap teknik lebih baik dari acak",testTable(CYC.tests[sel]))+fold("skor","🏆 Papan skor ramalan: "+esc(sel),"",scoreCard((CYC.score||{})[sel]))
       :`<p class="note" style="margin-top:8px">Uji ketepatan dan papan skor tersedia di tampilan indeks.</p>`}`;
   box.querySelectorAll("[data-cy]").forEach(bt=>bt.addEventListener("click",()=>{ store.set(WP+"cy.sel",bt.dataset.cy); renderResults(); }));
+  const fa=$("foldAll"), fds=()=>[...box.querySelectorAll("details[data-fold]")], faTxt=()=>{ fa.textContent=fds().every(d=>d.open)?"📕 Tutup semua penjelasan":"📖 Buka semua penjelasan"; };
+  faTxt(); fa.addEventListener("click",()=>{ const all=fds().every(d=>d.open); fds().forEach(d=>d.open=!all); const sb=box.querySelector(".srbox"); if(sb){ sb.classList.toggle("sr-open",!all); store.set(WP+"fold.saran",all?"0":"1"); } setTimeout(faTxt,40); });
+  box.addEventListener("toggle",ev=>{ if(ev.target.matches&&ev.target.matches("details[data-fold]")){ faTxt(); if(ev.target.open&&b&&ev.target.querySelector("#cyBreadth")&&window.LightweightCharts) drawBreadth($("cyBreadth"),b); } },true);
   $("cyQ").addEventListener("change",ev=>{ const v=ev.target.value.trim().toUpperCase(); if(CYC.stocks[v]){ store.set(WP+"cy.sel",v); renderResults(); } });
-  let bars=null; const draw=()=>drawChart($("cyChart"),SER.dates,vals,a,isIdx?(a.rawan||[]).filter(r=>(r.why||[]).some(w=>{ const k=testKey(w), t=k&&verdOf(sel,k); return !t||t.verdict!=="acak"; })):null,CYC.future,!isIdx&&usd(1).startsWith("Rp"),{bars,panels:$("cyPanels"),read:$("cyRead"),dkey:sel});
+  let bars=null; const draw=()=>drawChart($("cyChart"),SER.dates,vals,a,isIdx?(a.rawan||[]).filter(r=>(r.why||[]).some(w=>{ const k=testKey(w), t=k&&verdOf(sel,k); return !t||t.verdict!=="acak"; })):null,CYC.future,!isIdx&&usd(1).startsWith("Rp"),{bars,panels:$("cyPanels"),read:$("cyRead"),dkey:sel,tz:isIdx?idxTz(a,sel):a});
   IL_MODE=false;
   const tvSym=IS_ID?(isIdx?"IDX:COMPOSITE":"IDX:"+sel):({"S&P 500":"SP:SPX","Nasdaq-100":"NASDAQ:NDX"}[sel]||sel);
   const tvSet=on=>{ $("cyBox").classList.toggle("tv-on",on); $("tvBtn").textContent=on?"📈 Grafik ChartFlow":"📺 TradingView"; $("tvBtn").setAttribute("aria-pressed",on);
@@ -1701,6 +1739,13 @@ const pick=(a,k)=>a[seedOf(k+((DATA&&DATA.priceDate)||""))%a.length];
 function fracTxt(b){ if(b==null) return null; return b<12?"kurang dari 1 dari 8":b<20?"kurang dari 1 dari 5":b<30?"sekitar 1 dari 4":b<40?"sekitar 1 dari 3":b<60?"sekitar separuh":b<70?"sekitar 2 dari 3":b<85?"sekitar 3 dari 4":"hampir semua"; }
 const tip=(w,t)=>`<abbr title="${esc(t)}" style="text-decoration:underline dotted;text-underline-offset:3px;cursor:help">${w}</abbr>`;
 const SV={g:"🟢",y:"🟡",r:"🔴",o:"💼",n:"⚪"};
+// lipatan penjelasan: isi baru tampil saat diketuk; status buka/tutup diingat per bagian
+const foldOpen=id=>store.get(WP+"fold."+id)==="1";
+function fold(id,title,sub,inner){ return `<details class="fold mcard" data-fold="${id}"${foldOpen(id)?" open":""}><summary><span class="fold-t"><b>${title}</b>${sub?`<span class="note">${sub}</span>`:""}</span><span class="fold-b"></span></summary><div class="fold-c">${inner}</div></details>`; }
+function fmini(id,label,inner){ return inner?`<details class="fmini" data-fold="${id}"${foldOpen(id)?" open":""}><summary data-l="${label}"></summary><div class="fold-c">${inner}</div></details>`:""; }
+document.addEventListener("toggle",ev=>{ const d=ev.target; if(!d||!d.matches||!d.matches("details[data-fold]")) return; store.set(WP+"fold."+d.dataset.fold,d.open?"1":"0");
+  if(d.open) setTimeout(()=>window.dispatchEvent(new Event("resize")),30); },true);
+document.addEventListener("click",ev=>{ const b=ev.target.closest&&ev.target.closest(".sr-more"); if(!b) return; const x=b.closest(".srbox"); const on=!x.classList.contains("sr-open"); x.classList.toggle("sr-open",on); store.set(WP+"fold.saran",on?"1":"0"); });
 function svBox(c,title,lines,foot){ return `<div class="sv"><div class="svh sv-${c}">${SV[c]} ${title}</div>${lines.length?`<ul class="sl">${lines.map(l=>`<li>${l}</li>`).join("")}</ul>`:""}${foot?`<p class="note" style="margin:6px 0 0">${foot}</p>`:""}</div>`; }
 function saranMarket(opt){
   const r=regime(), bad=badTrader(), idx=IS_ID?"IHSG":"S&P 500", fr=fracTxt(r.b);
@@ -1784,7 +1829,8 @@ function saranStock(o){
   if(o.dq) L.push(`🧪 Ada angka yang janggal (${esc(o.dq)}), jadi sinyal yang terkait tidak dihitung dulu sampai datanya wajar lagi.`);
   return svBox(c,`<b>${title}</b>`,L,"");
 }
-function saranBox(inner){
+function saranBox(inner,short){
+  if(short) return `<div class="mcard srbox${foldOpen("saran")?" sr-open":""}" style="border-left:4px solid var(--accent);gap:6px;font-size:14px"><h4><span>${SAFE?"💡 Keterangan":"💡 Saran"}</span><span class="note" style="font-weight:400">${SAFE?"informasi edukasi, bukan ajakan membeli atau menjual":"hitungan otomatis, bukan nasihat keuangan pribadi"}</span></h4><div class="sr-in">${inner}</div><button type="button" class="sr-more"></button></div>`;
   return `<div class="mcard" style="border-left:4px solid var(--accent);gap:6px;font-size:14px"><h4><span>${SAFE?"💡 Keterangan":"💡 Saran"}</span><span class="note" style="font-weight:400">${SAFE?"informasi edukasi, bukan ajakan membeli atau menjual":"hitungan otomatis, bukan nasihat keuangan pribadi"}</span></h4>${inner}${SAFE?'<p class="note" style="margin:8px 0 0">Hitungan otomatis dari aturan metode publik. Keputusan dan risiko sepenuhnya di tangan Anda.</p>':""}</div>`;
 }
 function candidates(){
@@ -2277,18 +2323,17 @@ function tzCard(a,idxName,sel,opt){
   const rowsTz=(a.tz||[]).map(x=>{ const [d,f,pd,ty,pv]=x;
     return `<div><span><b>${tgl(d,1)}</b>${a.tzdir?` <span class="st ${a.tzdir==="H"?"sell":"buy"}" style="font-size:11.5px">${dirTxt(a.tzdir)}</span>`:""}${pd?`<br><span class="note">${f} hari bursa dari ${ty==="H"?"puncak":"lembah"} ${tgl(pd,1)}${pv!=null?" ("+U(pv)+")":""}</span>`:""}</span><span class="num">${f} hari</span></div>`; }).join("");
   return `<div class="mcard"><h4><span>⏳ Fibonacci time zone ${IX?esc(sel):"saham ini"}</span>${verdChip(idxName,"Fibonacci time zone")}</h4>
-    <p class="note" style="margin:0 0 6px"><b>Apa ini?</b> Tanggal ketika harga <b>mungkin</b> berbalik arah, dihitung 13–144 hari bursa dari puncak dan lembah terakhir. Arahnya ditebak dari tren 10 hari: harga sedang naik = <b>🔺 calon puncak</b>, sedang turun = <b>🔻 calon lembah</b>${a.tzdir?" (menurut tren sekarang; bisa berubah menjelang tanggalnya)":""}.${TS?` Di ${/kripto/.test(location.pathname)?"pasar kripto":IS_ID?"BEI":"saham AS"}, ${nf(TS.hit,0)}% tanggal Fibonacci benar menjadi titik balik; bila jadi, tebakan arahnya benar ${nf(TS.dir,0)}%.`:""}${fz?(TS?(fz.verdict!=="berguna"?` Uji di ${esc(idxName)} tidak lebih baik dari tanggal acak, jadi tanggal ini hanya <b>pengingat untuk mengecek grafik</b>.`:""):` Di ${esc(idxName)} teknik ini tepat ${nf(fz.hit,1)}% dari kejadian, tanggal acak ${nf(fz.base,1)}%${fz.verdict!=="berguna"?", jadi tanggal ini hanya <b>pengingat untuk mengecek grafik</b>":""}.`):""}</p>
-    ${rowsTz?`<div class="dl">${rowsTz}</div>`:`<p class="note">Tidak ada dalam 2 bulan ke depan.</p>`}
-    <p class="note">Dihitung dari 3 puncak/lembah terakhir ${IX?"indeks":"saham"} ini: maju 13, 21, 34, 55, 89, 144 hari bursa (toleransi ±1–2 hari).</p>
+    ${rowsTz?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 2px">${(a.tz||[]).slice(0,4).map(x=>`<span style="background:#ff9f1c;color:#131722;border-radius:999px;padding:3px 10px;font-weight:700;font-size:13px">${a.tzdir?(a.tzdir==="H"?"🔺":"🔻"):"⏳"} ${tgl(x[0],1)}</span>`).join("")}</div>${fmini("tzlist","📅 Rincian tanggal ("+(a.tz||[]).length+")",`<div class="dl">${rowsTz}</div>`)}`:`<p class="note">Tidak ada dalam 2 bulan ke depan.</p>`}
+    ${fmini("tzapa","ℹ️ Apa ini?",`<p class="note" style="margin:0">Tanggal ketika harga <b>mungkin</b> berbalik arah, dihitung 13–144 hari bursa dari puncak dan lembah terakhir. Arahnya ditebak dari tren 10 hari: harga sedang naik = <b>🔺 calon puncak</b>, sedang turun = <b>🔻 calon lembah</b>${a.tzdir?" (menurut tren sekarang; bisa berubah menjelang tanggalnya)":""}.${TS?` Di ${/kripto/.test(location.pathname)?"pasar kripto":IS_ID?"BEI":"saham AS"}, ${nf(TS.hit,0)}% tanggal Fibonacci benar menjadi titik balik; bila jadi, tebakan arahnya benar ${nf(TS.dir,0)}%.`:""}${fz?(TS?(fz.verdict!=="berguna"?` Uji di ${esc(idxName)} tidak lebih baik dari tanggal acak, jadi tanggal ini hanya <b>pengingat untuk mengecek grafik</b>.`:""):` Di ${esc(idxName)} teknik ini tepat ${nf(fz.hit,1)}% dari kejadian, tanggal acak ${nf(fz.base,1)}%${fz.verdict!=="berguna"?", jadi tanggal ini hanya <b>pengingat untuk mengecek grafik</b>":""}.`):""}</p><p class="note" style="margin:6px 0 0">Dihitung dari 3 puncak/lembah terakhir ${IX?"indeks":"saham"} ini: maju 13, 21, 34, 55, 89, 144 hari bursa (toleransi ±1–2 hari).</p>`)}
     ${(()=>{ const P=a.tzp||[]; if(!P.length) return ""; const J=P.filter(x=>x[6]!=null), H=J.filter(x=>x[6]===1), W=P.filter(x=>x[6]==null);
       const D=H.filter(x=>x[10]), DO=D.filter(x=>x[10]===x[8]);
       const row=x=>{ const [d,f,pd,ty,pv,px,res,hd,hty,hv,gd]=x;
         return `<div><span><b>${res===1?"✅":res===0?"❌":"⏳"} ${tgl(d,1)}</b> <span class="note">· harga ${usd(px)}</span><br><span class="note">${f} hari bursa dari ${ty==="H"?"puncak":"lembah"} ${tgl(pd,1)} (${usd(pv)})</span><br><span style="font-size:13px">${res===1?`<b class="ok">Tepat:</b> ${hty==="H"?"puncak":"lembah"} ${usd(hv)} pada ${tgl(hd,1)}${gd?` · tebakan ${gd==="H"?"puncak":"lembah"} ${gd===hty?'<b class="ok">✓ benar</b>':'<b class="no">✗ salah</b>'}`:""}`:res===0?`<span class="na">Lewat: tidak ada titik balik di sekitarnya</span>`:`<span class="note">Belum bisa dinilai: titik balik baru terlihat beberapa hari kemudian</span>`}</span></span></div>`; };
-      return `<details style="margin-top:6px"><summary style="cursor:pointer"><b>🕘 Tanggal yang sudah lewat</b> <span class="note">(klik untuk membuka)</span></summary>
+      return `<details class="fmini" data-fold="tzpast"${foldOpen("tzpast")?" open":""}><summary data-l="🕘 Tanggal lewat (${P.length})"></summary><div class="fold-c">
         <p style="margin:8px 0;font-size:14px">Di ${esc(sel||"")}: <b>${H.length} dari ${J.length}</b> tanggal tepat menjadi titik balik${J.length?` (${nf(H.length/J.length*100,0)}%)`:""}${W.length?`; ${W.length} belum bisa dinilai`:""}.${D.length?` Dari yang tepat, tebakan arahnya benar <b>${DO.length} dari ${D.length}</b>.`:""}${J.length&&H.length/J.length<0.3?" Sebagian besar tanggal lewat begitu saja.":""}</p>
         <div class="dl" style="gap:8px;max-height:420px;overflow:auto">${P.map(row).join("")}</div>
-        <p class="note" style="margin:6px 0 0">Tepat = ada puncak atau lembah dalam ±2 hari bursa dari tanggal itu. Tebakan arah = tren 10 hari, diukur 3 hari bursa sebelum tanggalnya. Dihitung dari puncak/lembah setahun terakhir. Sedikit contoh, jadi persentasenya bisa berubah-ubah.</p></details>`; })()}
-    ${IX?"":(()=>{ try{ return tzGuide(a,idxName,sel); }catch(e){ return ""; } })()}</div>`;
+        <p class="note" style="margin:6px 0 0">Tepat = ada puncak atau lembah dalam ±2 hari bursa dari tanggal itu. Tebakan arah = tren 10 hari, diukur 3 hari bursa sebelum tanggalnya. Dihitung dari puncak/lembah setahun terakhir. Sedikit contoh, jadi persentasenya bisa berubah-ubah.</p></div></details>`; })()}
+    ${IX?"":(()=>{ try{ const g=tzGuide(a,idxName,sel); const d=((a.tz||[]).find(x=>x[0]>=new Date().toISOString().slice(0,10))||[])[0]; return fmini("tzguide","🧭 Panduan"+(d?" "+tgl(d):""),g.replace('border-top:1px solid var(--line);margin-top:10px;padding-top:10px;','')); }catch(e){ return ""; } })()}</div>`;
 }
 function rawanCard(a,sel){
   const L=(a.rawan||[]).slice(0,8);
@@ -3166,7 +3211,16 @@ window.addEventListener("online",()=>autoCheck(true));
     pos(innerWidth-w-(PHONE()?14:22), innerHeight-48-(PHONE()?(document.querySelector(".mainnav")?.offsetHeight||70)+24:22)); }
   function center(txt){ const w=document.querySelector(".wrap").getBoundingClientRect(); flo.querySelector(".say").textContent=txt; flo.classList.remove("dock"); flo.classList.add("center"); pos(w.left+w.width/2-36, innerHeight*.4); }
   addEventListener("resize",()=>{ if(flo.classList.contains("dock")) dock(); moveInd(); });
-  const openP=()=>{ document.body.classList.add("fpo"); setTimeout(()=>panel.querySelector("input").focus({preventScroll:true}),PHONE()?400:0); };
+  // tombol pertanyaan sesuai halaman yang sedang dibuka, dan daftar pertanyaan yang belum terjawab (khusus pemilik)
+  let missChk=false;
+  const pageChips=()=>{ const box=panel.querySelector(".fp-chips"); if(!box||!AI) return; box.querySelectorAll(".pgc").forEach(b=>b.remove());
+    const cs=typeof tab!=="undefined"&&tab==="cycles"?store.get(WP+"cy.sel"):null, t=(typeof openTicker!=="undefined"&&openTicker)||cs, L=[];
+    if(t){ L.push(`Jelaskan grafik ${t} sekarang`); L.push(`Kapan tanggal Fibonacci ${t} berikutnya?`); L.push(`Support dan resistance terdekat ${t}?`); }
+    else if(typeof tab!=="undefined"&&tab!=="summary") L.push("Jelaskan halaman ini");
+    L.reverse().forEach(q=>{ const b=document.createElement("button"); b.type="button"; b.className="pgc"; b.dataset.ask=q; b.textContent=q; box.prepend(b); });
+    if(!missChk){ missChk=true; fetch("/api/flo.php?miss=1",{credentials:"same-origin"}).then(r=>r.json()).then(j=>{ if(!j||!j.ok||!(j.miss||[]).length) return;
+      const b=document.createElement("button"); b.type="button"; b.dataset.miss="1"; b.textContent=`📋 Belum terjawab (${j.miss.length})`; b._m=j.miss; box.append(b); }).catch(()=>{}); } };
+  const openP=()=>{ pageChips(); document.body.classList.add("fpo"); setTimeout(()=>panel.querySelector("input").focus({preventScroll:true}),PHONE()?400:0); };
   const closeP=()=>{ document.body.classList.remove("fpo"); flo.focus({preventScroll:true}); };
   flo.addEventListener("click",openP); panel.querySelector(".fp-x").addEventListener("click",closeP);
   document.addEventListener("keydown",ev=>{ if(ev.key==="Escape"&&document.body.classList.contains("fpo")&&!document.querySelector(".drawer")) closeP(); });
@@ -3306,20 +3360,47 @@ window.addEventListener("online",()=>autoCheck(true));
     if(LTm&&LTm.mom){ const R=LTm.mom; L.push(`\nUJI MOMENTUM 90 HARI ${R.from}–${R.to}: ${R.cagr}% per tahun (simpan BTC ${R.btc_cagr}%), turun terdalam ${R.dd}% (BTC ${R.btc_dd}%).`); }
     try{ const top=(typeof filtered==="function"?filtered():rows).map(o=>({t:o.ticker,b:summaryOf(o).by.buy})).filter(x=>x.b.length).sort((a,b)=>b.b.length-a.b.length).slice(0,10);
       L.push(`\n${BUY().toUpperCase()} TERBANYAK HARI INI: `+(top.length?top.map(x=>`${x.t} (${x.b.join(", ")})`).join("; "):"tidak ada")); }catch(e){}
-    let tk=tickersIn(q); if(!tk.length&&typeof openTicker!=="undefined"&&openTicker) tk=[openTicker]; if(!tk.length) tk=lastTk; lastTk=tk;
-    tk.forEach(t=>L.push(stockCtx(t)));
-    if(tk.length&&tk.length<=3&&!/^[A-Z0-9]{2,6}$/.test(q.trim())) for(const t of tk) L.push(await techCtx(t));
-    if(/watchlist|bintang|★|area beli|rencana beli|antre|pantauan|dipantau|harga beli/i.test(q)) L.push(watchCtx());
-    if(/ramai|volume|melonjak|naik (paling|ter)|turun (paling|ter)|gainer|loser|top|hari ini/i.test(q)) L.push(hotCtx());
-    if(/asing|institusi|ksei|reksa dana|insider|orang dalam|direksi|bandar|arus dana/i.test(q)) L.push(flowCtx());
-    if(/dividen|\bex\b|\bcum\b|yield|kalender/i.test(q)) L.push(divCtx());
-    if(/uji|terbukti|backtest|akurat|ketepatan|garis tren|jalur|candle|fibonacci|lampu|strategi terbaik|paling bagus/i.test(q)) L.push(ujiCtx());
-    if(/alarm|notifikasi|pengingat|telegram/i.test(q)) L.push(await alarmCtx());
-    L.push(await otherCtx(q));
-    const wp=PORTQ.test(q)||(portFollow&&q.length<60); portFollow=PORTQ.test(q); if(wp) L.push(portCtx());
-    if(/support|resist|dekat|lantai|atap|pantul|area beli|tembus/i.test(q)||(!tk.length&&!wp)) L.push(nearList(q));
-    L.push("\nCatatan: zona support/resistance dihitung ChartFlow dari Fibonacci, titik balik, rata-rata bergerak, dan angka bulat; kekuatan: kuat/sedang/lemah.");
-    return L.filter(Boolean).join("\n").slice(0,22000); }
+    // saham/indeks yang dimaksud: yang disebut di pertanyaan, yang detailnya terbuka, atau yang grafiknya sedang dibuka
+    const cySel=typeof tab!=="undefined"&&tab==="cycles"?store.get(WP+"cy.sel"):null, cyIdx=cySel&&CYC&&CYC.indices&&CYC.indices[cySel];
+    let tk=tickersIn(q); if(!tk.length&&typeof openTicker!=="undefined"&&openTicker) tk=[openTicker]; if(!tk.length&&cySel&&!cyIdx&&rows.some(x=>x.ticker===cySel)) tk=[cySel]; if(!tk.length&&!cyIdx) tk=lastTk; lastTk=tk;
+    const pg=pageCtx(cySel,cyIdx,PORTQ.test(q)); const S=[]; // [prioritas, teks]; prioritas kecil = penting
+    tk.forEach(t=>S.push([0,stockCtx(t)+fibCtx(t)]));
+    if(tk.length&&tk.length<=3&&!/^[A-Z0-9]{2,6}$/.test(q.trim())) for(const t of tk) S.push([0,await techCtx(t)]);
+    if(cyIdx) S.push([0,idxCtx(cySel)]);
+    // bagian lain selalu ikut; yang cocok dengan pertanyaan didahulukan
+    const add=async(re,fn)=>{ try{ const v=await fn(); if(v) S.push([re.test(q)?1:3,v]); }catch(e){} };
+    // data pribadi (watchlist, alarm, portofolio) hanya dikirim bila ditanyakan, sesuai keterangan di FAQ
+    const WQ=/watchlist|bintang|★|area beli|rencana beli|antre|pantauan|dipantau|harga beli/i; if(WQ.test(q)) S.push([1,watchCtx()]);
+    await add(/ramai|volume|melonjak|naik (paling|ter)|turun (paling|ter)|gainer|loser|top|hari ini/i,hotCtx);
+    await add(/asing|institusi|ksei|reksa dana|insider|orang dalam|direksi|bandar|arus dana|pemilik|pengendali/i,flowCtx);
+    await add(/dividen|\bex\b|\bcum\b|yield|kalender/i,divCtx);
+    await add(/uji|terbukti|backtest|akurat|ketepatan|garis tren|jalur|candle|fibonacci|lampu|strategi terbaik|paling bagus/i,ujiCtx);
+    if(/alarm|notifikasi|pengingat|telegram/i.test(q)) S.push([1,await alarmCtx()]);
+    await add(/support|resist|dekat|lantai|atap|pantul|area beli|tembus/i,()=>nearList(q));
+    { const wp=PORTQ.test(q)||(portFollow&&q.length<60); portFollow=PORTQ.test(q); if(wp) S.push([0,portCtx()]); }
+    try{ const v=await otherCtx(q); if(v) S.push([1,v]); }catch(e){}
+    S.push([2,"\nCatatan: zona support/resistance dihitung ChartFlow dari Fibonacci, titik balik, rata-rata bergerak, dan angka bulat; kekuatan: kuat/sedang/lemah."]);
+    S.sort((x,y)=>x[0]-y[0]);
+    let out=L.filter(Boolean).join("\n")+pg; for(const [,v] of S){ if(!v) continue; if(out.length+v.length>38000) continue; out+="\n"+v; }
+    return out.slice(0,39000); }
+  // apa yang sedang terlihat di layar pengguna
+  function pageCtx(cySel,cyIdx,askPort){ try{
+    const TN={summary:"Ringkasan/daftar saham",hot:"Ramai hari ini",uji:"Hasil uji",cycles:"Grafik Siklus & Fibonacci",watch:"Watchlist & Area beli",calc:"Kalkulator",divcal:"Kalender dividen",porto:"Portofolio"};
+    let s=`\nHALAMAN YANG SEDANG DIBUKA: ${TN[tab]||(typeof MID!=="undefined"&&MID[tab]?"metode "+MID[tab].name:tab)}${cySel?" · grafik "+cySel:""}${typeof openTicker!=="undefined"&&openTicker?" · detail saham "+openTicker+" terbuka":""}.`;
+    const dr=document.getElementById("drawer"), main=document.getElementById("results");
+    const txt=el=>{ const c=el.cloneNode(true); c.querySelectorAll("details").forEach(d=>d.setAttribute("open","")); return (c.innerText||c.textContent||"").replace(/[ \t]+/g," ").replace(/\n\s*\n+/g,"\n").trim(); };
+    if(dr) s+=`\nISI DETAIL SAHAM DI LAYAR:\n${txt(dr).slice(0,5000)}`;
+    if(main&&(askPort||!["porto","watch","calc"].includes(tab))) s+=`\nISI HALAMAN DI LAYAR:\n${txt(main).slice(0,9000)}`; // halaman berisi data pribadi tidak dikirim kecuali ditanyakan
+    return s; }catch(e){ return ""; } }
+  function fibCtx(t){ const a=CYC&&CYC.stocks&&CYC.stocks[t]; if(!a) return ""; const td=(DATA&&DATA.priceDate)||"";
+    const F=(a.tz||[]).filter(x=>x[0]>=td), P=a.tzp||[], J=P.filter(x=>x[6]!=null), H=J.filter(x=>x[6]===1);
+    return `\nTANGGAL FIBONACCI ${t} (13–144 hari bursa dari puncak/lembah; ${a.tzdir?"arah ditebak dari tren 10 hari: calon "+(a.tzdir==="H"?"puncak":"lembah"):"arah belum diketahui"}): `+(F.length?F.map(x=>`${x[0]} (${x[1]} hari dari ${x[3]==="H"?"puncak":"lembah"} ${x[2]}${x[4]!=null?" di "+usd(x[4]):""})`).join("; "):"tidak ada dalam 2 bulan")
+      +(J.length?`. Tanggal lalu yang tepat jadi titik balik: ${H.length} dari ${J.length}`+(H.length?` (${H.slice(0,5).map(x=>x[0]).join(", ")})`:""):"")+`. Uji ChartFlow: teknik ini tidak lebih baik dari tanggal acak, hanya pengingat.`; }
+  function idxCtx(n){ const a=CYC.indices[n]; if(!a) return ""; const z=(L,k)=>(L||[]).slice(0,3).map((v,i)=>`${k}${i+1} ${nf(v.lo,0)}${v.hi!==v.lo?"–"+nf(v.hi,0):""} (${v.strength}, ${nf(v.dist,1)}%)`).join("; ")||"tidak ada";
+    const t=typeof idxTz==="function"?idxTz(a,n):a, rg=a.range;
+    return `\n[INDEKS ${n}] ${nf(a.price,0)}. Zona support: ${z(a.sup,"S")}. Zona resistance: ${z(a.res,"R")}.`+(rg?` Rentang minggu depan (68%): ${nf(rg.r68[0],0)}–${nf(rg.r68[1],0)}.`:"")
+      +` Tanggal Fibonacci: ${(t.tz||[]).map(x=>x[0]+" ("+x[1]+" hari dari "+(x[3]==="H"?"puncak":"lembah")+" "+x[2]+")").join("; ")||"-"}.`
+      +((a.rawan||[]).length?` Tanggal rawan: ${a.rawan.slice(0,5).map(r=>r.d+" ("+r.score+" siklus)").join("; ")}.`:""); }
   async function askAI(q){
     say(esc(q),true);
     const w=document.createElement("div"); w.className="fp-m bot fp-wait"; w.innerHTML='<span class="dots"><i></i><i></i><i></i></span>'; body.append(w); body.scrollTop=body.scrollHeight;
@@ -3345,7 +3426,9 @@ window.addEventListener("online",()=>autoCheck(true));
       ${s.by.buy.length?`<b>${esc(BUY())}</b> menurut: ${esc(s.by.buy.join(", "))}.`:`Belum ${esc(BUY().toLowerCase())} di metode mana pun.`}
       ${s.by.sell.length?`<br><b class="no">Sinyal jual</b> aktif di: ${esc(s.by.sell.join(", "))}.`:""}
       ${typeof M!=="undefined"?`<br><span class="note">Lolos ${s.pass} dari ${M.length} kriteria metode.</span>`:""}<br><button type="button" class="go" data-t="${esc(o.ticker)}">Buka detail ${esc(o.ticker)}</button>`); }
-  panel.querySelector(".fp-chips").addEventListener("click",ev=>{ const b=ev.target.closest("[data-q]"); if(!b) return; if(b.dataset.q==="porto"){ askAI("Bagaimana kondisi portofolio saya menurut aturan ChartFlow?"); return; } say(esc(b.textContent),true); setTimeout(()=>say(answer(b.dataset.q)),RM?0:260); });
+  panel.querySelector(".fp-chips").addEventListener("click",ev=>{ const ba=ev.target.closest("[data-ask]"); if(ba){ askAI(ba.dataset.ask); return; }
+    const bm=ev.target.closest("[data-miss]"); if(bm){ say(`<b>Pertanyaan yang belum bisa dijawab Flo</b> (terbaru dulu):<br>`+bm._m.slice(0,30).map(x=>`• ${esc(x.q)} <span class="note">${esc(x.d)} · ${esc(x.mk)}</span>`).join("<br>")+`<br><span class="note">Gunakan daftar ini untuk menambah data yang dikirim ke Flo.</span>`); return; }
+    const b=ev.target.closest("[data-q]"); if(!b) return; if(b.dataset.q==="porto"){ askAI("Bagaimana kondisi portofolio saya menurut aturan ChartFlow?"); return; } say(esc(b.textContent),true); setTimeout(()=>say(answer(b.dataset.q)),RM?0:260); });
   panel.querySelector(".fp-in").addEventListener("submit",ev=>{ ev.preventDefault(); const i=panel.querySelector("input"); lookup(i.value); i.value=""; });
   body.addEventListener("click",ev=>{ const b=ev.target.closest("[data-t]"); if(!b) return; if(PHONE()) closeP(); openTicker=b.dataset.t; renderResults(); });
 

@@ -15,6 +15,7 @@ self.addEventListener("fetch", e => {
     return;
   }
   if (url.origin !== location.origin) return;
+  if (/\/api\//.test(url.pathname)) return; // data akun (Flo, alarm) selalu langsung dari server
   e.respondWith(fetch(req).then(res => {
     if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(url.origin + url.pathname, copy)); } // satu salinan per file (abaikan ?t=)
     return res;
