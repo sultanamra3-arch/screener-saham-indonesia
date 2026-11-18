@@ -193,6 +193,9 @@
   --good:#34d399; --good-soft:#0f2e25; --warn:#fbbf24; --warn-soft:#33270b; --bad:#f87171; --bad-soft:#3a1618; --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
 *{box-sizing:border-box}
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+/* rasa aplikasi: tanpa tarik-untuk-refresh dan tanpa pantulan saat mentok atas/bawah (data sudah diperbarui otomatis) */
+html,body{overscroll-behavior-y:none}
+@media (max-width:760px){.topbar{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--bg)!important}}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
 [hidden]{display:none!important}

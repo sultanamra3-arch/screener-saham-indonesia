@@ -2,7 +2,7 @@
  {
   "d": "2026-11-18",
   "t": "📱 Tampilan aplikasi lebih rapi",
-  "x": "Alat ✏️ Tarik garis di grafik dihapus (garis tren otomatis dan Garis info tetap ada), dan halaman tidak lagi ikut membesar saat dicubit atau diketuk dua kali, sementara grafik tetap bisa digeser dan diperbesar di dalam kotaknya."
+  "x": "Alat ✏️ Tarik garis di grafik dihapus (garis tren otomatis dan Garis info tetap ada), dan halaman tidak lagi ikut membesar saat dicubit atau diketuk dua kali, sementara grafik tetap bisa digeser dan diperbesar di dalam kotaknya; tarik-untuk-refresh dan pantulan saat menggulir juga dihilangkan karena harga sudah diperbarui sendiri."
  },
  {
   "d": "2026-11-18",
