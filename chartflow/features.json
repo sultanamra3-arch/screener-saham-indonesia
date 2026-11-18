@@ -248,6 +248,13 @@
     "Saringan teruji",
     "shot-teruji"
    ]
+  },
+  {
+   "name": "Tarik garis manual",
+   "forbid": [
+    "Tarik garis",
+    "menarik garis tren dan"
+   ]
   }
  ]
 }

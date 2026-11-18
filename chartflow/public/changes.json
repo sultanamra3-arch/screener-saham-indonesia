@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-11-18",
+  "t": "📱 Tampilan aplikasi lebih rapi",
+  "x": "Alat ✏️ Tarik garis di grafik dihapus (garis tren otomatis dan Garis info tetap ada), dan halaman tidak lagi ikut membesar saat dicubit atau diketuk dua kali, sementara grafik tetap bisa digeser dan diperbesar di dalam kotaknya."
+ },
+ {
+  "d": "2026-11-18",
   "t": "📈 Pullback Tren di Watchlist",
   "x": "Aturan baru untuk saham BEI: beli saat tren naik tapi sedang koreksi tajam (RSI 3 hari < 15) selama IHSG di atas rata-rata 50 hari, jual saat memantul di atas SMA5; tampil paling atas di Watchlist dengan hasil uji dan rekam jejaknya, Area beli dipindah ke bawah dalam tombol, dan tanda beli/jualnya bisa dinyalakan di grafik."
  },
