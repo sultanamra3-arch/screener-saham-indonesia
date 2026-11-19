@@ -101,18 +101,29 @@ function gemini(string $key, string $sys, array $hist, string $user): string {
     }
     return '';
 }
+// Groq gratis membatasi token per menit (sekitar 6-12 ribu), jadi DATA dipotong agar muat; pertanyaan selalu utuh.
+function fit_user(string $user, int $lim): string {
+    if (mb_strlen($user) <= $lim) return $user;
+    $p = mb_strrpos($user, "\n\nPERTANYAAN: ");
+    $tail = $p === false ? '' : mb_substr($user, $p);
+    $head = $p === false ? $user : mb_substr($user, 0, $p);
+    return mb_substr($head, 0, max(1000, $lim - mb_strlen($tail))) . "\n…(data dipotong)" . $tail;
+}
 function groq(string $key, string $sys, array $hist, string $user): string {
-    $msg = [['role' => 'system', 'content' => $sys]];
-    foreach ($hist as $h) { $msg[] = ['role' => 'user', 'content' => mb_substr((string)($h['q'] ?? ''), 0, 400)]; $msg[] = ['role' => 'assistant', 'content' => mb_substr((string)($h['a'] ?? ''), 0, 800)]; }
-    $msg[] = ['role' => 'user', 'content' => $user];
+    $base = [['role' => 'system', 'content' => $sys]];
+    foreach ($hist as $h) { $base[] = ['role' => 'user', 'content' => mb_substr((string)($h['q'] ?? ''), 0, 400)]; $base[] = ['role' => 'assistant', 'content' => mb_substr((string)($h['a'] ?? ''), 0, 800)]; }
+    $lim = 16000; $shrink = 0;
     // nama model di Groq sering berganti: coba beberapa, lalu ambil dari daftar model yang tersedia
     $models = defined('CF_GROQ_MODEL') && CF_GROQ_MODEL ? [CF_GROQ_MODEL] : ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'qwen/qwen3-32b', 'openai/gpt-oss-20b'];
     $tried = 0; $code = 0; $j = null;
     for ($n = 0; $n < count($models) && $n < 8; $n++) {
         $m = $models[$n];
+        $msg = array_merge($base, [['role' => 'user', 'content' => fit_user($user, $lim)]]);
         [$code, $j] = post_json('https://api.groq.com/openai/v1/chat/completions', ['Authorization: Bearer ' . $key],
             ['model' => $m, 'messages' => $msg, 'temperature' => 0.3, 'max_tokens' => 900]);
-        if ($code !== 404 && $code !== 400) break;
+        // 413 = permintaan terlalu besar untuk kuota model ini: perkecil DATA lalu coba lagi
+        if ($code === 413 && $shrink < 3) { $lim = (int)($lim * 0.55); $shrink++; $n--; continue; }
+        if ($code !== 404 && $code !== 400 && $code !== 413) break;
         if (++$tried === count($models)) { // semua gagal: lihat daftar model yang ada
             $ch = curl_init('https://api.groq.com/openai/v1/models');
             curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10, CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $key]]);
