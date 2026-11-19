@@ -197,9 +197,9 @@
    ]
   },
   {
-   "name": "Mode belajar garis Fibonacci",
+   "name": "Garis Fibonacci: pilihan Semua",
    "mention": [
-    "Semua (belajar)"
+    "Pilihan Semua menampilkan"
    ]
   },
   {
@@ -254,6 +254,12 @@
    "forbid": [
     "Tarik garis",
     "menarik garis tren dan"
+   ]
+  },
+  {
+   "name": "Label tombol Semua (belajar)",
+   "forbid": [
+    "Semua (belajar)"
    ]
   }
  ]

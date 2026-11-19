@@ -1619,7 +1619,7 @@ function fibDraw(ch,el,tz,good,warn,box,U){
   const past=mode==="all"?allPast:mode==="hit"?allPast.filter(x=>x[6]!==0):[];
   const nT=allPast.filter(x=>x[6]===1).length, nX=allPast.filter(x=>x[6]===0).length, nW=allPast.filter(x=>x[6]==null).length;
   const fmt=U||(v=>nf(v,v>1000?0:2));
-  if(box){ box.innerHTML=`<div class="fibm" role="group" aria-label="Tampilan tanggal Fibonacci"><b>⏳ Waktu Fib:</b>${[["next","Akan datang"],["hit","+ Yang tepat"],["all","📚 Semua (belajar)"]].map(([k,t])=>`<button type="button" data-fm="${k}" aria-pressed="${mode===k}">${t}</button>`).join("")}
+  if(box){ box.innerHTML=`<div class="fibm" role="group" aria-label="Tampilan tanggal Fibonacci"><b>⏳ Waktu Fib:</b>${[["next","Akan datang"],["hit","+ Yang tepat"],["all","📚 Semua"]].map(([k,t])=>`<button type="button" data-fm="${k}" aria-pressed="${mode===k}">${t}</button>`).join("")}
       <span class="note">${allPast.length?`${nT} tepat · ${nX} lewat · ${nW} belum dinilai${mode==="all"?" · angka = hari bursa, ketuk untuk rinciannya":""}`:"belum ada tanggal yang lewat"}</span></div>`;
     box.querySelectorAll("[data-fm]").forEach(b=>b.addEventListener("click",()=>{ store.set(WP+"fibm",b.dataset.fm); el.dispatchEvent(new CustomEvent("fibredraw")); })); }
   if(!fut.length&&!past.length) return;
