@@ -737,6 +737,11 @@ body{transition:padding-right .55s cubic-bezier(.2,.8,.2,1)}
 /* ---------- Pengaturan: ukuran huruf & animasi ---------- */
 :root[data-fs=s]{zoom:.9}:root[data-fs=l]{zoom:1.12}
 :root[data-anim="0"] *,:root[data-anim="0"] *::before,:root[data-anim="0"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+.sgi{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.sgi:first-child{border-top:none}.sgi>div{min-width:0}.sgi .tk{font-weight:800}.sgi .sub{display:block;color:var(--muted);font-size:12.5px;line-height:1.4;overflow-wrap:anywhere}
+.sgi .pf{display:block;font-size:11.5px;font-weight:700;color:var(--good)}.sgi .pf.no{color:var(--bad)}.sgi .pf.mu{color:var(--muted)}.sgi>.st,.sgi>.rt{flex:none;white-space:nowrap}
+.sgh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:12px 0 2px;font-size:14px}.sgh:first-child{margin-top:0}
+.mband{border-left:5px solid var(--warn);gap:2px;font-size:14px}.mband.g{border-left-color:var(--good)}.mband.r{border-left-color:var(--bad)}
 .linkbtn{background:none;border:none;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;padding:6px 0 0;text-align:left}
 .sgc{gap:6px}.sgc h4{flex-wrap:wrap;gap:6px}.sgc table td{padding-top:8px;padding-bottom:8px}
 /* ---------- Pengaturan: dialog ---------- */
@@ -1184,7 +1189,7 @@ function renderSummary(box){
   const E=(DATA&&DATA.etf)||{}, ek=Object.keys(E).filter(k=>k!=="IHSG"&&E[k].perf1y!=null).slice(0,3);
   const etfNote=IS_ID?(E.IHSG&&E.IHSG.perf1y!=null?`<p class="note">Pembanding: IHSG ${pct(E.IHSG.perf1y)} dalam setahun. ETF di BEI umumnya sepi transaksi, jadi membeli saham pilihan atau reksa dana indeks sering lebih praktis.</p>`:"")
     :(ek.length?`<p class="note">Cara paling sederhana tetap membeli indeks: ${ek.map(k=>`${esc(k)} ${pct(E[k].perf1y)}`).join(" · ")} dalam setahun. Bila tidak sempat memilih saham, ini pilihan dengan bukti terkuat.</p>`:"");
-  box.innerHTML=todayCard()+dashHTML(filtered())+saranBox(sm.html+candHtml+etfNote)+`<div class="rhead"><div class="l"><h2>Sinyal 7 metode per saham</h2>
+  box.innerHTML=homeTop()+dashHTML(filtered())+saranBox(sm.html+candHtml+etfNote)+`<div class="rhead"><div class="l"><h2>Sinyal 7 metode per saham</h2>
       <p class="note">${ixFilter==="L"?"Saham likuid saja. ":""}${counts.buy} saham layak beli${counts.hold?`, ${counts.hold} ada di Portofolio Anda`:""}${counts.sell?`, ${counts.sell} punya sinyal jual (hindari)`:""}. Klik baris untuk alasan, harga patokan, dan kriteria tiap metode.</p></div>
       <label for="fSel">Tampilkan <select id="fSel">${[["","Semua saham"],["buy",`Layak beli (${counts.buy})`],["hold",`Di Portofolio (${counts.hold})`],["sell",`Sinyal jual (${counts.sell})`],["pass3","Lolos kriteria ≥ 3 metode"]].map(([v,t])=>`<option value="${v}" ${v===fSel?"selected":""}>${t}</option>`).join("")}</select></label></div>
     <div class="legend">${M.map(m=>`<span><span class="mc wait" style="width:20px;height:18px">${m.abbr}</span>${esc(m.name)}</span>`).join("")}
@@ -2064,12 +2069,27 @@ function sigBuyNew(){ const allow=allowedMethods(); let n=filtered().filter(o=>a
 function todayCard(){
   const P=porto(), acts=P.open.length?sigActs():[], nb=sigBuyNew(), td=(DATA&&DATA.priceDate)||"", st=stars(), own=new Set(P.open.map(p=>p.code));
   const ex=rows.filter(o=>(st.has(o.ticker)||own.has(o.ticker))&&o.dv&&o.dv.ex&&o.dv.ex>=td&&(new Date(o.dv.ex)-new Date(td))/864e5<=7).length;
-  const it=(ic,txt,btn,cls,go)=>`<div class="row" style="cursor:pointer" data-gotab="${go}"><span>${ic} ${txt}</span><span class="st ${cls}" style="align-self:center;white-space:nowrap;flex:none">${btn}</span></div>`, L=[];
+  const it=(ic,txt,btn,cls,go)=>`<div class="sgi" data-gotab="${go}"><span>${ic} ${txt}</span><span class="st ${cls}">${btn}</span></div>`, L=[];
   if(P.open.length) L.push(acts.length?it("🛑",`<b>${acts.length} posisi</b> Anda perlu tindakan`,"lihat","sell","watch"):it("✅",`${P.open.length} posisi Anda belum perlu tindakan`,"cek","buy","porto"));
   L.push(nb?it("📈",`<b>${nb} sinyal beli baru</b> dari metode yang dipakai`,"lihat","buy","watch"):it("📈","Belum ada sinyal beli baru hari ini","lihat","wait","watch"));
   if(ex) L.push(it("💰",`<b>${ex} saham</b> pantauan/portofolio Anda ex-dividen dalam 7 hari`,"jadwal","hold","divcal"));
   if(!st.size) L.push(it("★","Tandai saham dengan ☆ agar dipantau di tab Sinyal","cara","wait","watch"));
-  return `<div class="mcard" style="gap:4px;margin-bottom:12px"><h4><span>📌 Hari ini</span><span class="note">${td?tgl(td,1):""}</span></h4><div class="dl">${L.join("")}</div></div>`;
+  return `<div class="mcard" style="gap:2px"><h4><span>📌 Hari ini</span><span class="note">${td?tgl(td,1):""}</span></h4><div>${L.join("")}</div></div>`;
+}
+// pita kondisi pasar ringkas (judul + satu kalimat)
+function marketBand(){ const r=regime(), idx=IS_ID?"IHSG":"S&P 500", fr=fracTxt(r.b);
+  const c=r.k==="naik"?"g":r.k==="campuran"?"":"r", ic=r.k==="naik"?"🟢":r.k==="campuran"?"🟡":"🟠";
+  const t=r.k==="naik"?"Pasar sedang sehat":r.k==="campuran"?"Pasar campuran":"Pasar sedang lesu";
+  const x=r.k==="tertekan"?`${idx} di bawah rata-ratanya${fr?`, hanya ${fr} saham yang naik`:""}. Pembelian baru Momentum, CAN SLIM, dan Swing ditunda; posisi lama tetap dipantau.`:r.k==="campuran"?`${fr?`Baru ${fr} saham yang sedang naik`:"Pasar belum kompak"}. Pilih-pilih, utamakan metode yang lolos uji.`:`${fr?`${fr[0].toUpperCase()+fr.slice(1)} saham sedang naik`:"Mayoritas saham sedang naik"}; semua metode aktif.`;
+  return `<div class="mcard mband ${c}"><b>${ic} ${t}</b><span>${x}</span></div>`; }
+// Beranda: ringkasan Portofolio + metode yang paling terbukti
+function homeTop(){
+  const P=porto(); let por="";
+  if(P.open.length){ const E=P.open.map(posEval).filter(e=>e.val!=null), v=E.reduce((a,e)=>a+e.val,0), c=E.reduce((a,e)=>a+e.cost,0), pl=E.reduce((a,e)=>a+e.pl,0);
+    por=`<div class="mcard" style="gap:2px;cursor:pointer" data-gotab="porto"><h4><span>💼 Portofolio</span><span class="note">${P.open.length} posisi</span></h4><div class="dl"><div><span>Nilai</span><b class="num">${usd(Math.round(v))}</b></div><div><span>Untung/rugi</span><b class="num ${pl>=0?"ok":"no"}">${pl>=0?"+":"−"}${usd(Math.abs(Math.round(pl)))} (${pct(c?pl/c*100:0,1)})</b></div></div></div>`; }
+  const top=ordTabs(M.map(m=>({id:m.id})).concat(IS_ID?[{id:"pbt"}]:[])).filter(x=>(methodProof(x.id)||{}).c==="buy").slice(0,3);
+  const pr=top.length?`<div class="mcard" style="gap:2px"><h4><span>📊 Metode yang paling terbukti</span><span class="note">uji ${ltYrs()}</span></h4><div>${top.map(x=>{ const q=methodProof(x.id); return `<div class="sgi" data-gotab="${x.id}"><span>${esc(x.id==="pbt"?"Pullback Tren":MID[x.id].name)}</span><span class="pf">${esc(q.s)}</span></div>`; }).join("")}</div></div>`:"";
+  return `<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px">${marketBand()}${todayCard()}${por}${pr}</div>`;
 }
 function renderPbt(box){
   if(IS_ID&&!PBT_P) loadPbt().then(()=>{ if(tab==="pbt") renderResults(); });
@@ -2079,31 +2099,41 @@ function renderPbt(box){
 function renderWatch(box){
   if(IS_ID&&!PBT_P) loadPbt().then(()=>{ if(tab==="watch") renderResults(); });
   const P=porto(), acts=P.open.length?sigActs():[], allow=allowedMethods(), r=regime(), list=filtered(), td=(DATA&&DATA.priceDate)||"";
-  const cell=t=>{ const o=rows.find(x=>x.ticker===t); return o?stockCell(o):`<td><span class="tk">${esc(t)}</span></td>`; };
+  const co=o=>esc(String(o.company||"").replace(/^PT\s+/,"").replace(/\s+Tbk\.?$/,"").slice(0,40));
+  const short=t=>{ t=String(t||""); return esc(t.length>90?t.slice(0,88).replace(/\s\S*$/,"")+"…":t); };
+  const regP=id=>r.k==="tertekan"&&["canslim","momentum","swing"].includes(id)&&!badTrader().includes(id);
+  // 1. posisi perlu tindakan
   const actHtml=!P.open.length?`<p class="note" style="margin:0">Catat saham yang Anda beli di <button type="button" class="linkbtn" data-gotab="porto">💼 Portofolio</button> agar aturan jualnya dipantau di sini.</p>`
-    :acts.length?`<div class="tablebox"><table class="cards"><tbody>${acts.map(x=>{ const a=x.e.acts.filter(a=>a.lv<=1); return `<tr class="row" data-t="${esc(x.ps.code)}" tabindex="0">${cell(x.ps.code)}<td class="full" data-label="Aturan jual" style="font-size:13.5px">${a.map(y=>`${y.ic} ${esc(y.t)}`).join("<br>")}</td><td class="act"><button type="button" class="linkbtn" data-gotab="porto">Buka Portofolio →</button></td></tr>`; }).join("")}</tbody></table></div>`
+    :acts.length?acts.map(x=>{ const a=x.e.acts.filter(a=>a.lv<=1), m=MID[x.ps.method]; return `<div class="sgi row" data-t="${esc(x.ps.code)}"><div><span class="tk">${esc(x.ps.code)}</span><span class="sub">${m?esc(m.name)+" · ":""}${a.map(y=>`${y.ic} ${esc(y.t)}`).join(" · ")}</span></div><span class="st sell">${a.some(y=>y.lv===0)?"Jual":"Cek"}</span></div>`; }).join("")
     :`<p class="note" style="margin:0">✅ ${P.open.length} posisi Anda belum perlu tindakan menurut aturan jual.</p>`;
-  const ids=ordTabs(M.map(m=>({id:m.id}))).map(x=>x.id), regP=id=>r.k==="tertekan"&&["canslim","momentum","swing"].includes(id)&&!badTrader().includes(id);
-  const grp=ids.map(id=>{ const m=MID[id], paused=!allow.includes(id);
+  // 2. sinyal tiap metode, urut menurut hasil uji
+  const ids=ordTabs(M.map(m=>({id:m.id}))).map(x=>x.id);
+  const grp=ids.map(id=>{ const m=MID[id], q=methodProof(id), paused=!allow.includes(id);
     const U=list.map(o=>({o,u:uv(o,id)})).filter(x=>x.u.s==="buy").sort((a,b)=>(b.u.fresh-a.u.fresh)||((b.o.mcap||0)-(a.o.mcap||0)));
-    const nw=U.filter(x=>x.u.fresh).length;
-    return `<div class="mcard sgc" style="margin-top:10px"><h4><span>${esc(m.name)} ${proofChip(id)}</span><span class="note">${U.length} ${regP(id)?"memenuhi syarat":"layak beli"}${nw?` · ${nw} baru`:""}</span></h4>
-      ${paused?`<p class="note" style="margin:0">⏸️ ${regP(id)?"Pasar sedang lesu: aturan ChartFlow tidak memakai metode ini untuk beli baru sampai pasar membaik.":"Metode ini tidak lolos uji, jadi tidak dipakai di Saran. Sinyalnya tetap ditampilkan untuk dipelajari."}</p>`:""}
-      ${U.length?`<div class="tablebox"><table class="cards"><tbody>${U.slice(0,5).map(x=>`<tr class="row" data-t="${esc(x.o.ticker)}" tabindex="0">${stockCell(x.o)}<td class="num" data-label="Harga">${usd(x.o.price)}</td><td data-label="Status">${regP(id)?`<span class="st wait">⏸️ ${T("Tunggu pasar","Ditunda")}</span>`:uchip(x.u)}</td><td class="why full" data-label="Alasan" style="font-size:12.5px">${esc(ureason(x.u).slice(0,160))}</td></tr>`).join("")}</tbody></table></div>`:`<p class="note" style="margin:0">Belum ada saham yang memenuhi syarat hari ini.</p>`}
-      <button type="button" class="linkbtn" data-gotab="${id}">${U.length>5?`Lihat semua ${U.length} →`:`Buka halaman ${esc(m.name)} →`}</button></div>`; }).join("");
+    const chip=x=>regP(id)?`<span class="st wait">⏸️ ${T("Tunggu","Ditunda")}</span>`:`<span class="st buy">${T("Layak beli","Memenuhi")}</span>`;
+    return `<div class="sgh"><span><b>${esc(m.name)}</b> ${q?`<span class="st ${q.c}">${q.ic} ${esc(q.s)}</span>`:""}</span><span class="note">${U.length}</span></div>
+      ${paused?`<p class="note" style="margin:0 0 2px">${regP(id)?"⏸️ Pasar lesu: beli baru ditunda.":"⚠️ Tidak lolos uji: tidak dipakai di Saran, ditampilkan untuk dipelajari."}</p>`:""}
+      <div>${U.length?U.slice(0,3).map(x=>`<div class="sgi row" data-t="${esc(x.o.ticker)}"><div><span class="tk">${esc(x.o.ticker)}</span>${x.u.fresh?' <span class="st new">baru</span>':""} <span class="note">${usd(x.o.price)}</span><span class="sub">${co(x.o)} · ${short(x.u.why||x.u.rs)}</span></div>${chip(x)}</div>`).join(""):`<p class="note" style="margin:4px 0">Belum ada yang memenuhi syarat hari ini.</p>`}</div>
+      <button type="button" class="linkbtn" data-gotab="${id}">${U.length>3?`Lihat semua ${U.length} →`:`Buka ${esc(m.name)} →`}</button>`; }).join("");
+  // 3. Pullback Tren (BEI)
+  const pb=IS_ID&&PBT&&PBT.date?(()=>{ const ok=PBT.mkt&&PBT.mkt.ok, nw=PBT.now||[], op=PBT.open||[];
+    return `<div class="sgh"><span><b>Pullback Tren</b> ${proofChip("pbt")}</span><span class="note">${ok?nw.length:"⏸️"}</span></div>
+      <p class="note" style="margin:0 0 2px">${ok?"Tambahan khusus BEI, racikan ChartFlow (ide Larry Connors).":`⏸️ ${IS_ID?"IHSG":"Indeks"} di bawah rata-rata 50 hari: sinyal baru ditunda${op.length?`; ${op.length} posisi simulasi berjalan`:""}.`}</p>
+      <div>${ok?nw.slice(0,3).map(x=>{ const t=x.t||x.ticker||x; return `<div class="sgi row" data-t="${esc(t)}"><div><span class="tk">${esc(t)}</span><span class="sub">beli di pembukaan besok · jual saat tutup di atas SMA5</span></div><span class="st buy">${T("Sinyal beli","Memenuhi")}</span></div>`; }).join(""):""}</div>
+      <button type="button" class="linkbtn" data-gotab="pbt">Buka Pullback Tren →</button>`; })():"";
+  // 4. pantauan ★
   const st=stars(), starred=[...st].map(t=>rows.find(x=>x.ticker===t)).filter(Boolean);
-  const rem=o=>{ const L=[]; if(o.dv&&o.dv.ex&&o.dv.ex>=td){ const d=Math.round((new Date(o.dv.ex)-new Date(td))/864e5); if(d<=21) L.push(`💰 ex-dividen ${d?d+" hari lagi":"hari ini"}`); } if(P.open.some(p=>p.code===o.ticker)) L.push("💼 di Portofolio"); return L.join("<br>")||'<span class="note">–</span>'; };
+  const rem=o=>{ const L=[]; if(o.dv&&o.dv.ex&&o.dv.ex>=td){ const d=Math.round((new Date(o.dv.ex)-new Date(td))/864e5); if(d<=21) L.push(`💰 ex-div ${d?d+" hari":"hari ini"}`); } if(P.open.some(p=>p.code===o.ticker)) L.push("💼 dimiliki"); return L.join(" · "); };
+  const mst=o=>{ const b=[],h=[],x=[]; M.forEach(m=>{ const u=uv(o,m.id); if(u.s==="buy") b.push(m.name); else if(u.s==="sell") x.push(m.name); else if(u.s==="hold") h.push(m.name); });
+    return b.length?`<span class="st buy">${esc(b.slice(0,2).join(", "))}${b.length>2?` +${b.length-2}`:""}</span>`:x.length?`<span class="st sell">${esc(x[0])}: ${o&&P.open.some(p=>p.code===o.ticker)?"jual":"hindari"}</span>`:h.length?`<span class="st hold">${esc(h[0])}: tahan</span>`:`<span class="st wait">belum ada</span>`; };
+  const watchHtml=starred.length?starred.map(o=>`<div class="sgi row" data-t="${esc(o.ticker)}"><div><span class="tk">${esc(o.ticker)}</span> <span class="note">${usd(o.price)}</span><span class="sub">${rem(o)||co(o)}</span></div><span class="rt">${mst(o)} ${alarmBtn(o.ticker,null,o.price)}</span></div>`).join("")
+    :`<p class="note" style="margin:0">Belum ada. Ketuk ☆ di tabel mana pun untuk menandai saham.</p>`;
   const AR=LT&&LT.area&&LT.area.pick;
-  box.innerHTML=saranBox(`${saranMarket().head}<ul class="sl"><li>🛑 Paling atas: posisi Anda yang aturan jualnya terpenuhi.</li><li>📈 Lalu sinyal beli tiap metode, <b>diurutkan dari yang hasil ujinya paling baik</b>. Label di samping nama metode adalah hasil uji ${ltYrs()}.</li><li>★ Paling bawah: saham yang Anda tandai.</li></ul>`)+`
-    <div class="rhead" style="margin-top:12px"><div class="l"><h2>🛑 Posisi Anda perlu tindakan${acts.length?` · ${acts.length}`:""}</h2></div></div>${actHtml}
-    <div class="rhead" style="margin-top:16px"><div class="l"><h2>📈 Sinyal hari ini</h2><p class="note">5 saham teratas tiap metode (yang <b>baru</b> lolos hari ini lebih dulu). Klik baris untuk alasan lengkap.</p></div></div>
-    ${grp}
-    ${IS_ID?`<div style="margin-top:16px"><p class="note" style="margin:0 2px 4px">↩️ <b>Pullback Tren</b> ${proofChip("pbt")} · tambahan khusus BEI, racikan ChartFlow (ide Larry Connors)</p>${pbtSection()}</div>`:""}
-    <div class="rhead" style="margin-top:16px"><div class="l"><h2>★ Pantauan saya${starred.length?` · ${starred.length}`:""}</h2><p class="note">Klik ☆ di tabel mana pun untuk menandai. 🔔 untuk pasang alarm harga.</p></div></div>
-    <div class="tablebox"><table class="cards"><thead><tr><th>Saham</th><th class="num">Harga</th><th>Pengingat</th><th>Status metode</th><th></th></tr></thead><tbody>
-    ${starred.length?starred.map(o=>`<tr class="row" data-t="${esc(o.ticker)}" tabindex="0">${stockCell(o)}<td class="num" data-label="Harga">${usd(o.price)}</td><td data-label="Pengingat" style="font-size:13px">${rem(o)}</td><td class="full" data-label="Status metode" style="font-size:13px">${sigCell(sigOf(o,M.map(m=>m.id)))}</td><td class="act">${alarmBtn(o.ticker,null,o.price)}${chartBtn(o.ticker)}</td></tr>`).join("")
-      :`<tr><td colspan="5" class="empty">Belum ada saham yang Anda tandai.</td></tr>`}</tbody></table></div>
-    <p class="note" style="margin-top:10px">📍 Zona support dan resistance tetap ada di grafik tiap saham (tombol 📈, tab Siklus) sebagai informasi. Daftar “beli di area support” tidak lagi ditampilkan sebagai sinyal${AR?`: uji ${LT.area.from.slice(0,4)}–${LT.area.to.slice(0,4)} rata-rata hanya ${pct(AR.avg,2)} per transaksi dan sekitar ${Math.round(AR.sl/10)} dari 10 kena batas rugi`:""}. <button type="button" class="linkbtn" data-gotab="uji">📏 Semua hasil uji →</button></p>`;
+  box.innerHTML=`<div style="display:flex;flex-direction:column;gap:12px">${marketBand()}
+    <div class="mcard" style="gap:2px"><h4><span>🛑 Posisi Anda perlu tindakan</span><span class="note">${acts.length||""}</span></h4><div>${actHtml}</div></div>
+    <div class="mcard" style="gap:2px"><h4><span>📈 Sinyal hari ini</span><span class="note">urut dari hasil uji terbaik</span></h4>${grp}${pb}</div>
+    <div class="mcard" style="gap:2px"><h4><span>★ Pantauan saya</span><span class="note">${starred.length?starred.length+" saham":""}</span></h4><div>${watchHtml}</div></div>
+    <div class="mcard" style="font-size:13px;color:var(--muted);gap:4px">📍 Zona support/resistance tetap ada di grafik tiap saham sebagai informasi, tidak lagi jadi daftar “beli sekarang”${AR?` (uji ${LT.area.from.slice(0,4)}–${LT.area.to.slice(0,4)}: rata-rata hanya ${pct(AR.avg,2)} per transaksi)`:""}. <button type="button" class="linkbtn" data-gotab="uji" style="padding:0">📏 Semua hasil uji →</button></div></div>`;
 }
 
 // ---------- Kalkulator ----------
