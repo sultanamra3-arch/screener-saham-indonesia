@@ -85,7 +85,7 @@ if ($cmd === '/daftar') {
         if ($v['status'] !== 'active') continue;
         $dev = count(array_filter($sess, function ($s) use ($c) { return $s['code'] === $c; }));
         $seen = isset($v['seen']) ? (($now - $v['seen'] < 86400) ? 'aktif hari ini' : 'aktif ' . fmt_date($v['seen'])) : 'belum pernah masuk';
-        $lines[] = ($v['exp'] < $now ? '⌛ ' : '🟢 ') . "<code>$c</code> <b>" . h($v['name'] ?? '') . "</b>\n    s.d. " . fmt_date($v['exp']) . " · $dev/" . ($v['devices'] ?? CF_DEVICES) . " perangkat · $seen · " . (int)($v['npos'] ?? 0) . " posisi portofolio";
+        $lines[] = ($v['exp'] < $now ? '⌛ ' : '🟢 ') . "<code>$c</code> <b>" . h($v['name'] ?? '') . "</b>\n    s.d. " . fmt_date($v['exp']) . " · $dev/" . max_devices($v) . " perangkat · $seen · " . (int)($v['npos'] ?? 0) . " posisi portofolio";
     }
     reply($lines ? "<b>Kode aktif</b>\n" . implode("\n", array_slice($lines, 0, 60)) : 'Belum ada kode aktif.');
 } elseif (in_array($cmd, ['/cabut', '/perpanjang', '/reset', '/nama', '/hapus', '/pemilik'], true)) {
@@ -103,7 +103,7 @@ if ($cmd === '/daftar') {
         $on = empty($db['codes'][$code]['owner']);
         if ($on) foreach ($db['codes'] as $k => $v) unset($db['codes'][$k]['owner']);
         if ($on) $db['codes'][$code]['owner'] = true; else unset($db['codes'][$code]['owner']);
-        $msg = $on ? "👑 <code>$code</code> (" . h($db['codes'][$code]['name'] ?? '') . ") ditandai sebagai akun pemilik: saran tampil dengan gaya santai. Pengguna lain tetap memakai bahasa aman. Muat ulang halaman di perangkat Anda."
+        $msg = $on ? "👑 <code>$code</code> (" . h($db['codes'][$code]['name'] ?? '') . ") ditandai sebagai akun pemilik: saran tampil dengan gaya santai dan bisa dipakai di " . CF_DEVICES_OWNER . " perangkat. Pengguna lain tetap memakai bahasa aman. Muat ulang halaman di perangkat Anda."
                    : "Tanda pemilik untuk <code>$code</code> dilepas: saran kembali memakai bahasa aman.";
     } elseif ($cmd === '/nama') {
         $nm = trim(mb_substr(implode(' ', array_slice($a, 2)), 0, 60));
@@ -135,5 +135,5 @@ if ($cmd === '/daftar') {
     db_save($fh, $db);
     reply("🔑 Kode baru untuk " . h($name) . ":\n<code>$code</code>\nBerlaku sampai " . fmt_date($exp) . ".\n\n<code>" . h(share_text($code, $exp)) . "</code>");
 } else {
-    reply("<b>Perintah ChartFlow</b>\n/daftar: kode aktif, perangkat, dan aktivitas\n/nama KODE Nama: ganti nama akun\n/kode 30 Nama: buat kode baru (hari, nama)\n/perpanjang KODE 30: tambah masa berlaku\n/reset KODE: keluarkan semua perangkat kode itu\n/cabut KODE: matikan kode (data disimpan 90 hari)\n/hapus KODE: hapus permanen kode + semua datanya (permintaan penghapusan data)\n/pemilik KODE: tandai akun Anda sendiri (saran bergaya santai)\n\nPermintaan dari website datang otomatis dengan tombol Setujui/Tolak.");
+    reply("<b>Perintah ChartFlow</b>\n/daftar: kode aktif, perangkat, dan aktivitas\n/nama KODE Nama: ganti nama akun\n/kode 30 Nama: buat kode baru (hari, nama)\n/perpanjang KODE 30: tambah masa berlaku\n/reset KODE: keluarkan semua perangkat kode itu\n/cabut KODE: matikan kode (data disimpan 90 hari)\n/hapus KODE: hapus permanen kode + semua datanya (permintaan penghapusan data)\n/pemilik KODE: tandai akun Anda sendiri (saran bergaya santai, " . CF_DEVICES_OWNER . " perangkat)\n\nPermintaan dari website datang otomatis dengan tombol Setujui/Tolak.");
 }

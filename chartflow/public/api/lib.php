@@ -6,6 +6,16 @@ require __DIR__ . '/../_data/config.php'; // dibuat otomatis saat deploy: CF_BOT
 const CF_DB = __DIR__ . '/../_data/db.json';
 const CF_DAYS = 30;          // masa berlaku kode bawaan
 const CF_DEVICES = 2;        // perangkat per kode
+const CF_DEVICES_OWNER = 3;  // akun pemilik (admin)
+
+// akun pemilik: ditandai /pemilik atau terhubung ke chat Telegram admin
+function is_owner(array $c): bool {
+    return !empty($c['owner']) || (!empty($c['tg']) && (string)$c['tg'] === (string)CF_CHAT_ID);
+}
+function max_devices(array $c): int {
+    $n = (int)($c['devices'] ?? CF_DEVICES);
+    return is_owner($c) ? max($n, CF_DEVICES_OWNER) : $n;
+}
 const CF_COOKIE = 'cf_sess';
 
 function db_open(): array {

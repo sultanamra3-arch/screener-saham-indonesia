@@ -1,5 +1,5 @@
 <?php
-// Masuk dengan kode akses -> cookie sesi (maks. CF_DEVICES perangkat per kode).
+// Masuk dengan kode akses -> cookie sesi (maks. CF_DEVICES perangkat per kode, akun pemilik CF_DEVICES_OWNER).
 // Perangkat penuh: pengguna boleh mengeluarkan perangkat lama sendiri 1x per 24 jam (pengelola diberi tahu).
 require __DIR__ . '/lib.php';
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !same_origin()) json_out(['ok' => false, 'msg' => 'Permintaan tidak sah.'], 400);
@@ -15,7 +15,7 @@ if (!$c || $c['status'] !== 'active') { rate_hit($db, 'login'); db_save($fh, $db
 if ($c['exp'] < now()) { db_save($fh, $db); json_out(['ok' => false, 'msg' => 'Kode sudah habis masa berlakunya (' . fmt_date($c['exp']) . '). Minta perpanjangan ke pengelola.'], 401); }
 prune($db);
 $mine = array_filter($db['sessions'], function ($s) use ($code) { return $s['code'] === $code; });
-$max = $c['devices'] ?? CF_DEVICES;
+$max = max_devices($c);
 $kicked = false;
 if (count($mine) >= $max) {
     $next = (int)($c['sr'] ?? 0) + 86400;
