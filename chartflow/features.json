@@ -207,6 +207,12 @@
    "mention": [
     "Pullback Tren"
    ]
+  },
+  {
+   "name": "Tab Sinyal",
+   "mention": [
+    "📍 Sinyal"
+   ]
   }
  ],
  "removed": [
@@ -260,6 +266,13 @@
    "name": "Label tombol Semua (belajar)",
    "forbid": [
     "Semua (belajar)"
+   ]
+  },
+  {
+   "name": "Watchlist (Area beli sebagai sinyal)",
+   "forbid": [
+    "Tampil paling atas di Watchlist",
+    "Area support S1–S3"
    ]
   }
  ]
