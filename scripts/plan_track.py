@@ -23,8 +23,11 @@ def _floor_tick(v: float, idr: bool) -> float:
     return math.floor(v / t) * t
 
 
-def plans(d: dict, c: dict, allow: list[str], layak, idr: bool, liquid_only: bool) -> list[dict]:
-    """Sama dengan planOf/planList di website."""
+def plans(d: dict, c: dict, allow: list[str], layak, idr: bool, liquid_only: bool,
+          up_min: float | None = None, trend: bool = True, floor=None) -> list[dict]:
+    """Sama dengan planOf/planList di website. Kripto: up_min=5, trend=False, floor tanpa pembulatan tick."""
+    up_min = UP_MIN if up_min is None else up_min
+    floor = floor or _floor_tick
     w = c.get("watch") or {}
     stocks = c.get("stocks") or {}
     by = {o["ticker"]: o for o in d.get("stocks", [])}
@@ -36,7 +39,7 @@ def plans(d: dict, c: dict, allow: list[str], layak, idr: bool, liquid_only: boo
                 continue
             if liquid_only and o.get("liq", "L") != "L":
                 continue
-            if idr and o.get("sma200") is not None and o["sma200"] <= 0:  # BEI: hanya saham di atas rata-rata 200 hari (uji 2018–2026)
+            if trend and idr and o.get("sma200") is not None and o["sma200"] <= 0:  # BEI: hanya saham di atas rata-rata 200 hari (uji 2018–2026)
                 continue
             if not any(layak(o, m) for m in allow):
                 continue
@@ -47,7 +50,7 @@ def plans(d: dict, c: dict, allow: list[str], layak, idr: bool, liquid_only: boo
                 risk = max(e - stop, e * 0.005)
                 up = (r1["lo"] / e - 1) * 100 if r1 else None
                 rr = (r1["lo"] - e) / risk if r1 else None
-                ok = r1 is None or (rr >= RR_MIN and up >= UP_MIN)
+                ok = r1 is None or (rr >= RR_MIN and up >= up_min)
                 return {"t": t, "k": kind, "e": e, "s": stop, "g": r1["lo"] if r1 else None,
                         "rr": None if rr is None else round(rr, 2), "z": zz.get("strength"), "ok": ok}
 
@@ -64,7 +67,7 @@ def plans(d: dict, c: dict, allow: list[str], layak, idr: bool, liquid_only: boo
                 below = sorted((s for s in a.get("sup") or [] if s["strength"] != "lemah" and s["hi"] < z["lo"]), key=lambda s: -s["hi"])
                 if below:
                     s2 = below[0]
-                    x = mk("queue", s2["hi"], _floor_tick(s2["lo"] * 0.99, idr), s2)
+                    x = mk("queue", s2["hi"], floor(s2["lo"] * 0.99, idr), s2)
                     if x["ok"]:
                         pl = x
             if pl:
@@ -85,7 +88,8 @@ def _ret(e, x, fb, fs):
     return round((x * (1 - fs) / (e * (1 + fb)) - 1) * 100, 2)
 
 
-def update(path: Path, ohlc_dir: Path, today: str, new_plans: list[dict], fees: tuple[float, float]) -> dict:
+def update(path: Path, ohlc_dir: Path, today: str, new_plans: list[dict], fees: tuple[float, float], upto: str | None = None) -> dict:
+    """upto: abaikan candle setelah tanggal ini (kripto: candle hari ini belum selesai)."""
     fb, fs = fees
     st = json.loads(path.read_text()) if path.exists() else {}
     st.setdefault("start", today)
@@ -93,7 +97,7 @@ def update(path: Path, ohlc_dir: Path, today: str, new_plans: list[dict], fees: 
     st.setdefault("done", [])
     still = []
     for r in st["open"]:
-        bars = [b for b in _bars(ohlc_dir, r["t"]) if b[0] > r["chk"]]
+        bars = [b for b in _bars(ohlc_dir, r["t"]) if b[0] > r["chk"] and (upto is None or b[0] <= upto)]
         res = None
         for b in bars:
             dte, o, h, l, cl = b[0], b[1], b[2], b[3], b[4]
