@@ -1,5 +1,10 @@
 [
  {
+  "d": "2026-11-19",
+  "t": "🔢 Jumlah pecahan di Portofolio",
+  "x": "Jumlah lembar kini tampil apa adanya sampai 4 angka desimal (mis. 0,5 lembar), dan mengetik 0.5 di kolom jumlah dibaca sebagai 0,5."
+ },
+ {
   "d": "2026-11-18",
   "t": "📱 Tampilan aplikasi lebih rapi",
   "x": "Alat ✏️ Tarik garis di grafik dihapus (garis tren otomatis dan Garis info tetap ada), dan halaman tidak lagi ikut membesar saat dicubit atau diketuk dua kali, sementara grafik tetap bisa digeser dan diperbesar di dalam kotaknya; tarik-untuk-refresh dan pantulan saat menggulir juga dihilangkan karena harga sudah diperbarui sendiri."
