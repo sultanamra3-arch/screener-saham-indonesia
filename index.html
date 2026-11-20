@@ -619,20 +619,21 @@ body:has(.drawer) .flo,body.fpo .flo{opacity:0!important;pointer-events:none!imp
 @media (max-width:760px){.flo.dock{padding:0 6px;width:auto}.flo.dock .lbl{display:none}}
 @keyframes bob{50%{transform:translateY(-8px)}}
 @keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
-/* Flo burung hantu (21 Nov 2026): menggantikan bola bermata */
-.flo .orb{background:#fff;box-shadow:0 0 0 2px rgba(47,91,234,.35);overflow:hidden}
-.flo .orb img{width:112%;margin-top:8%;display:block;transform-origin:50% 90%;animation:floTilt 5s ease-in-out infinite}
-.flo .owl{display:none}
-.flo.center .orb{display:none}
+/* Flo burung hantu (21 Nov 2026): Flo utuh, tanpa bola/lingkaran */
+.flo{background:transparent!important;box-shadow:none!important;padding:0!important;overflow:visible}
+.flo .orb{display:none!important}
+.flo .owl{display:block;flex:none;width:66px;height:auto;align-self:flex-end;margin-bottom:-2px;transform-origin:50% 95%;animation:floIdle 6s ease-in-out infinite;filter:drop-shadow(0 6px 10px rgba(15,23,42,.28))}
+.flo .lbl{background:var(--ink);color:var(--ink-fg);padding:9px 14px;border-radius:999px;box-shadow:0 10px 26px rgba(0,0,0,.22)}
 .flo.center .lbl{display:none}
-.flo.center .owl{display:block;width:120px;transform-origin:50% 92%;animation:floWave 1.2s ease-in-out infinite;filter:drop-shadow(0 10px 18px rgba(47,91,234,.25))}
+.flo.center .owl{width:120px;margin-bottom:0;animation:floWave 1.2s ease-in-out infinite;filter:drop-shadow(0 10px 18px rgba(47,91,234,.25))}
+.flo.center .say{bottom:calc(100% + 96px)}
 .fp-hd .mini{background:#eef2ff!important;overflow:hidden}.fp-hd .mini img{width:112%;margin:8% 0 0 -6%;display:block}
 .fp-big{width:170px!important;height:auto!important;border-radius:0!important;background:none!important;box-shadow:none!important;display:block!important}
 .fp-big img{width:100%;display:block;transform-origin:50% 92%;animation:floPoint 1.8s ease-in-out infinite}
-@keyframes floTilt{0%,72%,100%{transform:rotate(0)}80%{transform:rotate(-8deg)}88%{transform:rotate(5deg)}}
+@keyframes floIdle{0%,60%,100%{transform:rotate(0) scale(1)}30%{transform:rotate(0) scale(1.03,1.05)}70%{transform:rotate(-6deg)}78%{transform:rotate(5deg)}86%{transform:rotate(-3deg)}}
 @keyframes floWave{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
 @keyframes floPoint{0%,100%{transform:rotate(0)}50%{transform:rotate(-2deg) translateY(-2px)}}
-@media (prefers-reduced-motion:reduce){.flo .orb img,.flo.center .owl,.fp-big img{animation:none!important}}
+@media (prefers-reduced-motion:reduce){.flo .owl,.fp-big img{animation:none!important}}
 /* tombol Pasang pindah ke Pengaturan */
 #install{display:none!important}
 .flopanel{position:fixed;z-index:42;top:18px;right:18px;bottom:18px;width:380px;border-radius:28px;background:var(--surface);box-shadow:0 20px 60px rgba(20,20,10,.2);display:flex;flex-direction:column;
@@ -3353,7 +3354,7 @@ window.addEventListener("online",()=>autoCheck(true));
 
   // ---- Flo
   const FLO_IMG=(function(){ var l=document.querySelector("img.logo"), s=l?l.getAttribute("src"):"icons/icon-192.png"; return s.replace(/icon-192\.png.*$/,""); })(); const flo=document.createElement("button"); flo.type="button"; flo.className="flo"; flo.setAttribute("aria-label","Tanya Flo, asisten ChartFlow");
-  flo.innerHTML=`<span class="say" aria-hidden="true"></span><span class="orb"><img src="${FLO_IMG}flo-head.webp" alt=""></span><img class="owl" src="${FLO_IMG}flo-hai.webp" alt=""><span class="lbl">Tanya Flo</span>`;
+  flo.innerHTML=`<span class="say" aria-hidden="true"></span><span class="orb"></span><img class="owl" src="${FLO_IMG}flo-hai.webp" alt=""><span class="lbl">Tanya Flo</span>`;
   const panel=document.createElement("aside"); panel.className="flopanel"; panel.setAttribute("aria-label","Flo, asisten ChartFlow");
   const CHIPS=[...(AI?[["porto","Cek portofolio saya"]]:[]),["pasar","Kondisi pasar hari ini"],["top",`${CR?"Koin":"Saham"} yang lolos paling banyak`],["uji","Metode mana yang terbukti?"],["arti","Arti label status"]];
   panel.innerHTML=`<div class="fp-hd"><span class="mini"><img src="${FLO_IMG}flo-head.webp" alt=""></span><span>Flo<small>Asisten ChartFlow</small></span><button type="button" class="fp-x" aria-label="Tutup">✕</button></div>

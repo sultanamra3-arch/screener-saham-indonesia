@@ -32,6 +32,13 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
+import android.graphics.Typeface;
+import android.os.SystemClock;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -51,7 +58,7 @@ public class LauncherActivity extends Activity {
 
     static final String AWAL = "https://chartflow.my.id/app/id/";
     static final String DOMAIN = "chartflow.my.id";
-    static final String VERSI = "2.0";
+    static final String VERSI = "2.1";
     static final int MINTA_BERKAS = 1;
 
     WebView web;
@@ -62,6 +69,9 @@ public class LauncherActivity extends Activity {
     /** Layar "Sinyal terputus" sedang tampil → buka ulang otomatis saat internet kembali. */
     volatile boolean layarGalat = false;
     ConnectivityManager.NetworkCallback pantauJaringan;
+    /** APK 2.1: layar pembuka Flo, tampil sampai halaman pertama selesai dimuat. */
+    View pembuka;
+    long pembukaMulai;
 
     static final String SISIP_CETAK =
             "window.print=function(){try{ChartFlowApp.cetak(document.title||'ChartFlow')}catch(e){}};";
@@ -104,6 +114,13 @@ public class LauncherActivity extends Activity {
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(3), Gravity.TOP);
         akar.addView(bar, lp);
+        if (simpanan == null) {
+            pembuka = buatPembuka();
+            akar.addView(pembuka, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            pembukaMulai = SystemClock.uptimeMillis();
+            akar.postDelayed(this::tutupPembuka, 12000); // pengaman bila halaman lambat sekali
+        }
         setContentView(akar);
 
         WebSettings s = web.getSettings();
@@ -208,6 +225,7 @@ public class LauncherActivity extends Activity {
 
         @Override
         public void onPageFinished(WebView v, String url) {
+            if (url != null && url.startsWith("http")) tutupPembuka();
             v.evaluateJavascript(SISIP_CETAK + SISIP_BAGIKAN, null);
             bar.setVisibility(View.GONE);
             CookieManager.getInstance().flush();
@@ -239,6 +257,7 @@ public class LauncherActivity extends Activity {
                     + "<p>Flo akan membuka ChartFlow lagi begitu internet kembali.</p>"
                     + "<button onclick='ChartFlowApp.ulang()'>Coba lagi</button><small>" + sebab + "</small></div></body></html>";
             v.loadDataWithBaseURL("file:///android_asset/", html, "text/html", "utf-8", null);
+            tutupPembuka();
         }
     }
 
@@ -511,6 +530,79 @@ public class LauncherActivity extends Activity {
                     .show();
         } catch (Exception ignored) {
         }
+    }
+
+    /** Layar pembuka: Flo melambai + nama aplikasi + garis memuat. */
+    View buatPembuka() {
+        FrameLayout luar = new FrameLayout(this);
+        luar.setBackgroundColor(0xFFF3F5FA);
+        luar.setClickable(true);
+        LinearLayout isi = new LinearLayout(this);
+        isi.setOrientation(LinearLayout.VERTICAL);
+        isi.setGravity(Gravity.CENTER_HORIZONTAL);
+
+        ImageView flo = new ImageView(this);
+        flo.setImageResource(R.drawable.flo_hai);
+        flo.setAdjustViewBounds(true);
+        isi.addView(flo, new LinearLayout.LayoutParams(dp(190), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        TextView nama = new TextView(this);
+        nama.setText("ChartFlow");
+        nama.setTextColor(0xFF0F172A);
+        nama.setTextSize(26);
+        nama.setTypeface(Typeface.DEFAULT_BOLD);
+        nama.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams lpn = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lpn.topMargin = dp(10);
+        isi.addView(nama, lpn);
+
+        TextView kata = new TextView(this);
+        kata.setText("Flo sedang menyiapkan data\u2026");
+        kata.setTextColor(0xFF64748B);
+        kata.setTextSize(14);
+        kata.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams lpk = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lpk.topMargin = dp(4);
+        isi.addView(kata, lpk);
+
+        ProgressBar garis = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        garis.setIndeterminate(true);
+        garis.setIndeterminateTintList(ColorStateList.valueOf(0xFF2F5BEA));
+        LinearLayout.LayoutParams lpg = new LinearLayout.LayoutParams(dp(160), dp(4));
+        lpg.topMargin = dp(18);
+        isi.addView(garis, lpg);
+
+        luar.addView(isi, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+
+        // Flo muncul pelan lalu melambai (bergoyang kiri-kanan)
+        isi.setAlpha(0f);
+        isi.setTranslationY(dp(18));
+        isi.animate().alpha(1f).translationY(0).setDuration(450).start();
+        flo.post(() -> {
+            flo.setPivotX(flo.getWidth() / 2f);
+            flo.setPivotY(flo.getHeight() * 0.92f);
+            ObjectAnimator a = ObjectAnimator.ofFloat(flo, "rotation", -4f, 4f);
+            a.setDuration(650);
+            a.setRepeatCount(ValueAnimator.INFINITE);
+            a.setRepeatMode(ValueAnimator.REVERSE);
+            a.start();
+        });
+        return luar;
+    }
+
+    void tutupPembuka() {
+        if (pembuka == null) return;
+        long sisa = 1400 - (SystemClock.uptimeMillis() - pembukaMulai); // minimal 1,4 detik agar Flo sempat terlihat
+        if (sisa > 0) { pembuka.postDelayed(this::tutupPembuka, sisa); return; }
+        final View p = pembuka;
+        pembuka = null;
+        p.animate().alpha(0f).setDuration(350).withEndAction(() -> {
+            ViewGroup induk = (ViewGroup) p.getParent();
+            if (induk != null) induk.removeView(p);
+        }).start();
     }
 
     int dp(int n) {

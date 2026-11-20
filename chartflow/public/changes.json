@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-11-21",
+  "t": "🦉 Flo utuh & layar pembuka APK 2.1",
+  "x": "Tombol Flo di pojok kini menampilkan burung hantu utuh (bukan lingkaran), dan aplikasi Android 2.1 dibuka dengan Flo melambai sampai data siap; pasang di atas versi 2.0 tanpa perlu menghapusnya."
+ },
+ {
+  "d": "2026-11-21",
   "t": "🦉 Flo kini burung hantu",
   "x": "Bola bermata diganti burung hantu Flo di tombol Tanya Flo, sapaan, dan panel obrolan (ID, US, Kripto); tombol Pasang aplikasi pindah ke ⚙️ Pengaturan dan tidak muncul di dalam APK."
  },

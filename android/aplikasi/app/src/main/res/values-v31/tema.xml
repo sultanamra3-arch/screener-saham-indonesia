@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Tema" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">#2F5BEA</item>
+        <item name="android:colorPrimaryDark">#2F5BEA</item>
+        <item name="android:colorAccent">#2F5BEA</item>
+        <item name="android:statusBarColor">#2F5BEA</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:windowBackground">@color/latar</item>
+        <item name="android:windowSplashScreenBackground">@color/latar</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/flo_splash</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#FFFFFF</item>
+    </style>
+</resources>
