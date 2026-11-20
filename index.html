@@ -619,6 +619,34 @@ body:has(.drawer) .flo,body.fpo .flo{opacity:0!important;pointer-events:none!imp
 @media (max-width:760px){.flo.dock{padding:0 6px;width:auto}.flo.dock .lbl{display:none}}
 @keyframes bob{50%{transform:translateY(-8px)}}
 @keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+/* Flo di layar memuat, hasil kosong, Filter sendiri, metode, Siklus, bursa libur (21 Nov 2026) */
+.empty.fe{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center!important}
+.empty.fe::before{content:"";display:block;width:120px;height:112px;background:center/contain no-repeat;transform-origin:50% 95%}
+.empty.fe-muat::before{background-image:var(--flo-cari);animation:floBreath 2.4s ease-in-out infinite}
+.empty.fe-kosong::before{background-image:var(--flo-kosong);animation:floNod 3s ease-in-out infinite}
+td.empty.fe::before,.empty.fe::before{display:block!important;margin:0 auto 8px!important;position:static!important}
+@keyframes floBreath{0%,100%{transform:scale(1,1)}50%{transform:scale(1.02,1.04)}}
+@keyframes floNod{0%,100%{transform:rotate(0)}40%{transform:rotate(2deg)}60%{transform:rotate(-1.5deg)}}
+.fq{width:30px;height:30px;flex:none;border-radius:50%;border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);font:inherit;font-weight:800;cursor:pointer;padding:0}
+.frule{grid-template-columns:minmax(0,2fr) 58px minmax(0,1fr) auto auto!important}
+.rail{position:relative}.rail:has(.flo-rail)>div:first-of-type{padding-right:92px}
+.flo-rail{position:absolute;top:10px;right:10px;width:86px;transform-origin:50% 95%;animation:floNod 3.2s ease-in-out infinite}
+.rhead:has(.flo-guru){position:relative}.rhead:has(.flo-guru) .l{padding-right:92px}
+.rhead .flo-guru{position:absolute;top:-6px;right:0;width:84px;transform-origin:50% 95%;animation:floPoint 2s ease-in-out infinite}
+.flo-libur{display:flex!important;flex-direction:row!important;align-items:center;gap:12px;margin-bottom:12px}
+.flo-libur img{width:88px!important;height:auto!important;max-width:88px;flex:none;animation:floBreath 4s ease-in-out infinite}
+.flo-libur b{display:block;font-size:15px}
+#floSheet{position:fixed;inset:0;z-index:70;display:flex;align-items:flex-end;justify-content:center;background:rgba(10,15,30,.4);animation:fsFade .25s both}
+#floSheet .in{background:var(--surface);color:var(--fg);width:min(560px,100%);border-radius:22px 22px 0 0;padding:12px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 30px rgba(0,0,0,.18);animation:fsUp .4s cubic-bezier(.2,.9,.3,1.05) both}
+#floSheet .in::before{content:"";display:block;width:40px;height:4px;border-radius:4px;background:var(--line);margin:0 auto 10px}
+#floSheet .row{display:flex;gap:8px;align-items:flex-end}
+#floSheet img{width:140px;flex:none;margin-left:-6px;transform-origin:50% 95%;animation:floPoint 1.8s ease-in-out infinite}
+#floSheet .bub{background:var(--accent-soft);border-radius:16px 16px 16px 4px;padding:11px 13px;font-size:14px;line-height:1.5;margin-bottom:24px}
+#floSheet .bub b{color:var(--accent)}
+#floSheet .ft{font-size:11.5px;color:var(--muted);text-align:center;margin-top:8px}
+#floSheet button{display:block;margin:10px auto 0;border:none;background:var(--sunk);color:var(--fg);border-radius:12px;padding:10px 26px;font:inherit;font-weight:700;cursor:pointer}
+@keyframes fsFade{from{opacity:0}}@keyframes fsUp{from{transform:translateY(100%)}}
+@media (prefers-reduced-motion:reduce){.empty.fe::before,.flo-rail,.rhead .flo-guru,.flo-libur img,#floSheet img,#floSheet .in{animation:none!important}}
 /* Ikon gambar ChartFlow (kit desain 21 Nov 2026) menggantikan emoji */
 .uic{width:26px;height:26px;object-fit:contain;display:block;margin:0 auto}
 .sn-g .ic .uic{width:22px;height:22px}
@@ -1061,7 +1089,7 @@ function renderRail(){
   const m=MID[tab], rail=$("rail");
   $("main").classList.toggle("full",!m); rail.hidden=!m;
   if(!m) return;
-  rail.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px"><h3>${m.kind==="inv"?"Metode investor":"Metode trader"}</h3><h2>${esc(m.title)}</h2><p class="who">${esc(m.who)}</p></div>
+  rail.innerHTML=`<img class="flo-rail" src="${CF_ICO.replace(/ui\/$/,"")}flo-metode.webp" alt=""><div style="display:flex;flex-direction:column;gap:6px"><h3>${m.kind==="inv"?"Metode investor":"Metode trader"}</h3><h2>${esc(m.title)}</h2><p class="who">${esc(m.who)}</p></div>
     <p style="font-size:14px">${esc(m.desc)}</p>
     <div class="rules"><h3>Kapan beli</h3><ul>${m.entry.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
     <div class="rules"><h3>Kapan jual</h3><ul>${m.exit.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
@@ -1727,7 +1755,7 @@ function renderCycles(box){
   const o=!isIdx?rows.find(x=>x.ticker===sel):null;
   const idxName=names[0], I=CYC.indices[idxName];
   const rg=isIdx?a.range:null, b=CYC.breadth;
-  box.innerHTML=`<div class="rhead"><div class="l"><h2>Siklus &amp; Fibonacci</h2>
+  box.innerHTML=`<div class="rhead"><img class="flo-guru" src="${CF_ICO.replace(/ui\/$/,"")}flo-guru.webp" alt=""><div class="l"><h2>Siklus &amp; Fibonacci</h2>
       <p class="note">Zona harga dari Fibonacci, titik balik, SMA, dan angka bulat; kalender siklus waktu (bulan, planet, Fibonacci time zone, musiman); dan uji apakah setiap unsur benar-benar lebih baik dari tebakan acak. Data ${tgl(CYC.date,1)}.</p></div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
         <div class="seg" role="group" aria-label="Indeks">${names.map(n=>`<button type="button" data-cy="${esc(n)}" aria-pressed="${n===sel}">${esc(n)}</button>`).join("")}</div>
@@ -2964,7 +2992,7 @@ function renderScreen(box){
   const fmtv=(k,v)=>v==null?"–":k==="mom"?(v?"✓":"–"):k==="price"?usd(v):k==="mcap"||k==="adv"?nf(v,0):(FFM[k][2]==="%"&&v>0&&/^(sma|hi|perf)/.test(k)?"+":"")+nf(v,FFM[k][2]==="x"?1:1)+(FFM[k][2]==="%"?"%":FFM[k][2]==="x"?"×":"");
   const rule=(r,i)=>`<div class="frule"><select data-fk="${i}">${FF.map(f=>`<option value="${f[0]}" ${f[0]===r[0]?"selected":""}>${esc(f[1])}</option>`).join("")}</select>
     <select data-fo="${i}"><option value="<" ${r[1]==="<"?"selected":""}>&lt;</option><option value=">" ${r[1]===">"?"selected":""}>&gt;</option></select>
-    <input type="text" data-fv="${i}" inputmode="decimal" value="${r[2]??""}" placeholder="nilai"><button type="button" data-fd="${i}" aria-label="Hapus aturan">✕</button></div>`;
+    <input type="text" data-fv="${i}" inputmode="decimal" value="${r[2]??""}" placeholder="nilai"><button type="button" class="fq" aria-label="Apa artinya?">?</button><button type="button" data-fd="${i}" aria-label="Hapus aturan">✕</button></div>`;
   box.innerHTML=`<div class="rhead"><div class="l"><h2>Filter sendiri</h2><p class="note">Buat aturan sendiri seperti di screener Stockbit. Semua aturan harus terpenuhi. Filter likuiditas${IS_ID?", syariah,":""} dan sektor di atas tetap berlaku.</p></div></div>
     <div class="mcard"><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"><span class="note" style="align-self:center">Contoh:</span>${FPRE.map((p,i)=>`<button type="button" data-fp="${i}">${esc(p[0])}</button>`).join("")}</div>
       <div id="frules">${R.map(rule).join("")}</div>
@@ -3651,6 +3679,54 @@ fetch("data/stocks.json",{cache:"no-cache"}).then(r=>{ if(!r.ok) throw new Error
     (d.firstElementChild||d).appendChild(b); }
   window.CFSET.open=function(){ o.apply(this,arguments); var d=document.getElementById("cfSet"); add(d);
     if(d&&!d.__cfi){ d.__cfi=1; new MutationObserver(function(){ add(d); }).observe(d,{childList:true}); } };
+})();
+</script>
+<script>
+/* Flo: layar memuat & hasil kosong, tombol "?" di Filter sendiri, bursa libur (21 Nov 2026) */
+(function(){
+  var l=document.querySelector("img.logo"), P=(l?l.getAttribute("src"):"icons/icon-192.png").replace(/icon-192\.png.*$/,"");
+  var R=document.documentElement.style; R.setProperty("--flo-cari","url("+P+"flo-cari.webp)"); R.setProperty("--flo-kosong","url("+P+"flo-kosong.webp)");
+  var KR=/\/kripto\//.test(location.pathname); function isID(){ var st=document.getElementById("status"); return /IHSG|BEI/.test(st?st.textContent:"")||/\/app\/id\/|indonesia/.test(location.pathname); } var ID=isID();
+  var G={pe:"<b>PER</b> = harga saham dibagi laba per saham setahun. PER 10 berarti harga setara 10 tahun laba. PER rendah bisa berarti murah, tetapi bisa juga karena pasar memperkirakan labanya turun.",
+    pb:"<b>PBV</b> = harga saham dibanding nilai buku (aset dikurangi utang) per saham. PBV 1 berarti harga sama dengan nilai bukunya.",
+    roe:"<b>ROE</b> = laba bersih dibanding modal sendiri, ukuran seberapa efisien perusahaan menghasilkan laba. ROE 15% berarti tiap 100 modal menghasilkan 15 laba setahun.",
+    div:"<b>Dividend yield</b> = dividen setahun dibagi harga saham. Yield 5% berarti dividen 50 per tahun untuk saham seharga 1.000. Besarnya dividen bisa berubah tiap tahun.",
+    payout:"<b>Payout dividen</b> = bagian laba yang dibagikan sebagai dividen. Payout di atas 100% berarti dividen lebih besar dari laba, biasanya sulit dipertahankan.",
+    de:"<b>DER</b> = total utang dibanding modal sendiri. DER 1× berarti utang sama besar dengan modal. Untuk bank dan lembaga keuangan angka ini memang tinggi.",
+    epsG:"<b>Pertumbuhan laba per tahun</b> = rata-rata kenaikan laba per saham setiap tahun.",
+    salesG:"<b>Pertumbuhan penjualan per tahun</b> = rata-rata kenaikan pendapatan perusahaan setiap tahun.",
+    mcap:"<b>Kapitalisasi pasar</b> = harga saham × jumlah saham beredar, yaitu ukuran besar-kecilnya perusahaan di bursa.",
+    price:"<b>Harga</b> = harga penutupan terakhir.",
+    rsi14:"<b>RSI (14)</b> mengukur seberapa cepat harga bergerak dalam 14 hari, skala 0–100. Di bawah 30 artinya harga turun cukup tajam, di atas 70 naik cukup tajam. Belum tentu langsung berbalik.",
+    sma50:"<b>Jarak dari MA50</b> = selisih harga dengan rata-rata 50 hari, dalam persen. Positif berarti harga di atas rata-ratanya (tren menengah naik).",
+    sma200:"<b>Jarak dari MA200</b> = selisih harga dengan rata-rata 200 hari, dalam persen. Sering dipakai sebagai patokan tren jangka panjang.",
+    hi52:"<b>Jarak dari puncak 52 minggu</b> = seberapa jauh harga di bawah harga tertinggi setahun terakhir. −30% berarti 30% di bawah puncaknya.",
+    perf1m:"<b>Kinerja 1 bulan</b> = perubahan harga dalam sebulan terakhir.",
+    perf3m:"<b>Kinerja 3 bulan</b> = perubahan harga dalam tiga bulan terakhir.",
+    perf1y:"<b>Kinerja 1 tahun</b> = perubahan harga dalam setahun terakhir.",
+    adv:"<b>Transaksi per hari</b> = rata-rata nilai jual-beli saham ini setiap hari. Makin besar, makin mudah membeli atau menjual tanpa menggeser harga.",
+    nbuy:"<b>Jumlah metode</b> = berapa metode ChartFlow yang saat ini memberi status layak beli untuk saham ini menurut aturannya masing-masing.",
+    mom:"<b>Status Momentum</b> = 1 bila aturan metode Momentum memberi status layak beli atau tahan, 0 bila tidak.",
+    mkt:"<b>Pasar sehat</b> = 1 bila "+(ID?"IHSG":"S&amp;P 500")+" berada di atas rata-rata 200 harinya, 0 bila di bawahnya."};
+  function sheet(html){ var o=document.getElementById("floSheet"); if(o) o.remove(); o=document.createElement("div"); o.id="floSheet";
+    o.innerHTML='<div class="in" role="dialog" aria-label="Penjelasan dari Flo"><div class="row"><img src="'+P+'flo-jelaskan.webp" alt="Flo"><div class="bub">'+html+'</div></div><div class="ft">Penjelasan istilah, bukan saran membeli atau menjual.</div><button type="button">Mengerti</button></div>';
+    o.addEventListener("click",function(e){ if(e.target===o||e.target.tagName==="BUTTON") o.remove(); }); document.body.appendChild(o); }
+  document.addEventListener("click",function(e){ var b=e.target.closest&&e.target.closest(".fq"); if(!b) return; e.preventDefault();
+    var r=b.closest(".frule"), s=r&&r.querySelector("select[data-fk]"), k=s&&s.value; if(k==="mkt") G.mkt="<b>Pasar sehat</b> = 1 bila "+(isID()?"IHSG":"S&amp;P 500")+" berada di atas rata-rata 200 harinya, 0 bila di bawahnya."; sheet(G[k]||"Istilah ini belum punya penjelasan."); });
+  function weekend(){ try{ var d=new Intl.DateTimeFormat("en-US",{weekday:"short",timeZone:ID?"Asia/Jakarta":"America/New_York"}).format(new Date()); return d==="Sat"||d==="Sun"; }catch(e){ return false; } }
+  function deco(root){ ID=isID();
+    (root.querySelectorAll?root:document).querySelectorAll(".empty:not(.fe)").forEach(function(el){
+      if(el.querySelector("button,a,input")) return; var t=(el.textContent||"").trim(); if(!t) return;
+      el.classList.add("fe", /^Memuat/.test(t)?"fe-muat":"fe-kosong"); });
+    var res=document.getElementById("results");
+    var home=document.querySelector('#mainnav button[data-g="home"][aria-current="true"]');
+    if(!KR&&res&&home&&weekend()&&!document.getElementById("floLibur")&&res.firstElementChild){
+      var c=document.createElement("div"); c.className="mcard flo-libur"; c.id="floLibur";
+      c.innerHTML='<img src="'+P+'flo-tidur.webp" alt=""><div><b>Bursa sedang libur</b><span class="note">Akhir pekan, '+(ID?"BEI":"bursa AS")+' tutup. Angka yang tampil berasal dari hari bursa terakhir dan diperbarui lagi saat bursa buka.</span></div>';
+      res.insertBefore(c,res.firstElementChild); }
+  }
+  var res=document.getElementById("results"); if(res&&!res.firstElementChild) res.innerHTML='<div class="tablebox"><div class="empty">Memuat data…</div></div>';
+  if(res){ new MutationObserver(function(){ deco(res); }).observe(res,{childList:true,subtree:true}); deco(res); }
 })();
 </script>
 </body>

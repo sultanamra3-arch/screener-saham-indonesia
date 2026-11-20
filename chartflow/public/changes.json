@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-11-21",
+  "t": "🦉 Flo menjelaskan istilah & menemani",
+  "x": "Tombol ? di tiap aturan Filter sendiri membuka penjelasan istilah dari Flo; Flo juga tampil saat data dimuat, saat tidak ada hasil, di kartu penjelasan metode, di Siklus & Fibonacci, dan di Beranda saat bursa libur akhir pekan."
+ },
+ {
+  "d": "2026-11-21",
   "t": "🎨 Ikon baru & Flo lebih tajam",
   "x": "Emoji di menu bawah, kartu metode (Momentum, CAN SLIM, Dividen, Pullback Tren, Swing, Value, Growth, Quality, Filter sendiri, Hasil uji), kartu Alat (Siklus, Waktu Fibonacci, Kalkulator, Ramai hari ini, Kalender dividen), dan Kripto (Lampu BTC, Metode, Watchlist) diganti ikon bergambar; status hasil uji kini berupa titik warna, dan gambar Flo memakai versi lebih tajam (juga di aplikasi Android 2.2)."
  },
