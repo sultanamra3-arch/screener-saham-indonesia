@@ -23,7 +23,7 @@ rep = [
     (f"{GH}/screener-saham-indonesia/", "/app/id/"),
     (f"{GH}/screener-saham/", "/app/us/"),
     ('location.replace("/screener-saham-indonesia/"+location.hash)', 'location.replace("/app/id/"+location.hash)'),
-    ('<b>Screener Saham</b>', '<b>ChartFlow</b>'),
+    # nama ChartFlow sudah langsung di index.html sejak rebranding 21 Nov 2026
     ('<button type="button" class="iconbtn" id="theme"',
      '<button type="button" class="cfuser" id="cfUser" title="Akun">👤</button>\n      <button type="button" class="iconbtn" id="theme"'),
     ("Portofolio tersimpan di browser ini saja. Unduh cadangan secara berkala, lalu pulihkan di HP atau laptop lain bila perlu.",
