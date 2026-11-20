@@ -1,6 +1,6 @@
 // Penyimpan offline sederhana: halaman dan data diambil dari internet dulu (selalu terbaru),
 // bila gagal (tidak ada sinyal) memakai salinan terakhir. Ikon, huruf, dan pustaka grafik disimpan permanen.
-const CACHE = "screener-v2";
+const CACHE = "screener-v3"; // v3: logo baru (21 Nov 2026)
 self.addEventListener("install", e => { self.skipWaiting(); });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));

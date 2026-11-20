@@ -13,6 +13,7 @@ Ciri:
 - Tautan `https://chartflow.my.id/app/...` dari aplikasi lain (mis. Telegram) bisa dibuka di ChartFlow.
 - APK 2.1 (versionCode 2): layar pembuka Android 12+ memakai kepala Flo (`values-v31/tema.xml`, `drawable/flo_splash.xml`), lalu layar pembuka Flo melambai + "ChartFlow" + garis memuat sampai halaman pertama selesai (minimal 1,4 detik, paling lama 12 detik).
 - APK 2.2 (versionCode 3): gambar Flo dari kit desain "CHARTFLOW APP — COMPLETE DESIGN ASSET & MASKOT KIT" (lebih tajam).
+- APK 2.3 (versionCode 4): ikon aplikasi logo baru (Flo di dalam kaca pembesar, dari kit "CHARTFLOW BRAND REBRANDING"); ikon adaptif `mipmap-*/ic_maskable.png` dengan logo 70% di tengah.
 - Bila aplikasi sempat tertutup sendiri, pesan galatnya tampil saat dibuka lagi.
 
 Membuat ulang:
