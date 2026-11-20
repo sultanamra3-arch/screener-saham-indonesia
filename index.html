@@ -7,7 +7,7 @@
 <title>Screener Saham Indonesia</title>
 <meta name="description" content="Saring semua saham Bursa Efek Indonesia dengan 7 metode investor dan trader, lengkap dengan harga beli, jual, dan alasannya.">
 <link rel="manifest" href="/screener-saham/manifest.webmanifest">
-<meta name="theme-color" content="#2f5bea">
+<meta name="theme-color" content="#1d4ed8">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -176,7 +176,7 @@
 /* v2: aplikasi sekuritas modern */
 :root{
   --bg:#f3f5fa; --surface:#ffffff; --sunk:#eef1f7; --line:#e3e7ef;
-  --fg:#111827; --muted:#6b7280; --accent:#2f5bea; --accent-ink:#ffffff; --accent-soft:#e6ecfd;
+  --fg:#111827; --muted:#6b7280; --accent:#1d4ed8; --accent-ink:#ffffff; --accent-soft:#e3ebfd;
   --good:#0f9960; --good-soft:#e2f6ec; --warn:#b26b00; --warn-soft:#fdf1dc; --bad:#d9363e; --bad-soft:#fde6e7;
   --f-display:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
   --f-body:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
@@ -185,11 +185,11 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme=light]){
   --bg:#0b1220; --surface:#121b2d; --sunk:#18233a; --line:#22304a;
-  --fg:#e8edf6; --muted:#94a3b8; --accent:#6d8dff; --accent-ink:#0b1220; --accent-soft:#1b2a4d;
+  --fg:#e8edf6; --muted:#94a3b8; --accent:#60a5fa; --accent-ink:#0b1220; --accent-soft:#1b2a4d;
   --good:#34d399; --good-soft:#0f2e25; --warn:#fbbf24; --warn-soft:#33270b; --bad:#f87171; --bad-soft:#3a1618; --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}}
 :root[data-theme=dark]{
   --bg:#0b1220; --surface:#121b2d; --sunk:#18233a; --line:#22304a;
-  --fg:#e8edf6; --muted:#94a3b8; --accent:#6d8dff; --accent-ink:#0b1220; --accent-soft:#1b2a4d;
+  --fg:#e8edf6; --muted:#94a3b8; --accent:#60a5fa; --accent-ink:#0b1220; --accent-soft:#1b2a4d;
   --good:#34d399; --good-soft:#0f2e25; --warn:#fbbf24; --warn-soft:#33270b; --bad:#f87171; --bad-soft:#3a1618; --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
 *{box-sizing:border-box}
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -647,6 +647,8 @@ td.empty.fe::before,.empty.fe::before{display:block!important;margin:0 auto 8px!
 #floSheet button{display:block;margin:10px auto 0;border:none;background:var(--sunk);color:var(--fg);border-radius:12px;padding:10px 26px;font:inherit;font-weight:700;cursor:pointer}
 @keyframes fsFade{from{opacity:0}}@keyframes fsUp{from{transform:translateY(100%)}}
 @media (prefers-reduced-motion:reduce){.empty.fe::before,.flo-rail,.rhead .flo-guru,.flo-libur img,#floSheet img,#floSheet .in{animation:none!important}}
+/* Rebranding 21 Nov 2026: logo horizontal tampil juga di HP */
+@media (max-width:420px){.topbar .brand>div{display:block!important;min-width:0}.topbar .brand .sub{display:block!important;font-size:10.5px}.topbar .brand b{display:block!important;font-size:15px}}
 /* Ikon gambar ChartFlow (kit desain 21 Nov 2026) menggantikan emoji */
 .uic{width:26px;height:26px;object-fit:contain;display:block;margin:0 auto}
 .sn-g .ic .uic{width:22px;height:22px}
@@ -822,7 +824,7 @@ body{transition:padding-right .55s cubic-bezier(.2,.8,.2,1)}
 <aside class="sidenav" id="sidenav" aria-label="Menu samping"></aside>
 <div class="wrap">
   <header class="topbar">
-    <div class="brand"><img class="logo" src="icons/icon-192.png" alt="" width="34" height="34"><div><b>Screener Saham</b><span class="sub">Bursa Efek Indonesia</span></div></div>
+    <div class="brand"><img class="logo" src="icons/icon-192.png" alt="" width="34" height="34"><div><b>ChartFlow</b><span class="sub">Pemandu Analitis Pasar</span></div></div>
     <div class="tb-r"><nav class="mkt" aria-label="Pasar"><a href="https://sultanamra3-arch.github.io/screener-saham/">🇺🇸<span class="mt"> US</span></a><a href="https://sultanamra3-arch.github.io/screener-saham-indonesia/" aria-current="page">🇮🇩<span class="mt"> ID</span></a><a href="https://sultanamra3-arch.github.io/screener-saham/kripto/" title="Screener kripto">₿<span class="mt"> Kripto</span></a></nav>
       <button type="button" id="install" hidden>📲 Pasang<span class="lg"> aplikasi</span></button>
       <button type="button" class="iconbtn" id="theme" aria-label="Ganti tema terang/gelap">🌙</button></div>

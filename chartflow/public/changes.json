@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-11-21",
+  "t": "🎨 Tampilan baru: logo horizontal & Royal Blue",
+  "x": "Kepala aplikasi (ID, US, Kripto) dan halaman depan kini memakai logo ChartFlow · Pemandu Analitis Pasar dan warna Royal Blue; kartu fitur di halaman depan memakai ikon bergambar, dan galeri tampilan dipotret ulang dengan desain baru."
+ },
+ {
+  "d": "2026-11-21",
   "t": "🦉 Perkenalkan Flo: logo baru ChartFlow",
   "x": "Logo kaca pembesar & candlestick kini menjadi Flo, burung hantu berkacamata di dalam kaca pembesar, sebagai pemandu yang menjelaskan indikator dan metode (RSI, MACD, Fibonacci, CAN SLIM) secara netral di screener US, ID, dan kripto; ikon aplikasi Android 2.3 ikut berganti."
  },
