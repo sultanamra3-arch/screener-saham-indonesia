@@ -619,6 +619,13 @@ body:has(.drawer) .flo,body.fpo .flo{opacity:0!important;pointer-events:none!imp
 @media (max-width:760px){.flo.dock{padding:0 6px;width:auto}.flo.dock .lbl{display:none}}
 @keyframes bob{50%{transform:translateY(-8px)}}
 @keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+/* Ikon gambar ChartFlow (kit desain 21 Nov 2026) menggantikan emoji */
+.uic{width:26px;height:26px;object-fit:contain;display:block;margin:0 auto}
+.sn-g .ic .uic{width:22px;height:22px}
+.mic{width:30px;height:30px;object-fit:contain;vertical-align:-9px;margin-right:8px;display:inline-block}
+.sn-s .mic{width:20px;height:20px;vertical-align:-5px;margin-right:6px}
+.pd{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:7px;vertical-align:middle}
+.pd.buy{background:var(--good)}.pd.hold{background:var(--warn)}.pd.sell{background:var(--bad)}.pd.wait{background:var(--muted)}
 /* Flo burung hantu (21 Nov 2026): Flo utuh, tanpa bola/lingkaran */
 .flo{background:transparent!important;box-shadow:none!important;padding:0!important;overflow:visible}
 .flo .orb{display:none!important}
@@ -1004,7 +1011,7 @@ function renderTabs(){
   renderNav(); const grp=groupOf(tab); store.set(WP+"g."+grp.id,tab);
   $("tabs").innerHTML=grp.tabs.length<2?"":ordTabs(TABS.filter(t=>grp.tabs.includes(t.id))).map(t=>{
     const c=tabCount(t,list), q=MID[t.id]||t.id==="pbt"?methodProof(t.id):null;
-    return `<button class="tab" role="tab" type="button" aria-selected="${t.id===tab}" data-id="${t.id}"><span class="k">${q?`${q.ic} ${esc(q.s)}`:esc(t.k)}</span><span class="n">${q?q.ic+" ":""}${esc(t.name)}</span><span class="c">${c}</span></button>`;
+    return `<button class="tab" role="tab" type="button" aria-selected="${t.id===tab}" data-id="${t.id}"><span class="k">${q?`${q.ic} ${esc(q.s)}`:esc(t.k)}</span><span class="n">${MICO[t.id]?UI(MICO[t.id],"mic")+esc(t.name.replace(/^📏\s*/,""))+(q?`<i class="pd ${q.c}" title="${esc(q.s)}"></i>`:""):(q?q.ic+" ":"")+esc(t.name)}</span><span class="c">${c}</span></button>`;
   }).join("");
 }
 const ltYrs=()=>LT&&LT.from?`${LT.from.slice(0,4)}–${LT.to.slice(0,4)}`:"";
@@ -2773,9 +2780,9 @@ function addToPorto(st){ store.set(WP+"porto.pre",JSON.stringify({code:st.code,p
 
 
 // ---------- navigasi v2 ----------
-const GROUPS=[{id:"home",ic:"🏠",name:"Beranda",tabs:["summary"]},
-  {id:"saham",ic:"🔍",name:"Saham",tabs:["momentum","dividend","canslim","swing","value","growth","quality"].filter(id=>MID[id]).concat(M.map(m=>m.id).filter(id=>!["momentum","dividend","canslim","swing","value","growth","quality"].includes(id)),IS_ID?["pbt"]:[],["screen","uji"])},
-  {id:"watch",ic:"📍",name:"Sinyal",tabs:["watch"]},{id:"porto",ic:"💼",name:"Portofolio",tabs:["porto"]},{id:"alat",ic:"🧰",name:"Alat",tabs:["cycles","fibtime","calc","hot","divcal"]}];
+const CF_ICO=(function(){ var l=document.querySelector("img.logo"), s=l?l.getAttribute("src"):"icons/icon-192.png"; return s.replace(/icon-192\.png.*$/,"")+"ui/"; })(); const UI=(n,c)=>`<img class="${c||"uic"}" src="${CF_ICO}${n}.webp" alt="" decoding="async">`; const MICO={momentum:"momentum",canslim:"canslim",dividend:"dividend",pbt:"pbt",swing:"swing",value:"value",growth:"growth",quality:"quality",screen:"screen",uji:"uji"}; const GROUPS=[{id:"home",ic:UI("nav-home"),name:"Beranda",tabs:["summary"]},
+  {id:"saham",ic:UI("nav-saham"),name:"Saham",tabs:["momentum","dividend","canslim","swing","value","growth","quality"].filter(id=>MID[id]).concat(M.map(m=>m.id).filter(id=>!["momentum","dividend","canslim","swing","value","growth","quality"].includes(id)),IS_ID?["pbt"]:[],["screen","uji"])},
+  {id:"watch",ic:UI("nav-sinyal"),name:"Sinyal",tabs:["watch"]},{id:"porto",ic:UI("nav-porto"),name:"Portofolio",tabs:["porto"]},{id:"alat",ic:UI("nav-alat"),name:"Alat",tabs:["cycles","fibtime","calc","hot","divcal"]}];
 const groupOf=t=>GROUPS.find(g=>g.tabs.includes(t))||GROUPS[0];
 function renderSide(g,nd){
   const sn=$("sidenav"); if(!sn||!matchMedia("(min-width:1100px)").matches) return;
@@ -2784,7 +2791,7 @@ function renderSide(g,nd){
   if(!$("snDyn")){ sn.innerHTML=`<div id="snDyn" style="display:flex;flex-direction:column;gap:10px"></div><div class="sn-foot" id="snFootSlot"></div><button type="button" class="sn-col" id="snCol" title="Kecilkan / lebarkan menu">${document.body.classList.contains("sncol")?"»":"«"}</button>`; }
   $("snDyn").innerHTML=`<div class="sn-top">${br?br.innerHTML:""}</div><nav class="sn-nav">${GROUPS.map(x=>{ const subs=x.tabs.length>1&&x.id===g.id?ordTabs(TABS.filter(t=>x.tabs.includes(t.id))):[];
       return `<button type="button" class="sn-g" data-g="${x.id}" aria-current="${x.id===g.id}" title="${esc(x.name)}"><span class="ic" aria-hidden="true">${x.ic}</span><span class="tx">${x.name}</span>${x.id==="porto"&&nd?`<span class="bd">${nd}</span>`:""}</button>
-      ${subs.map(t=>{ const n=num(tabCount(t,list)); return `<button type="button" class="sn-s" data-sub="${t.id}" aria-current="${t.id===tab}"><span class="tx">${MID[t.id]||t.id==="pbt"?((methodProof(t.id)||{}).ic||"")+" ":""}${esc(t.name)}</span>${n?`<span class="cn">${n}</span>`:""}</button>`; }).join("")}`; }).join("")}</nav>`;
+      ${subs.map(t=>{ const n=num(tabCount(t,list)); return `<button type="button" class="sn-s" data-sub="${t.id}" aria-current="${t.id===tab}"><span class="tx">${MICO[t.id]?UI(MICO[t.id],"mic")+esc(t.name.replace(/^📏\s*/,"")):(MID[t.id]||t.id==="pbt"?((methodProof(t.id)||{}).ic||"")+" ":"")+esc(t.name)}</span>${n?`<span class="cn">${n}</span>`:""}</button>`; }).join("")}`; }).join("")}</nav>`;
   const tb=document.querySelector(".tb-r"); if(tb&&tb.parentNode!==$("snFootSlot")) $("snFootSlot").appendChild(tb);
 }
 function placeTb(){ const tb=document.querySelector(".tb-r"), top=document.querySelector(".topbar"); if(!tb||!top) return;

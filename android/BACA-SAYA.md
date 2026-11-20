@@ -12,6 +12,7 @@ Ciri:
 - Tanpa internet (dan halaman belum tersimpan oleh service worker): layar "Sinyal sedang terputus" dengan Flo tidur (`assets/flo-istirahat.webp`), terbuka ulang otomatis saat internet kembali.
 - Tautan `https://chartflow.my.id/app/...` dari aplikasi lain (mis. Telegram) bisa dibuka di ChartFlow.
 - APK 2.1 (versionCode 2): layar pembuka Android 12+ memakai kepala Flo (`values-v31/tema.xml`, `drawable/flo_splash.xml`), lalu layar pembuka Flo melambai + "ChartFlow" + garis memuat sampai halaman pertama selesai (minimal 1,4 detik, paling lama 12 detik).
+- APK 2.2 (versionCode 3): gambar Flo dari kit desain "CHARTFLOW APP — COMPLETE DESIGN ASSET & MASKOT KIT" (lebih tajam).
 - Bila aplikasi sempat tertutup sendiri, pesan galatnya tampil saat dibuka lagi.
 
 Membuat ulang:

@@ -58,7 +58,7 @@ public class LauncherActivity extends Activity {
 
     static final String AWAL = "https://chartflow.my.id/app/id/";
     static final String DOMAIN = "chartflow.my.id";
-    static final String VERSI = "2.1";
+    static final String VERSI = "2.2";
     static final int MINTA_BERKAS = 1;
 
     WebView web;
