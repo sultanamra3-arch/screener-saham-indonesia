@@ -619,6 +619,22 @@ body:has(.drawer) .flo,body.fpo .flo{opacity:0!important;pointer-events:none!imp
 @media (max-width:760px){.flo.dock{padding:0 6px;width:auto}.flo.dock .lbl{display:none}}
 @keyframes bob{50%{transform:translateY(-8px)}}
 @keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+/* Flo burung hantu (21 Nov 2026): menggantikan bola bermata */
+.flo .orb{background:#fff;box-shadow:0 0 0 2px rgba(47,91,234,.35);overflow:hidden}
+.flo .orb img{width:112%;margin-top:8%;display:block;transform-origin:50% 90%;animation:floTilt 5s ease-in-out infinite}
+.flo .owl{display:none}
+.flo.center .orb{display:none}
+.flo.center .lbl{display:none}
+.flo.center .owl{display:block;width:120px;transform-origin:50% 92%;animation:floWave 1.2s ease-in-out infinite;filter:drop-shadow(0 10px 18px rgba(47,91,234,.25))}
+.fp-hd .mini{background:#eef2ff!important;overflow:hidden}.fp-hd .mini img{width:112%;margin:8% 0 0 -6%;display:block}
+.fp-big{width:170px!important;height:auto!important;border-radius:0!important;background:none!important;box-shadow:none!important;display:block!important}
+.fp-big img{width:100%;display:block;transform-origin:50% 92%;animation:floPoint 1.8s ease-in-out infinite}
+@keyframes floTilt{0%,72%,100%{transform:rotate(0)}80%{transform:rotate(-8deg)}88%{transform:rotate(5deg)}}
+@keyframes floWave{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes floPoint{0%,100%{transform:rotate(0)}50%{transform:rotate(-2deg) translateY(-2px)}}
+@media (prefers-reduced-motion:reduce){.flo .orb img,.flo.center .owl,.fp-big img{animation:none!important}}
+/* tombol Pasang pindah ke Pengaturan */
+#install{display:none!important}
 .flopanel{position:fixed;z-index:42;top:18px;right:18px;bottom:18px;width:380px;border-radius:28px;background:var(--surface);box-shadow:0 20px 60px rgba(20,20,10,.2);display:flex;flex-direction:column;
   transform:translateX(calc(100% + 30px));visibility:hidden;transition:transform .55s cubic-bezier(.2,.8,.2,1),visibility 0s .55s}
 body.fpo .flopanel{transform:none;visibility:visible;transition:transform .55s cubic-bezier(.2,.8,.2,1)}
@@ -3179,7 +3195,7 @@ $("mainnav").addEventListener("click",ev=>{ const b=ev.target.closest("[data-g]"
 // ---------- aplikasi (PWA) ----------
 (function(){
   const btn=$("install"); let ev=null;
-  const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+  const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone||/ChartFlowApp/.test(navigator.userAgent);
   if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
   if(standalone) return;
   const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -3336,21 +3352,21 @@ window.addEventListener("online",()=>autoCheck(true));
     sn.addEventListener("mouseleave",()=>{ if(tipEl) tipEl.style.opacity=0; }); }
 
   // ---- Flo
-  const flo=document.createElement("button"); flo.type="button"; flo.className="flo"; flo.setAttribute("aria-label","Tanya Flo, asisten ChartFlow");
-  flo.innerHTML=`<span class="say" aria-hidden="true"></span><span class="orb"><span class="eyes"><i></i><i></i></span></span><span class="lbl">Tanya Flo</span>`;
+  const FLO_IMG=(function(){ var l=document.querySelector("img.logo"), s=l?l.getAttribute("src"):"icons/icon-192.png"; return s.replace(/icon-192\.png.*$/,""); })(); const flo=document.createElement("button"); flo.type="button"; flo.className="flo"; flo.setAttribute("aria-label","Tanya Flo, asisten ChartFlow");
+  flo.innerHTML=`<span class="say" aria-hidden="true"></span><span class="orb"><img src="${FLO_IMG}flo-head.webp" alt=""></span><img class="owl" src="${FLO_IMG}flo-hai.webp" alt=""><span class="lbl">Tanya Flo</span>`;
   const panel=document.createElement("aside"); panel.className="flopanel"; panel.setAttribute("aria-label","Flo, asisten ChartFlow");
   const CHIPS=[...(AI?[["porto","Cek portofolio saya"]]:[]),["pasar","Kondisi pasar hari ini"],["top",`${CR?"Koin":"Saham"} yang lolos paling banyak`],["uji","Metode mana yang terbukti?"],["arti","Arti label status"]];
-  panel.innerHTML=`<div class="fp-hd"><span class="mini"></span><span>Flo<small>Asisten ChartFlow</small></span><button type="button" class="fp-x" aria-label="Tutup">✕</button></div>
-    <div class="fp-body" aria-live="polite"><div class="fp-hi"><div class="fp-big"><span class="eyes"><i></i><i></i></span></div><h3>Hai, saya Flo</h3><p>${AI?`Tanyakan apa saja tentang data ChartFlow hari ini, misalnya "kenapa ${EX} ${CR?"belum dinilai":"ditunda"}?" atau "bedanya Value dan Quality apa?".`:`Saya membaca data ChartFlow hari ini dan menjelaskan aturan tiap metode. Ketik kode ${UNIT} (misalnya ${EX}) atau pilih pertanyaan.`}</p></div></div>
+  panel.innerHTML=`<div class="fp-hd"><span class="mini"><img src="${FLO_IMG}flo-head.webp" alt=""></span><span>Flo<small>Asisten ChartFlow</small></span><button type="button" class="fp-x" aria-label="Tutup">✕</button></div>
+    <div class="fp-body" aria-live="polite"><div class="fp-hi"><div class="fp-big"><img src="${FLO_IMG}flo-jelaskan.webp" alt="Flo"></div><h3>Hai, saya Flo</h3><p>${AI?`Tanyakan apa saja tentang data ChartFlow hari ini, misalnya "kenapa ${EX} ${CR?"belum dinilai":"ditunda"}?" atau "bedanya Value dan Quality apa?".`:`Saya membaca data ChartFlow hari ini dan menjelaskan aturan tiap metode. Ketik kode ${UNIT} (misalnya ${EX}) atau pilih pertanyaan.`}</p></div></div>
     <div class="fp-chips">${CHIPS.map(([k,t])=>`<button type="button" data-q="${k}">${esc(t)}</button>`).join("")}</div>
     <form class="fp-in"><input type="text" placeholder="${AI?`Tanya apa saja atau ketik kode ${UNIT}`:`Ketik kode ${UNIT}, misalnya ${EX}`}" aria-label="${AI?"Pertanyaan untuk Flo":"Kode "+UNIT}" autocomplete="off" autocapitalize="${AI?"sentences":"characters"}" maxlength="400"><button type="submit" aria-label="Kirim">↑</button></form>
     <p class="fp-note">${AI?"Pertanyaan bebas dijawab AI dari data ChartFlow dan bisa keliru. ":"Jawaban dihitung dari aturan metode. "}Bukan saran investasi.${CR?" Kripto berisiko sangat tinggi.":""}</p>`;
   document.body.append(flo,panel);
   const body=panel.querySelector(".fp-body");
   const pos=(x,y)=>{ flo.style.transform=`translate(${Math.round(x)}px,${Math.round(y)}px)`; };
-  function dock(){ flo.classList.remove("center"); flo.classList.add("dock"); const w=flo.offsetWidth||150;
+  function dock(again){ if(!again){ clearTimeout(flo._dt); flo._dt=setTimeout(()=>{ if(flo.classList.contains("dock")) dock(1); },700); } flo.classList.remove("center"); flo.classList.add("dock"); const w=Math.max(flo.offsetWidth||150,48);
     pos(innerWidth-w-(PHONE()?14:22), innerHeight-48-(PHONE()?(document.querySelector(".mainnav")?.offsetHeight||70)+24:22)); }
-  function center(txt){ const w=document.querySelector(".wrap").getBoundingClientRect(); flo.querySelector(".say").textContent=txt; flo.classList.remove("dock"); flo.classList.add("center"); pos(w.left+w.width/2-36, innerHeight*.4); }
+  function center(txt){ const w=document.querySelector(".wrap").getBoundingClientRect(); flo.querySelector(".say").textContent=txt; flo.classList.remove("dock"); flo.classList.add("center"); pos(w.left+w.width/2-60, innerHeight*.36); }
   addEventListener("resize",()=>{ if(flo.classList.contains("dock")) dock(); moveInd(); });
   // tombol pertanyaan sesuai halaman yang sedang dibuka, dan daftar pertanyaan yang belum terjawab (khusus pemilik)
   let missChk=false;
@@ -3615,6 +3631,18 @@ fetch("data/stocks.json",{cache:"no-cache"}).then(r=>{ if(!r.ok) throw new Error
   $("sector").insertAdjacentHTML("beforeend",secs.map(s=>`<option>${esc(s)}</option>`).join(""));
   renderAll();
 }).catch(()=>{ DATA=null; renderAll(); });
+})();
+</script>
+<script>
+/* Tombol "Pasang aplikasi" dipindah dari kepala halaman ke Pengaturan (⚙️); tidak tampil di dalam aplikasi */
+(function(){ var bi=document.getElementById("install"); if(!bi||!window.CFSET) return; var o=window.CFSET.open;
+  function add(d){ if(!d||bi.hidden||/ChartFlowApp/.test(navigator.userAgent)||d.querySelector("#setInstall")) return;
+    var b=document.createElement("button"); b.type="button"; b.id="setInstall"; b.textContent="📲 Pasang aplikasi di HP";
+    b.style.cssText="display:block;width:calc(100% - 44px);margin:0 22px 18px;padding:12px;border:none;border-radius:12px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:700;cursor:pointer";
+    b.addEventListener("click",function(){ try{ d.close(); }catch(e){} bi.click(); });
+    (d.firstElementChild||d).appendChild(b); }
+  window.CFSET.open=function(){ o.apply(this,arguments); var d=document.getElementById("cfSet"); add(d);
+    if(d&&!d.__cfi){ d.__cfi=1; new MutationObserver(function(){ add(d); }).observe(d,{childList:true}); } };
 })();
 </script>
 </body>
