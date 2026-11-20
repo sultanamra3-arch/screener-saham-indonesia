@@ -207,7 +207,7 @@ APK_JS = r"""<dialog id="cfApk"><div class="b"><b style="font-size:17px">📲 Me
 <div style="text-align:right;margin-top:12px"><button type="button" class="btn" onclick="this.closest('dialog').close()">Tutup</button></div></div></dialog>
 <script>(function(){
   var btn=document.getElementById("install"); if(!btn) return;
-  var inApp=matchMedia("(display-mode: standalone)").matches||(document.referrer||"").indexOf("android-app://")===0;
+  var inApp=matchMedia("(display-mode: standalone)").matches||(document.referrer||"").indexOf("android-app://")===0||/ChartFlowApp/.test(navigator.userAgent);
   try{ if(inApp) sessionStorage.setItem("cf.inapp","1"); if(sessionStorage.getItem("cf.inapp")) inApp=true; }catch(e){}
   if(inApp){ btn.hidden=true; new MutationObserver(function(){ if(!btn.hidden) btn.hidden=true; }).observe(btn,{attributes:true}); return; }
   if(!/android/i.test(navigator.userAgent)) return;
