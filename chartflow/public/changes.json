@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-11-21",
+  "t": "🎯 Fibonacci: posisi koreksi & target",
+  "x": "Halaman Siklus & Fibonacci kini menampilkan posisi koreksi saham BEI dan level target Fibonacci beserta peluang tercapainya dalam uji 10 tahun, dengan catatan bahwa hasilnya setara level acak."
+ },
+ {
+  "d": "2026-11-21",
   "t": "🦉 Flo menjawab semua pertanyaan seputar saham & pasar",
   "x": "Bila data ChartFlow tidak memuat jawabannya, Flo kini tetap menjelaskan dari pengetahuan umum (istilah, indikator, aturan bursa) dengan tanda jelas, tanpa mengarang harga atau berita."
  },

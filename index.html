@@ -1515,6 +1515,31 @@ function trendTxt(tr,c,f){
   const sc=(TRS||{}).scen;
   if(tr.tu!=null||tr.td!=null) s+=`<br><b>Dua kemungkinan:</b> ${tr.tu!=null?`🟢 naik ke ${f(tr.tu)} (${pct((tr.tu/p-1)*100)})`:""}${tr.tu!=null&&tr.td!=null?" atau ":""}${tr.td!=null?`🔴 turun ke ${f(tr.td)} (${pct((tr.td/p-1)*100)})`:""}.${sc?` Sebagai gambaran: dari 100 kali harga memantul di garis bawah, hanya <b>${sc.up}</b> yang sampai ke garis atas dalam 30 hari, dan <b>${sc.dn}</b> justru jebol ke bawah.`:""}`;
   return s; }
+// ---------- Fibonacci: posisi koreksi & target (uji 21 Nov 2026, 55 saham BEI, 10 tahun) ----------
+const FIBX={tgl:"21 Nov 2026",saham:55,ret:{n:3877,fib:50.5,acak:50.2},ext:{n:413,fib:23,acak:21,reach:{"1":53,"1.272":41,"1.618":31}}};
+function fibTargetCard(B){
+  if(!B||B.length<130) return `<p class="note">Data harga belum cukup (perlu 130 hari bursa).</p>`;
+  const W=B.slice(-120), h=W.map(b=>b[2]), l=W.map(b=>b[3]), c=W[W.length-1][4];
+  let ih=0; h.forEach((v,i)=>{ if(v>=h[ih]) ih=i; });
+  const H=h[ih], L=ih?Math.min(...l.slice(0,ih)):null, f=v=>usd(v), k=v=>nf(v,v===1?1:3);
+  const flo=t=>`<div style="display:flex;gap:10px;align-items:flex-start;margin-top:10px;padding:10px;border-radius:12px;background:var(--surface2,rgba(29,78,216,.07))"><img src="${CF_ICO.replace(/ui\/$/,"")}flo-jelaskan.webp" alt="Flo" style="width:44px;height:auto;flex:none"><div style="font-size:13.5px;line-height:1.5">${t}</div></div>`;
+  const uji=`<b>Hasil uji 10 tahun</b> (${FIBX.saham} saham BEI, diuji ${FIBX.tgl}):<br>• Setelah harga turun ke level Fibonacci, <b>${nf(FIBX.ret.fib,1)}%</b> naik dalam 20 hari bursa; di level acak <b>${nf(FIBX.ret.acak,1)}%</b> (${nf(FIBX.ret.n,0)} kejadian).<br>• Setelah menyentuh level target, harga berhenti naik <b>${FIBX.ext.fib}%</b> di level Fibonacci, <b>${FIBX.ext.acak}%</b> di level acak (${FIBX.ext.n} kejadian tembus).<br>Hampir sama dengan acak: pakai sebagai alat bantu membaca grafik, bukan sinyal beli atau jual.`;
+  if(W.length-1-ih<5) return `<p>Harga baru membuat puncak 120 hari di <b>${f(H)}</b>. Posisi koreksi dan target Fibonacci dihitung setelah harga turun dari puncak itu.</p>`+flo(uji);
+  if(L==null||H/L-1<0.2) return `<p>Kenaikan terakhir (${L?f(L)+" → "+f(H):"-"}) kurang dari 20%, jadi tidak dihitung. Aturan ini sama dengan saat diuji.</p>`+flo(uji);
+  const R=H-L, C=Math.min(...l.slice(ih+1)), r=(H-C)/R, now=(H-c)/R;
+  let html=`<div class="dl">
+    <div><span>Kenaikan terakhir</span><span class="num">${f(L)} → ${f(H)}</span></div>
+    <div><span>Dasar koreksi sejak puncak</span><span class="num">${f(C)} (level ${k(r)})</span></div>
+    <div><span>Posisi harga sekarang</span><span class="num">${f(c)} (level ${k(Math.max(0,now))})</span></div></div>`;
+  if(r<0.236||r>0.786){
+    html+=`<p class="note" style="margin-top:8px">Koreksi ${r<0.236?"belum cukup dalam":"terlalu dalam"} (level ${k(r)}; syarat uji 0,236–0,786), jadi target Fibonacci tidak dihitung.</p>`;
+    return html+flo(uji); }
+  const act=c>H;
+  html+=`<p style="margin:10px 0 4px"><b>Target Fibonacci</b> <span class="note">${act?"aktif: harga sudah melewati "+f(H):"belum aktif, berlaku bila harga melewati "+f(H)}</span></p>
+    <div class="dl"><div><span class="note">Level</span><span class="note">Harga · tercapai*</span></div>${[1,1.272,1.618].map(x=>`<div><span>${k(x)}</span><span class="num">${f(C+x*R)} · ${FIBX.ext.reach[String(x)]}%</span></div>`).join("")}</div>
+    <p class="note" style="margin-top:4px">*Dari ${FIBX.ext.n} kali saham BEI melewati puncaknya setelah koreksi, persen yang akhirnya sampai ke level itu.</p>`;
+  return html+flo(uji);
+}
 function trendCard(){ const t=LT&&LT.trend; if(!t) return trendCard1();
   const K=TRK2||{}, D=(K.done||[]), yrs=ltSpan(), J=t.jalur||{}, jb=J[t.jalur_best];
   const since=k=>{ const r=D.filter(x=>x.k===k); if(!r.length) return ""; const a=r.reduce((s,x)=>s+x.ret,0)/r.length; return `Sejak dipasang di web: ${r.length} kali, rata-rata ${pct(a,1)}.`; };
@@ -1775,6 +1800,7 @@ function renderCycles(box){
       <div id="cyPanels"></div></div>
     <p class="note" style="margin:14px 2px 0;font-weight:700;letter-spacing:.04em">PENJELASAN (KETUK UNTUK MEMBUKA)</p>
     ${fold("trend","📐 Garis tren &amp; jalur: bisa dipercaya?","hasil uji 10 tahun",`<div id="trBox"><p class="note">Memuat…</p></div>`)}
+    ${!isIdx?fold("fibx","🎯 Fibonacci: posisi koreksi &amp; target","hasil uji 55 saham BEI",`<div id="fxBox"><p class="note">Memuat…</p></div>`):""}
     ${fold("read","📊 Bacaan indikator","MA, volume, RSI, garis tren",`<div id="cyRead"><p class="note">Memuat…</p></div>
       <details style="margin-top:8px"><summary class="note" style="cursor:pointer">Penjelasan singkat tiap indikator</summary><div class="dl" style="font-size:13.5px;margin-top:6px;gap:6px">
       <div><span><b>Candlestick</b>: satu batang = satu hari. Hijau = ditutup lebih tinggi dari pembukaan, merah = lebih rendah. Sumbu tipis = harga tertinggi dan terendah hari itu.</span></div>
@@ -1822,7 +1848,7 @@ function renderCycles(box){
     if(ev.target.closest("#ilClr")){ if(window.__ilClear) window.__ilClear(); return; }
     const bt=ev.target.closest("[data-ind]"); if(!bt) return; const on=indOn(), k=bt.dataset.ind; on.has(k)?on.delete(k):on.add(k);
     store.set(WP+"ind",JSON.stringify([...on])); $("indBar").querySelectorAll("[data-ind]").forEach(b=>b.setAttribute("aria-pressed",on.has(b.dataset.ind))); draw(); });
-  Promise.all([loadLWC(),loadOhlc(sel),loadTrendStats(),typeof loadPbt==="function"?loadPbt():null]).then(([,bb])=>{ if(tab!=="cycles") return; bars=bb; draw(); { const tb=$("trBox"); if(tb) tb.innerHTML=trendCard(); } if(store.get(WP+"tv")==="1") tvSet(true); if(b) drawBreadth($("cyBreadth"),b); })
+  Promise.all([loadLWC(),loadOhlc(sel),loadTrendStats(),typeof loadPbt==="function"?loadPbt():null]).then(([,bb])=>{ if(tab!=="cycles") return; bars=bb; draw(); { const tb=$("trBox"); if(tb) tb.innerHTML=trendCard(); } { const fx=$("fxBox"); if(fx) fx.innerHTML=fibTargetCard(bb); } if(store.get(WP+"tv")==="1") tvSet(true); if(b) drawBreadth($("cyBreadth"),b); })
     .catch(()=>{ $("cyChart").innerHTML=`<p class="note">Grafik tidak bisa dimuat (pustaka grafik gagal diunduh).</p>`; });
 }
 
