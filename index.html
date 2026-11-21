@@ -1399,7 +1399,7 @@ function crossed(a,b,k=3){ // 1 = a memotong ke atas b dalam k bar terakhir, -1 
   const n=a.length; for(let i=n-1;i>=Math.max(1,n-k);i--){ if([a[i],b[i],a[i-1],b[i-1]].some(x=>x==null)) continue;
     if(a[i-1]<=b[i-1]&&a[i]>b[i]) return 1; if(a[i-1]>=b[i-1]&&a[i]<b[i]) return -1; } return 0; }
 const IND=[["ma20","MA20","#f59e0b",1],["ma50","MA50","#0ea5e9",1],["ma200","MA200","#e11d48",1],["ema9","EMA9","#14b8a6",0],["bb","Bollinger","#64748b",0],["vwap","VWAP 20","#a855f7",0],
-  ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1],["path","〰️ Jalur","#7c3aed",0],["fib","⏳ Waktu Fib","#ff9f1c",0],["pbt","📈 Pullback Tren","#0e8a5f",0]];
+  ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1],["path","〰️ Jalur","#7c3aed",0],["fib","⏳ Waktu Fib","#ff9f1c",0],["fibr","📐 Fib Koreksi","#d97706",0],["fibx","🎯 Target Fib","#10b981",0],["pbt","📈 Pullback Tren","#0e8a5f",0]];
 function indOn(){ let s=null; try{ s=JSON.parse(store.get(WP+"ind")||"null"); }catch(e){}
   if(Array.isArray(s)&&!store.get(WP+"ind.tr")){ if(!s.includes("trend")) s.push("trend"); store.set(WP+"ind",JSON.stringify(s)); store.set(WP+"ind.tr","1"); }
   return new Set(s||IND.filter(x=>x[3]).map(x=>x[0])); }
@@ -1517,29 +1517,56 @@ function trendTxt(tr,c,f){
   return s; }
 // ---------- Fibonacci: posisi koreksi & target (uji 21 Nov 2026, 55 saham BEI, 10 tahun) ----------
 const FIBX={tgl:"21 Nov 2026",saham:55,ret:{n:3877,fib:50.5,acak:50.2},ext:{n:413,fib:23,acak:21,reach:{"1":53,"1.272":41,"1.618":31}}};
-function fibTargetCard(B){
-  if(!B||B.length<130) return `<p class="note">Data harga belum cukup (perlu 130 hari bursa).</p>`;
-  const W=B.slice(-120), h=W.map(b=>b[2]), l=W.map(b=>b[3]), c=W[W.length-1][4];
+// Hitung struktur Fibonacci dengan aturan yang sama seperti saat diuji (hanya data sampai hari ini).
+function fibCalc(B){
+  if(!B||B.length<130) return {st:"short"};
+  const o=B.length-120, W=B.slice(o), h=W.map(b=>b[2]), l=W.map(b=>b[3]), c=W[W.length-1][4];
   let ih=0; h.forEach((v,i)=>{ if(v>=h[ih]) ih=i; });
-  const H=h[ih], L=ih?Math.min(...l.slice(0,ih)):null, f=v=>usd(v), k=v=>nf(v,v===1?1:3);
+  const H=h[ih], R0={H,c,tH:W[ih][0]};
+  if(W.length-1-ih<5) return Object.assign(R0,{st:"peak"});
+  let il=0; for(let i=1;i<ih;i++) if(l[i]<l[il]) il=i;
+  const L=ih?l[il]:null;
+  if(L==null||H/L-1<0.2) return Object.assign(R0,{st:"small",L});
+  let ic=ih+1; for(let i=ih+2;i<l.length;i++) if(l[i]<l[ic]) ic=i;
+  const R=H-L, C=l[ic], r=(H-C)/R;
+  return Object.assign(R0,{st:r<0.236?"shallow":r>0.786?"deep":"ok",L,C,R,r,now:(H-c)/R,tL:W[il][0],tC:W[ic][0],act:c>H}); }
+function fibTargetCard(B){
+  const F=fibCalc(B), f=v=>usd(v), k=v=>nf(v,v===1?1:3);
+  if(F.st==="short") return `<p class="note">Data harga belum cukup (perlu 130 hari bursa).</p>`;
   const flo=t=>`<div style="display:flex;gap:10px;align-items:flex-start;margin-top:10px;padding:10px;border-radius:12px;background:var(--surface2,rgba(29,78,216,.07))"><img src="${CF_ICO.replace(/ui\/$/,"")}flo-jelaskan.webp" alt="Flo" style="width:44px;height:auto;flex:none"><div style="font-size:13.5px;line-height:1.5">${t}</div></div>`;
   const uji=`<b>Hasil uji 10 tahun</b> (${FIBX.saham} saham BEI, diuji ${FIBX.tgl}):<br>• Setelah harga turun ke level Fibonacci, <b>${nf(FIBX.ret.fib,1)}%</b> naik dalam 20 hari bursa; di level acak <b>${nf(FIBX.ret.acak,1)}%</b> (${nf(FIBX.ret.n,0)} kejadian).<br>• Setelah menyentuh level target, harga berhenti naik <b>${FIBX.ext.fib}%</b> di level Fibonacci, <b>${FIBX.ext.acak}%</b> di level acak (${FIBX.ext.n} kejadian tembus).<br>Hampir sama dengan acak: pakai sebagai alat bantu membaca grafik, bukan sinyal beli atau jual.`;
-  if(W.length-1-ih<5) return `<p>Harga baru membuat puncak 120 hari di <b>${f(H)}</b>. Posisi koreksi dan target Fibonacci dihitung setelah harga turun dari puncak itu.</p>`+flo(uji);
-  if(L==null||H/L-1<0.2) return `<p>Kenaikan terakhir (${L?f(L)+" → "+f(H):"-"}) kurang dari 20%, jadi tidak dihitung. Aturan ini sama dengan saat diuji.</p>`+flo(uji);
-  const R=H-L, C=Math.min(...l.slice(ih+1)), r=(H-C)/R, now=(H-c)/R;
+  const btn=`<p class="note" style="margin-top:8px">Garisnya bisa ditampilkan di grafik lewat tombol <b>📐 Fib Koreksi</b> dan <b>🎯 Target Fib</b>.</p>`;
+  if(F.st==="peak") return `<p>Harga baru membuat puncak 120 hari di <b>${f(F.H)}</b>. Posisi koreksi dan target Fibonacci dihitung setelah harga turun dari puncak itu.</p>`+flo(uji);
+  if(F.st==="small") return `<p>Kenaikan terakhir (${F.L?f(F.L)+" → "+f(F.H):"-"}) kurang dari 20%, jadi tidak dihitung. Aturan ini sama dengan saat diuji.</p>`+flo(uji);
   let html=`<div class="dl">
-    <div><span>Kenaikan terakhir</span><span class="num">${f(L)} → ${f(H)}</span></div>
-    <div><span>Dasar koreksi sejak puncak</span><span class="num">${f(C)} (level ${k(r)})</span></div>
-    <div><span>Posisi harga sekarang</span><span class="num">${f(c)} (level ${k(Math.max(0,now))})</span></div></div>`;
-  if(r<0.236||r>0.786){
-    html+=`<p class="note" style="margin-top:8px">Koreksi ${r<0.236?"belum cukup dalam":"terlalu dalam"} (level ${k(r)}; syarat uji 0,236–0,786), jadi target Fibonacci tidak dihitung.</p>`;
-    return html+flo(uji); }
-  const act=c>H;
-  html+=`<p style="margin:10px 0 4px"><b>Target Fibonacci</b> <span class="note">${act?"aktif: harga sudah melewati "+f(H):"belum aktif, berlaku bila harga melewati "+f(H)}</span></p>
-    <div class="dl"><div><span class="note">Level</span><span class="note">Harga · tercapai*</span></div>${[1,1.272,1.618].map(x=>`<div><span>${k(x)}</span><span class="num">${f(C+x*R)} · ${FIBX.ext.reach[String(x)]}%</span></div>`).join("")}</div>
+    <div><span>Kenaikan terakhir</span><span class="num">${f(F.L)} → ${f(F.H)}</span></div>
+    <div><span>Dasar koreksi sejak puncak</span><span class="num">${f(F.C)} (level ${k(F.r)})</span></div>
+    <div><span>Posisi harga sekarang</span><span class="num">${f(F.c)} (level ${k(Math.max(0,F.now))})</span></div></div>`;
+  if(F.st!=="ok") return html+`<p class="note" style="margin-top:8px">Koreksi ${F.st==="shallow"?"belum cukup dalam":"terlalu dalam"} (level ${k(F.r)}; syarat uji 0,236–0,786), jadi target Fibonacci tidak dihitung.</p>`+btn+flo(uji);
+  html+=`<p style="margin:10px 0 4px"><b>Target Fibonacci</b> <span class="note">${F.act?"aktif: harga sudah melewati "+f(F.H):"belum aktif, berlaku bila harga melewati "+f(F.H)}</span></p>
+    <div class="dl"><div><span class="note">Level</span><span class="note">Harga · tercapai*</span></div>${[1,1.272,1.618].map(x=>`<div><span>${k(x)}</span><span class="num">${f(F.C+x*F.R)} · ${FIBX.ext.reach[String(x)]}%</span></div>`).join("")}</div>
     <p class="note" style="margin-top:4px">*Dari ${FIBX.ext.n} kali saham BEI melewati puncaknya setelah koreksi, persen yang akhirnya sampai ke level itu.</p>`;
-  return html+flo(uji);
+  return html+btn+flo(uji);
 }
+// Garis Fibonacci di grafik: koreksi (fibr) dan target (fibx). Mengembalikan catatan singkat untuk di bawah tombol.
+function fibLines(ch,B,fut,on,pf,idx){
+  const wr=on.has("fibr"), wx=on.has("fibx"); if(!wr&&!wx) return "";
+  if(idx) return "📐 Fib Koreksi dan 🎯 Target Fib hanya untuk saham (aturannya diuji pada saham BEI).";
+  const F=fibCalc(B), f=v=>usd(v), k=v=>nf(v,v===1?1:3), T=B.map(b=>b[0]), end=fut.length?fut[Math.min(fut.length,30)-1]:T[T.length-1];
+  if(F.st==="short") return "Fibonacci: data harga belum cukup (perlu 130 hari bursa).";
+  if(F.st==="peak") return `Fibonacci: harga baru membuat puncak 120 hari di ${f(F.H)}; garis dihitung setelah harga turun dari puncak itu.`;
+  if(F.st==="small") return "Fibonacci: kenaikan terakhir kurang dari 20%, jadi garis tidak digambar (aturan sama dengan saat diuji).";
+  const seg=(from,v,color,w,style,title)=>{ const z=ch.addLineSeries({color,lineWidth:w,lineStyle:style,priceLineVisible:false,lastValueVisible:true,title,crosshairMarkerVisible:false,priceFormat:pf});
+    z.setData([{time:from,value:v},{time:end,value:v}]); return z; };
+  const sw=ch.addLineSeries({color:"#1d4ed8",lineWidth:1,lineStyle:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat:pf});
+  const pts=[[F.tL,F.L],[F.tH,F.H]].concat(wx&&F.tC>F.tH?[[F.tC,F.C]]:[]); sw.setData(pts.map(([t,v])=>({time:t,value:v})));
+  const notes=[];
+  if(wr){ [[0,"#64748b",1,0],[0.382,"#60a5fa",1,2],[0.5,"#d97706",2,2],[0.618,"#d97706",2,2],[0.786,"#60a5fa",1,2],[1,"#64748b",1,0]].forEach(([r,c,w,st])=>{ const z=seg(F.tL,F.H-r*F.R,c,w,st,r===0?"Puncak":r===1?"Lembah":"Fib "+k(r)); if(r===0||r===1) z.applyOptions({lastValueVisible:false,title:""}); });
+    notes.push(`📐 Koreksi dari kenaikan ${f(F.L)} → ${f(F.H)}: harga sekarang di level ${k(Math.max(0,F.now))} (garis oranye = 0,5 dan 0,618).`); }
+  if(wx){ if(F.st==="ok"){ [[1,"#64748b"],[1.272,"#60a5fa"],[1.618,"#10b981"]].forEach(([e,c])=>seg(F.tC,F.C+e*F.R,c,2,1,"Target "+k(e)));
+      notes.push(`🎯 Target ${F.act?"aktif (harga sudah melewati "+f(F.H)+")":"belum aktif, berlaku bila harga melewati "+f(F.H)}: 1,0 ${f(F.C+F.R)} (${FIBX.ext.reach["1"]}%), 1,272 ${f(F.C+1.272*F.R)} (${FIBX.ext.reach["1.272"]}%), 1,618 ${f(F.C+1.618*F.R)} (${FIBX.ext.reach["1.618"]}%) = seberapa sering tercapai dalam uji.`); }
+    else notes.push(`🎯 Target tidak digambar: koreksi ${F.st==="shallow"?"belum cukup dalam":"terlalu dalam"} (level ${k(F.r)}; syarat uji 0,236–0,786).`); }
+  return notes.join("<br>")+`<br><span style="opacity:.8">Uji 10 tahun: level Fibonacci setara level acak. Alat bantu membaca grafik, bukan sinyal.</span>`; }
 function trendCard(){ const t=LT&&LT.trend; if(!t) return trendCard1();
   const K=TRK2||{}, D=(K.done||[]), yrs=ltSpan(), J=t.jalur||{}, jb=J[t.jalur_best];
   const since=k=>{ const r=D.filter(x=>x.k===k); if(!r.length) return ""; const a=r.reduce((s,x)=>s+x.ret,0)/r.length; return `Sejak dipasang di web: ${r.length} kali, rata-rata ${pct(a,1)}.`; };
@@ -1669,6 +1696,7 @@ function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   if(opt.pbtBox) opt.pbtBox.innerHTML="";
   if(on.has("pbt")&&IS_ID&&typeof PBT!=="undefined"&&PBT&&opt.dkey&&typeof pbtDraw==="function") pbtDraw(ch,T,opt.dkey,opt.pbtBox,good,bad);
   if(on.has("fib")&&opt.tz) fibDraw(ch,el,opt.tz,good,warn,opt.fibBox,isIdxU(opt));
+  { const fn=candle?fibLines(ch,B,fut,on,pf,!!opt.isIdx):((on.has("fibr")||on.has("fibx"))?"Fibonacci butuh data candle; belum tersedia untuk grafik ini.":""); if(fn&&opt.fibBox) opt.fibBox.insertAdjacentHTML("beforeend",`<p class="note" style="margin:4px 0 6px;line-height:1.5">${fn}</p>`); }
   // panel bawah
   const P=opt.panels; const all=[ch];
   if(P){ P.innerHTML="";
