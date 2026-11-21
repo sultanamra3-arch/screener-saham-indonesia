@@ -3398,7 +3398,7 @@ window.addEventListener("online",()=>autoCheck(true));
     <div class="fp-body" aria-live="polite"><div class="fp-hi"><div class="fp-big"><img src="${FLO_IMG}flo-jelaskan.webp" alt="Flo"></div><h3>Hai, saya Flo</h3><p>${AI?`Tanyakan apa saja tentang data ChartFlow hari ini, misalnya "kenapa ${EX} ${CR?"belum dinilai":"ditunda"}?" atau "bedanya Value dan Quality apa?".`:`Saya membaca data ChartFlow hari ini dan menjelaskan aturan tiap metode. Ketik kode ${UNIT} (misalnya ${EX}) atau pilih pertanyaan.`}</p></div></div>
     <div class="fp-chips">${CHIPS.map(([k,t])=>`<button type="button" data-q="${k}">${esc(t)}</button>`).join("")}</div>
     <form class="fp-in"><input type="text" placeholder="${AI?`Tanya apa saja atau ketik kode ${UNIT}`:`Ketik kode ${UNIT}, misalnya ${EX}`}" aria-label="${AI?"Pertanyaan untuk Flo":"Kode "+UNIT}" autocomplete="off" autocapitalize="${AI?"sentences":"characters"}" maxlength="400"><button type="submit" aria-label="Kirim">↑</button></form>
-    <p class="fp-note">${AI?"Pertanyaan bebas dijawab AI dari data ChartFlow dan bisa keliru. ":"Jawaban dihitung dari aturan metode. "}Bukan saran investasi.${CR?" Kripto berisiko sangat tinggi.":""}</p>`;
+    <p class="fp-note">${AI?"Pertanyaan bebas dijawab AI dari data ChartFlow dan pengetahuan umum, dan bisa keliru. ":"Jawaban dihitung dari aturan metode. "}Bukan saran investasi.${CR?" Kripto berisiko sangat tinggi.":""}</p>`;
   document.body.append(flo,panel);
   const body=panel.querySelector(".fp-body");
   const pos=(x,y)=>{ flo.style.transform=`translate(${Math.round(x)}px,${Math.round(y)}px)`; };

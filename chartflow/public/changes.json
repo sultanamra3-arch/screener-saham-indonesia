@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-11-21",
+  "t": "🦉 Flo menjawab semua pertanyaan seputar saham & pasar",
+  "x": "Bila data ChartFlow tidak memuat jawabannya, Flo kini tetap menjelaskan dari pengetahuan umum (istilah, indikator, aturan bursa) dengan tanda jelas, tanpa mengarang harga atau berita."
+ },
+ {
+  "d": "2026-11-21",
   "t": "🦉 Flo paham pertanyaan tentang Jalur",
   "x": "Flo kini mengenali sebutan seperti \"indikator jalur\" atau \"garis ungu\" dan bisa menjawab seberapa sering tebakan arah Jalur benar menurut hasil uji 10 tahun."
  },
