@@ -3501,6 +3501,10 @@ window.addEventListener("online",()=>autoCheck(true));
     return s; }
   function divCtx(){ const td=(DATA&&DATA.priceDate)||"", L=rows.filter(o=>o.dv&&o.dv.ex&&o.dv.ex>=td).sort((a,b)=>a.dv.ex<b.dv.ex?-1:1).slice(0,25);
     return `\nKALENDER DIVIDEN (ex terdekat): `+(L.length?L.map(o=>`${o.ticker} ex ${o.dv.ex}${o.dv.cum?" cum "+o.dv.cum:""} ±${usd(o.dv.amt)} (${o.dv.sure?"pasti":"perkiraan"}, yield ±${nf(o.dv.amt/o.price*100,2)}%)`).join("; "):"tidak ada jadwal"); }
+  // 〰️ Jalur: istilah yang dipakai pengguna + persentase ketepatan dari uji, supaya Flo bisa menjawab "berapa persen"
+  function jalurCtx(){ try{ const t=LT&&LT.trend, J=t&&t.jalur; if(!J) return "";
+    const nm={mom10:"ikut arah 10 hari terakhir",rev10:"kebalikan arah 10 hari terakhir",rsi_ch:"dari RSI",pos_ch:"dari posisi di antara garis tren",always_up:"selalu menebak naik"};
+    return `\nINDIKATOR JALUR (tombol 〰️ Jalur di grafik: garis zigzag ungu putus-putus ke depan; pengguna bisa menyebutnya "indikator jalur", "garis jalur", "garis ungu", atau "zigzag"). Jalur menebak harga "naik dulu atau turun dulu", lalu menggambar ayunan memakai kebiasaan ayunan grafik itu. Uji ${ltSpan()} (${nf(t.n,0)} grafik): persentase tebakan arah yang benar `+Object.entries(J).map(([k,v])=>`${nm[k]||k} ${nf(v.acc,1)}% (di atas 50% pada ${v.yp} dari ${v.y} tahun)${k===t.jalur_best?" = aturan yang dipakai Jalur":""}`).join("; ")+`. Lempar koin = 50%. Kesimpulan uji: arah Jalur tidak lebih baik dari lempar koin; Jalur hanya gambaran untuk membayangkan rencana, bukan alat menebak arah.${TRP&&TRP.n?` Catatan sejak dipasang di web (${TRP.start||"-"}): ${TRP.ok} dari ${TRP.n} tebakan benar (${nf(TRP.ok/TRP.n*100,0)}%).`:""}`; }catch(e){ return ""; } }
   function ujiCtx(){ try{ if(typeof renderUji!=="function"||typeof LT==="undefined"||!LT) return ""; const d=document.createElement("div"); renderUji(d); return "\nHALAMAN HASIL UJI: "+d.textContent.replace(/\s+/g," ").trim().slice(0,4500); }catch(e){ return ""; } }
   async function otherCtx(q){ const want=[]; const ql=q.toLowerCase();
     if(MK!=="kripto"&&/kripto|bitcoin|\bbtc\b|\beth\b|koin|altcoin/.test(ql)) want.push("kripto");
@@ -3570,6 +3574,7 @@ window.addEventListener("online",()=>autoCheck(true));
     await add(/asing|institusi|ksei|reksa dana|insider|orang dalam|direksi|bandar|arus dana|pemilik|pengendali/i,flowCtx);
     await add(/dividen|\bex\b|\bcum\b|yield|kalender/i,divCtx);
     await add(/uji|terbukti|backtest|akurat|ketepatan|garis tren|jalur|candle|fibonacci|lampu|strategi terbaik|paling bagus/i,ujiCtx);
+    if(/jalur|zigzag|garis ungu|ke mana dulu/i.test(q)){ try{ if(typeof loadTrendStats==="function") await loadTrendStats(); }catch(e){} S.push([0,jalurCtx()]); }
     if(/alarm|notifikasi|pengingat|telegram/i.test(q)) S.push([1,await alarmCtx()]);
     await add(/support|resist|dekat|lantai|atap|pantul|area beli|tembus/i,()=>nearList(q));
     { const wp=PORTQ.test(q)||(portFollow&&q.length<60); portFollow=PORTQ.test(q); if(wp) S.push([0,portCtx()]); }
