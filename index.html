@@ -3769,5 +3769,56 @@ fetch("data/stocks.json",{cache:"no-cache"}).then(r=>{ if(!r.ok) throw new Error
   if(res){ new MutationObserver(function(){ deco(res); }).observe(res,{childList:true,subtree:true}); deco(res); }
 })();
 </script>
+<script>
+/* Jam bursa BEI + status sesi di kepala aplikasi, hanya di APK ChartFlow (22 Nov 2026).
+   Jadwal pasar reguler BEI: Sen–Kam sesi 1 09.00–12.00, sesi 2 13.30–15.49.59; Jumat 09.00–11.30 & 14.00–15.49.59;
+   pra-pembukaan 08.45, pra-penutupan 15.50–16.00, pasca-penutupan 16.01–16.15.
+   LIBUR = salinan HOLIDAYS di scripts/notify_telegram.py — perbarui bersamaan tiap akhir tahun. */
+(function(){
+  if(!/ChartFlowApp/.test(navigator.userAgent)&&!/[?&]jam=1\b/.test(location.search)) return;
+  var bar=document.querySelector("header.topbar"); if(!bar||document.getElementById("bursaJam")) return;
+  var LIBUR=("2026-01-01 2026-01-16 2026-02-16 2026-02-17 2026-03-18 2026-03-19 2026-03-20 2026-03-23 2026-03-24 2026-04-03 "+
+    "2026-05-01 2026-05-14 2026-05-15 2026-05-27 2026-05-28 2026-06-01 2026-06-16 2026-08-17 2026-08-25 2026-12-24 2026-12-25 2026-12-31 "+
+    "2027-01-01 2027-01-05 2027-02-05 2027-03-08 2027-03-09 2027-03-10 2027-03-11 2027-03-12 2027-03-15 2027-03-25 2027-03-26 "+
+    "2027-05-06 2027-05-17 2027-05-18 2027-05-19 2027-05-20 2027-06-01 2027-08-17 2027-12-24 2027-12-31").split(" ");
+  var HARI=["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+  var st=document.createElement("style");
+  st.textContent=".topbar{flex-wrap:wrap}#bursaJam{flex:1 0 100%;order:9;display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);"+
+    "margin-top:-2px;cursor:pointer;-webkit-tap-highlight-color:transparent}#bursaJam b{color:var(--fg);font-variant-numeric:tabular-nums;font-weight:700}"+
+    "#bursaJam .d{width:8px;height:8px;border-radius:50%;flex:none;background:var(--muted)}#bursaJam .d.on{background:var(--good);box-shadow:0 0 0 3px var(--good-soft)}"+
+    "#bursaJam .d.wait{background:var(--warn)}#bursaJam .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}"+
+    "#bursaJamInfo{flex:1 0 100%;order:10;font-size:12.5px;color:var(--muted);background:var(--sunk);border-radius:12px;padding:10px 12px;line-height:1.6}"+
+    "#bursaJamInfo b{color:var(--fg)}";
+  document.head.appendChild(st);
+  var el=document.createElement("div"); el.id="bursaJam"; el.setAttribute("role","status"); el.title="Ketuk untuk melihat jadwal bursa";
+  bar.appendChild(el);
+  // waktu WIB tanpa bergantung zona waktu HP (UTC+7, Indonesia tanpa musim panas)
+  function wib(t){ var d=new Date(t+7*3600e3); return {y:d.getUTCFullYear(),mo:d.getUTCMonth(),dd:d.getUTCDate(),wd:d.getUTCDay(),m:d.getUTCHours()*60+d.getUTCMinutes(),h:d.getUTCHours(),mi:d.getUTCMinutes()}; }
+  function iso(w){ return w.y+"-"+String(w.mo+1).padStart(2,"0")+"-"+String(w.dd).padStart(2,"0"); }
+  function bursa(w){ return w.wd>0&&w.wd<6&&LIBUR.indexOf(iso(w))<0; }
+  function hm(m){ return String(Math.floor(m/60)).padStart(2,"0")+"."+String(m%60).padStart(2,"0"); }
+  function jadwal(wd){ var j=wd===5; return {s1:540,e1:j?690:720,s2:j?840:810,e2:950}; } // 09.00, 11.30/12.00, 14.00/13.30, 15.50
+  function berikut(now){ for(var i=1;i<15;i++){ var w=wib(now+i*864e5); if(bursa(w)) return i===1?"besok":HARI[w.wd]+(i>6?" "+w.dd+"/"+(w.mo+1):""); } return "hari bursa berikutnya"; }
+  function status(now){ var w=wib(now), m=w.m, J=jadwal(w.wd);
+    if(!bursa(w)) return ["",(w.wd===0||w.wd===6?"Akhir pekan":"Hari libur bursa")+" · buka "+berikut(now)+" 09.00"];
+    if(m<525) return ["","Belum buka · sesi 1 mulai 09.00"];
+    if(m<J.s1) return ["wait","Pra-pembukaan · sesi 1 mulai 09.00"];
+    if(m<J.e1) return ["on","Sesi 1 berjalan · istirahat "+hm(J.e1)];
+    if(m<J.s2) return ["wait","Istirahat siang · sesi 2 mulai "+hm(J.s2)];
+    if(m<J.e2) return ["on","Sesi 2 berjalan · tutup "+hm(J.e2)];
+    if(m<=960) return ["wait","Pra-penutupan · harga penutupan dibentuk"];
+    if(m<=975) return ["wait","Pasca-penutupan · transaksi di harga penutupan"];
+    return ["","Bursa tutup · buka "+berikut(now)+" 09.00"]; }
+  function tick(){ var now=Date.now(), w=wib(now), s=status(now);
+    el.innerHTML='<span class="d '+s[0]+'"></span><b>'+hm(w.m)+' WIB</b><span class="t">BEI · '+s[1]+'</span>'; }
+  el.addEventListener("click",function(){ var o=document.getElementById("bursaJamInfo"); if(o){ o.remove(); return; }
+    o=document.createElement("div"); o.id="bursaJamInfo";
+    o.innerHTML="<b>Jam perdagangan BEI (pasar reguler)</b><br>Senin–Kamis: sesi 1 09.00–12.00, sesi 2 13.30–15.50<br>Jumat: sesi 1 09.00–11.30, sesi 2 14.00–15.50<br>"+
+      "Pra-pembukaan 08.45–09.00 · pra-penutupan 15.50–16.00 · pasca-penutupan 16.01–16.15<br>Libur: Sabtu, Minggu, dan hari libur bursa resmi. Ketuk jam lagi untuk menutup.";
+    bar.appendChild(o); });
+  tick(); setInterval(tick,15000);
+  document.addEventListener("visibilitychange",function(){ if(!document.hidden) tick(); });
+})();
+</script>
 </body>
 </html>

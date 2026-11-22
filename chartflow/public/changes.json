@@ -1,5 +1,10 @@
 [
  {
+  "d": "2026-11-22",
+  "t": "🕘 Jam bursa di aplikasi Android",
+  "x": "Aplikasi ChartFlow kini menampilkan jam WIB dan status BEI (sesi berjalan, istirahat, tutup, atau libur beserta kapan buka lagi) di bawah kepala halaman saham Indonesia."
+ },
+ {
   "d": "2026-11-21",
   "t": "🎯 Fibonacci: posisi koreksi & target",
   "x": "Halaman Siklus & Fibonacci kini menampilkan posisi koreksi saham BEI dan level target Fibonacci beserta peluang tercapainya dalam uji 10 tahun, dengan catatan bahwa hasilnya setara level acak."
