@@ -1,11 +1,6 @@
 [
  {
   "d": "2026-11-21",
-  "t": "📐 Tombol Fib Koreksi & 🎯 Target Fib di grafik",
-  "x": "Garis koreksi Fibonacci (0,382–0,786) dan garis target (1,0 / 1,272 / 1,618) kini bisa ditampilkan di grafik saham BEI, dengan aturan dan catatan hasil uji yang sama seperti kartu Fibonacci."
- },
- {
-  "d": "2026-11-21",
   "t": "🎯 Fibonacci: posisi koreksi & target",
   "x": "Halaman Siklus & Fibonacci kini menampilkan posisi koreksi saham BEI dan level target Fibonacci beserta peluang tercapainya dalam uji 10 tahun, dengan catatan bahwa hasilnya setara level acak."
  },
