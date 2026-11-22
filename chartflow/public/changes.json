@@ -2,7 +2,7 @@
  {
   "d": "2026-11-22",
   "t": "🕘 Jam bursa di aplikasi Android",
-  "x": "Aplikasi ChartFlow kini menampilkan jam WIB dan status BEI (sesi berjalan, istirahat, tutup, atau libur beserta kapan buka lagi) di bawah kepala halaman saham Indonesia."
+  "x": "Aplikasi ChartFlow kini menampilkan jam WIB dan status bursa di bawah kepala halaman: BEI (sesi, istirahat, libur), bursa AS dalam WIB (pra-pasar, buka, pasca-pasar, libur), dan kripto yang buka 24 jam; tombol di kepala halaman HP juga tidak lagi turun ke baris kedua."
  },
  {
   "d": "2026-11-21",
