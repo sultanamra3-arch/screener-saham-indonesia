@@ -95,7 +95,34 @@ BODY_JS = r'''<dialog id="cfDlg"><div class="b"><b style="font-size:18px" id="cf
     btn.textContent="👤 "+first; btn.title=U.name;
     $("cfName").textContent="👤 "+(U.name||"Akun"); $("cfCode").textContent=U.code; $("cfExp").textContent=U.expText+(U.days>=0?" ("+U.days+" hari lagi)":"");
     $("cfDev").textContent=U.devices+" dari "+U.maxDevices;
-    btn.addEventListener("click",function(){ $("cfDlg").showModal(); });
+    // 22 Nov 2026: akun digabung ke ⚙️ Pengaturan (satu tempat); tombol 👤 di kepala halaman disembunyikan
+    btn.style.display="none"; btn.setAttribute("aria-hidden","true");
+    var acct=null, out=null;
+    function mkAcct(){ if(acct) return acct; var dl=$("cfDlg");
+      var ini=((U.name||"A").trim().split(/\s+/).map(function(w){return w[0]}).join("").slice(0,2)||"A").toUpperCase();
+      var warn=U.days<=7;
+      acct=document.createElement("div"); acct.id="cfAcct"; acct.style.display="contents";
+      acct.innerHTML='<div class="prof"><div class="av" aria-hidden="true"></div><div><b></b><span></span></div></div>'+
+        '<div class="gh">Akun</div><div class="grp"><div class="kv"><span>Kode akses</span><b class="num"></b></div>'+
+        '<div class="kv"><span>Perangkat</span><b></b></div><div class="kv"><span>Portofolio &amp; ★</span></div></div>';
+      acct.querySelector(".av").textContent=ini; acct.querySelector(".prof b").textContent=U.name||"Akun";
+      var sub=acct.querySelector(".prof span"); sub.textContent=U.days<0?"Kode akses sudah berakhir":"Berlaku sampai "+U.expText+" · "+U.days+" hari lagi"; if(warn) sub.className="warn";
+      var kv=acct.querySelectorAll(".kv"); kv[0].lastChild.textContent=U.code; kv[1].lastChild.textContent=U.devices+" dari "+U.maxDevices;
+      var sy=$("cfSync"); if(sy) kv[2].appendChild(sy);
+      var grp=acct.querySelector(".grp");
+      dl.querySelectorAll("button").forEach(function(x){ if(/Alarm harga/.test(x.textContent)){ x.className="li"; x.removeAttribute("style");
+        x.innerHTML="<span>🔔 Alarm harga saya</span><i>›</i>"; grp.appendChild(x); } });
+      var a=$("cfOut"); out=document.createElement("div"); out.className="grp"; out.id="cfAcctOut"; out.style.marginTop="16px";
+      if(a){ a.removeAttribute("style"); a.className="li bad"; a.textContent="Keluar dari akun"; out.appendChild(a); }
+      return acct; }
+    function place(d){ if(!d||!acct) return; var box=d.firstElementChild||d;
+      if(acct.parentNode!==box){ var h=box.querySelector(".sh"); if(h) h.after(acct); else box.prepend(acct); }
+      if(out&&out.parentNode!==box){ var f=box.querySelector(".ft"); if(f) f.before(out); else box.appendChild(out); } }
+    function hook(){ var S=window.CFSET; if(!S||S.__acct) return; S.__acct=1; var o=S.open;
+      S.open=function(){ o.apply(this,arguments); var d=$("cfSet"); mkAcct(); place(d);
+        if(d&&!d.__acctObs){ d.__acctObs=1; new MutationObserver(function(){ place(d); }).observe(d,{childList:true,subtree:false}); } }; }
+    hook(); if(!window.CFSET||!window.CFSET.__acct) document.addEventListener("DOMContentLoaded",hook);
+    var tb=$("theme"); if(tb){ tb.title="Pengaturan & akun"; tb.setAttribute("aria-label","Pengaturan & akun"); }
     if(U.days<=7){ var w=document.createElement("div"); w.className="cfwarn"; w.textContent=U.days<0?"Kode akses Anda sudah berakhir. Hubungi pengelola untuk perpanjang.":"⏳ Kode akses Anda berakhir "+(U.days===0?"hari ini":U.days+" hari lagi")+" ("+U.expText+"). Hubungi pengelola untuk perpanjang.";
       var st=$("status"); if(st) st.parentNode.insertBefore(w,st); }
   }

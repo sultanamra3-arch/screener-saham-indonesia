@@ -134,26 +134,29 @@
     else { if(MO){ MO.disconnect(); MO=null; } restore(); } }
 
   /* ---- dialog Pengaturan ---- */
-  var L={id:{title:"Pengaturan tampilan",ui:"Tampilan",baru:"Baru",lama:"Sebelumnya",neon:"Neon",mode:"Mode warna",auto:"Ikut HP",light:"Terang",dark:"Gelap",neonDark:"Neon selalu gelap",
+  var L={id:{title:"Pengaturan",gUi:"Tampilan",gLang:"Bahasa",gEtc:"Lainnya",ui:"Tema",baru:"Baru",lama:"Sebelumnya",neon:"Neon",mode:"Mode warna",auto:"Ikut HP",light:"Terang",dark:"Gelap",neonDark:"Neon selalu gelap",
       lang:"Bahasa",fs:"Ukuran huruf",s:"Kecil",m:"Normal",l:"Besar",cvd:"Warna naik / turun",cvd0:"Hijau – merah",cvd1:"Biru – oranye",cvdNote:"Biru–oranye lebih mudah dibedakan bagi pengguna buta warna.",
-      anim:"Animasi",on:"Nyala",off:"Mati",dash:"Panel grafik Beranda",show:"Tampil",hide:"Sembunyi",note:"Tersimpan di perangkat ini.",enNote:"",close:"Tutup",reset:"Kembalikan ke bawaan"},
-    en:{title:"Display settings",ui:"Look",baru:"New",lama:"Previous",neon:"Neon",mode:"Color mode",auto:"Follow device",light:"Light",dark:"Dark",neonDark:"Neon is always dark",
+      anim:"Animasi",on:"Nyala",off:"Mati",dash:"Panel grafik Beranda",show:"Tampil",hide:"Sembunyi",note:"Pengaturan tampilan tersimpan di perangkat ini.",enNote:"",close:"Tutup",reset:"Kembalikan ke bawaan"},
+    en:{title:"Settings",gUi:"Display",gLang:"Language",gEtc:"More",ui:"Theme",baru:"New",lama:"Previous",neon:"Neon",mode:"Color mode",auto:"Follow device",light:"Light",dark:"Dark",neonDark:"Neon is always dark",
       lang:"Language",fs:"Text size",s:"Small",m:"Normal",l:"Large",cvd:"Up / down colors",cvd0:"Green – red",cvd1:"Blue – orange",cvdNote:"Blue–orange is easier to tell apart for colorblind users.",
-      anim:"Animations",on:"On",off:"Off",dash:"Home chart panel",show:"Show",hide:"Hide",note:"Saved on this device.",enNote:"English is partly available: longer explanations are still in Indonesian.",close:"Close",reset:"Reset to default"}};
+      anim:"Animations",on:"On",off:"Off",dash:"Home chart panel",show:"Show",hide:"Hide",note:"Display settings are saved on this device.",enNote:"English is partly available: longer explanations are still in Indonesian.",close:"Close",reset:"Reset to default"}};
   var dlg=null;
   function seg(key,opts,dis){ var T=L[S.lang]||L.id;
     return '<div class="seg'+(key==="ui"?" uis":"")+'" role="group">'+opts.map(function(o){ var v=o[0], lab=o[1]||T[v]||v;
       return '<button type="button" data-k="'+key+'" data-v="'+v+'" aria-pressed="'+(S[key]===v)+'"'+(dis?" disabled":"")+'>'+(key==="ui"?'<span class="sw sw-'+v+'"><i></i><i></i><i></i></span>':"")+lab+'</button>'; }).join("")+'</div>'; }
   function body(){ var T=L[S.lang]||L.id, neon=S.ui==="neon";
-    return '<div class="sb"><div class="sh"><h2>⚙️ '+T.title+'</h2><button type="button" class="x" data-close aria-label="'+T.close+'">✕</button></div>'+
+    /* 22 Nov 2026: disusun seperti halaman Pengaturan aplikasi HP: judul, (kartu akun di aplikasi), lalu kelompok berkartu */
+    return '<div class="sb"><div class="sh"><h2>'+T.title+'</h2><button type="button" class="x" data-close aria-label="'+T.close+'">✕</button></div>'+
+      '<div class="gh">'+T.gUi+'</div><div class="grp">'+
       '<div class="row"><span>'+T.ui+'</span>'+seg("ui",[["baru"],["lama"],["neon"]])+'</div>'+
       '<div class="row"><span>'+T.mode+'</span>'+seg("mode",[["auto"],["light"],["dark"]],neon)+(neon?'<small>'+T.neonDark+'</small>':'')+'</div>'+
-      '<div class="row"><span>'+T.lang+'</span>'+seg("lang",[["id","Indonesia"],["en","English"]])+(S.lang==="en"?'<small>'+T.enNote+'</small>':'')+'</div>'+
       '<div class="row"><span>'+T.fs+'</span>'+seg("fs",[["s"],["m"],["l"]])+'</div>'+
       '<div class="row"><span>'+T.cvd+'</span>'+seg("cvd",[["0",T.cvd0],["1",T.cvd1]])+'<small>'+T.cvdNote+'</small></div>'+
       '<div class="row"><span>'+T.anim+'</span>'+seg("anim",[["1",T.on],["0",T.off]])+'</div>'+
-      '<div class="row"><span>'+T.dash+'</span>'+seg("dash",[["1",T.show],["0",T.hide]])+'</div>'+
-      '<div class="ft"><small>'+T.note+'</small><button type="button" class="rs" data-reset>'+T.reset+'</button></div></div>'; }
+      '<div class="row"><span>'+T.dash+'</span>'+seg("dash",[["1",T.show],["0",T.hide]])+'</div></div>'+
+      '<div class="gh">'+T.gLang+'</div><div class="grp"><div class="row">'+seg("lang",[["id","Indonesia"],["en","English"]])+(S.lang==="en"?'<small>'+T.enNote+'</small>':'')+'</div></div>'+
+      '<div class="gh">'+T.gEtc+'</div><div class="grp etc"><button type="button" class="li" data-reset><span>↺ '+T.reset+'</span><i>›</i></button></div>'+
+      '<div class="ft"><small>'+T.note+'</small></div></div>'; }
   function paint(){ if(dlg){ var f=document.activeElement&&document.activeElement.dataset?document.activeElement.dataset.k+"|"+document.activeElement.dataset.v:null;
     dlg.innerHTML=body(); if(f){ var b=dlg.querySelector('[data-k="'+f.split("|")[0]+'"][data-v="'+f.split("|")[1]+'"]'); if(b) b.focus(); } } }
   function rerender(){ try{ if(typeof renderResults==="function") renderResults(); }catch(e){} try{ window.dispatchEvent(new Event("resize")); }catch(e){} }
@@ -799,15 +802,30 @@ body{transition:padding-right .55s cubic-bezier(.2,.8,.2,1)}
 .linkbtn{background:none;border:none;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;padding:6px 0 0;text-align:left}
 .sgc{gap:6px}.sgc h4{flex-wrap:wrap;gap:6px}.sgc table td{padding-top:8px;padding-bottom:8px}
 /* ---------- Pengaturan: dialog ---------- */
-#cfSet{border:none;border-radius:20px;padding:0;width:min(520px,calc(100% - 24px));max-height:90vh;overflow:auto;background:var(--surface);color:var(--fg);box-shadow:0 30px 80px rgba(0,0,0,.35)}
+#cfSet{border:none;border-radius:20px;padding:0;width:min(520px,calc(100% - 24px));max-height:90vh;overflow:auto;background:var(--bg);color:var(--fg);box-shadow:0 30px 80px rgba(0,0,0,.35)}
 #cfSet::backdrop{background:rgba(10,15,30,.55)}
-#cfSet .sb{padding:20px;display:flex;flex-direction:column;gap:16px}
-#cfSet .sh{display:flex;justify-content:space-between;align-items:center;gap:10px}#cfSet h2{margin:0;font-size:20px;font-family:var(--f-display)}
-#cfSet .x{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--sunk);color:var(--fg);font-size:16px;cursor:pointer}
-#cfSet .row{display:flex;flex-direction:column;gap:8px}#cfSet .row>span{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+@media (max-width:600px){#cfSet{width:100%;max-width:100%;height:100%;max-height:100%;margin:0;border-radius:0}}
+#cfSet .sb{padding:0 16px 24px;display:flex;flex-direction:column;gap:8px}
+#cfSet .sh{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--bg);margin:0 -16px;padding:14px 16px 10px}
+#cfSet h2{margin:0;font-size:24px;font-weight:800;font-family:var(--f-display)}
+#cfSet .x{width:40px;height:40px;border-radius:50%;border:none;background:var(--sunk);color:var(--fg);font-size:15px;cursor:pointer}
+#cfSet .gh{font-size:12.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 4px 0}
+#cfSet .grp{background:var(--surface);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+#cfSet .grp>.row,#cfSet .grp>.li,#cfSet .grp>a.li{border-top:1px solid var(--line)}#cfSet .grp>:first-child{border-top:none}
+#cfSet .row{display:flex;flex-direction:column;gap:8px;padding:12px 14px}#cfSet .row>span{font-size:14.5px;font-weight:600;color:var(--fg)}
+#cfSet .kv{display:flex!important;flex-direction:row!important;text-align:left!important;justify-content:space-between;align-items:center;gap:10px;padding:13px 14px;font-size:14.5px;border-top:1px solid var(--line)}#cfSet .grp>.kv:first-child{border-top:none}
+#cfSet .kv>span:first-child{color:var(--fg)}#cfSet .kv>:last-child{color:var(--muted);text-align:right;font-weight:600}
+#cfSet .li{display:flex;width:100%;justify-content:space-between;align-items:center;gap:10px;min-height:48px;padding:12px 14px;border:none;border-radius:0;background:transparent;color:var(--fg);font:inherit;font-size:14.5px;font-weight:600;text-align:left;text-decoration:none;cursor:pointer}
+#cfSet .li i{font-style:normal;color:var(--muted);font-size:20px;line-height:1}#cfSet .li:active{background:var(--sunk)}
+#cfSet .li.bad{color:var(--bad);justify-content:center}
 #cfSet small{font-size:12.5px;color:var(--muted)}
+#cfSet .ft{display:flex;justify-content:center;padding:6px 0 0;text-align:center}
+#cfSet .prof{display:flex;align-items:center;gap:14px;background:var(--surface);border-radius:16px;padding:16px 14px;box-shadow:var(--shadow);margin-top:4px}
+#cfSet .av{width:52px;height:52px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-size:22px;font-weight:800}
+#cfSet .prof b{display:block;font-size:17px}#cfSet .prof span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+#cfSet .prof span.warn{color:var(--warn);font-weight:700}
 #cfSet .seg{display:flex;flex-wrap:wrap;gap:6px}
-#cfSet .seg button{flex:1 1 0;min-width:88px;min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--sunk);color:var(--fg);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:8px 10px}
+#cfSet .seg button{flex:1 1 0;min-width:88px;min-height:42px;border-radius:12px;border:1px solid var(--line);background:var(--sunk);color:var(--fg);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:8px 10px}
 #cfSet .seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 #cfSet .seg button:disabled{opacity:.45;cursor:not-allowed}
 #cfSet .seg button:focus-visible,#cfSet .x:focus-visible,#cfSet .rs:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -816,8 +834,6 @@ body{transition:padding-right .55s cubic-bezier(.2,.8,.2,1)}
 #cfSet .sw-baru{background:#0f141c}#cfSet .sw-baru i:nth-child(1){background:#2962ff}#cfSet .sw-baru i:nth-child(2){background:#26a69a}#cfSet .sw-baru i:nth-child(3){background:#ef5350}
 #cfSet .sw-lama{background:#ebeae5}#cfSet .sw-lama i:nth-child(1){background:#4f6f5c}#cfSet .sw-lama i:nth-child(2){background:#2f8455}#cfSet .sw-lama i:nth-child(3){background:#c4473f}
 #cfSet .sw-neon{background:#05030f}#cfSet .sw-neon i:nth-child(1){background:#5cf2ff;box-shadow:0 0 8px #5cf2ff}#cfSet .sw-neon i:nth-child(2){background:#ff2ec4;box-shadow:0 0 8px #ff2ec4}#cfSet .sw-neon i:nth-child(3){background:#b98cff;box-shadow:0 0 8px #b98cff}
-#cfSet .ft{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:14px}
-#cfSet .rs{min-height:44px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--fg);font:inherit;font-size:13px;font-weight:600;padding:8px 14px;cursor:pointer}
 /* kepala halaman di HP: nama ChartFlow yang mengalah (terpotong …), tombol akun/cari/⚙️ tetap satu baris (22 Nov 2026) */
 @media (max-width:600px){.topbar .brand{flex:1 1 0!important;min-width:0!important}.topbar .brand>div{min-width:0;overflow:hidden}.topbar .brand b,.topbar .brand .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
 </style>

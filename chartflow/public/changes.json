@@ -1,6 +1,11 @@
 [
  {
   "d": "2026-11-22",
+  "t": "⚙️ Pengaturan & akun jadi satu",
+  "x": "Data akun (nama, masa berlaku, perangkat, alarm harga, keluar) kini ada di dalam ⚙️ Pengaturan yang disusun berkelompok seperti pengaturan aplikasi HP, di halaman ID, US, dan Kripto."
+ },
+ {
+  "d": "2026-11-22",
   "t": "🕘 Jam bursa di aplikasi Android",
   "x": "Aplikasi ChartFlow kini menampilkan jam WIB dan status bursa di bawah kepala halaman: BEI (sesi, istirahat, libur), bursa AS dalam WIB (pra-pasar, buka, pasca-pasar, libur), dan kripto yang buka 24 jam; tombol di kepala halaman HP juga tidak lagi turun ke baris kedua."
  },
