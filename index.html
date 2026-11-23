@@ -218,6 +218,7 @@ input[type=number],input[type=search],input[type=text]{font:inherit;font-size:14
 
 .status{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;font-size:14px}
 .status .dot{width:9px;height:9px;border-radius:50%;background:var(--good);display:inline-block;margin-right:6px}
+.status .stale{flex:1 0 100%;display:block;font-size:13px;line-height:1.55;color:var(--fg);background:var(--warn-soft);border-radius:10px;padding:8px 12px}
 .status .dot.old{background:var(--warn)} .status .dot.none{background:var(--bad)}
 .status b{font-weight:600}
 
@@ -1022,6 +1023,24 @@ function summaryOf(o){
   return {by,pass};
 }
 
+// ---------- data tertinggal (peringatan bila update harian telat) ----------
+/* LIBUR = salinan HOLIDAYS di scripts/notify_telegram.py — perbarui bersamaan tiap akhir tahun */
+window.BEI_LIBUR=("2026-01-01 2026-01-16 2026-02-16 2026-02-17 2026-03-18 2026-03-19 2026-03-20 2026-03-23 2026-03-24 2026-04-03 "+
+  "2026-05-01 2026-05-14 2026-05-15 2026-05-27 2026-05-28 2026-06-01 2026-06-16 2026-08-17 2026-08-25 2026-12-24 2026-12-25 2026-12-31 "+
+  "2027-01-01 2027-01-05 2027-02-05 2027-03-08 2027-03-09 2027-03-10 2027-03-11 2027-03-12 2027-03-15 2027-03-25 2027-03-26 "+
+  "2027-05-06 2027-05-17 2027-05-18 2027-05-19 2027-05-20 2027-06-01 2027-08-17 2027-12-24 2027-12-31").split(" ");
+function staleInfo(priceDate){
+  /* Harga penutupan hari bursa D normalnya sudah masuk sebelum D+1 pukul 05.00 WIB (update sore GitHub biasa baru jalan dini hari).
+     Lewat itu dan tanggal harga masih lebih tua → data tertinggal. Mengembalikan {exp, n} atau null. */
+  if(!priceDate) return null;
+  const iso=t=>new Date(t).toISOString().slice(0,10);
+  const trading=t=>{ const wd=new Date(t).getUTCDay(); return wd>0&&wd<6&&window.BEI_LIBUR.indexOf(iso(t))<0; };
+  let t=Date.now()+7*36e5-29*36e5; t=Date.UTC(new Date(t).getUTCFullYear(),new Date(t).getUTCMonth(),new Date(t).getUTCDate());
+  for(let i=0;i<14&&!trading(t);i++) t-=864e5;
+  const exp=iso(t); if(exp<=priceDate) return null;
+  let n=0; for(let d=Date.UTC(+priceDate.slice(0,4),+priceDate.slice(5,7)-1,+priceDate.slice(8,10))+864e5; d<=t; d+=864e5) if(trading(d)) n++;
+  return n>0?{exp,n}:null;
+}
 // ---------- render: status & tabs ----------
 function renderStatus(){
   const el=$("status");
@@ -1030,8 +1049,10 @@ function renderStatus(){
   const wib=d.toLocaleString("id-ID",{timeZone:"Asia/Jakarta",weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"});
   const mk=DATA.market||{};
   const it=DATA.intraday;
+  const stale=it?null:staleInfo(DATA.priceDate);
   el.innerHTML=(it?`<span><span class="dot old"></span><b>Harga sementara</b> · ${tgl(it.date,1)} pukul ${esc(it.wib)} WIB · <span class="note">sinyal metode dari penutupan ${tgl(DATA.priceDate,1)}; final setelah bursa tutup</span></span>`
-    :`<span><span class="dot ${ageH>80?"old":""}"></span>Diperbarui <b>${esc(wib)} WIB</b> · harga penutupan ${tgl(DATA.priceDate,1)}</span>`)+`
+    :`<span><span class="dot ${ageH>80||stale?"old":""}"></span>Diperbarui <b>${esc(wib)} WIB</b> · harga penutupan ${tgl(DATA.priceDate,1)}</span>`)
+    +(stale?`<span class="stale" role="alert">⚠️ Data tertinggal ${stale.n} hari bursa: harga penutupan terbaru yang tersedia ${tgl(DATA.priceDate,1)}, seharusnya sudah ${tgl(stale.exp,1)}. Pembaruan otomatis sedang telat; angka di bawah belum memuat hari terbaru.</span>`:"")+`
     <span class="num">${rows.length} saham · ${(DATA.liqCount||{}).L||0} likuid</span>
     <span>IHSG: <b class="${mk.ok?"ok":mk.ok===false?"no":""}">${mk.ok?"naik":mk.ok===false?"tertekan":"–"}</b></span>
     ${DATA.started?`<span class="note">Sinyal investor dicatat sejak ${tgl(DATA.started,1)}</span>`:""}
@@ -3414,7 +3435,7 @@ window.addEventListener("online",()=>autoCheck(true));
     return `<div class="kpi">${k1}
       <div><small>${CR?"Koin":"Saham"} dalam tren naik</small><b>${b==null?"–":Math.round(b)+"%"}</b><small>di atas rata-rata 200 hari</small></div>
       <div><small>${esc(BUY())} hari ini</small><b>${nb}</b><small>dari ${list.length} ${UNIT} di daftar</small></div>
-      <div class="sg"><small>Data diperbarui</small><b>${esc(when.replace(/^(\w+),?\s*/,(m,w)=>w+" "))}</b><small>${it?"harga sementara":CR?"diperbarui tiap jam":"harga penutupan "+tgl(DATA.priceDate,1)}</small></div></div>`; }
+      <div class="sg"><small>Data diperbarui</small><b>${esc(when.replace(/^(\w+),?\s*/,(m,w)=>w+" "))}</b><small>${it?"harga sementara":CR?"diperbarui tiap jam":"harga penutupan "+tgl(DATA.priceDate,1)}</small>${!it&&!CR&&MK==="id"&&staleInfo(DATA.priceDate)?`<small style="display:block;margin-top:4px;font-weight:700">⚠️ tertinggal ${staleInfo(DATA.priceDate).n} hari bursa</small>`:""}</div></div>`; }
   let lastKey="", entered=false;
   function renderHero(){
     const g=typeof groupOf==="function"&&typeof tab!=="undefined"?groupOf(tab):{id:"home",name:"Beranda"}, home=g.id==="home"||g.id==="summary";
@@ -3791,14 +3812,11 @@ fetch("data/stocks.json",{cache:"no-cache"}).then(r=>{ if(!r.ok) throw new Error
 /* Jam bursa BEI + status sesi di kepala aplikasi, hanya di APK ChartFlow (22 Nov 2026).
    Jadwal pasar reguler BEI: Sen–Kam sesi 1 09.00–12.00, sesi 2 13.30–15.49.59; Jumat 09.00–11.30 & 14.00–15.49.59;
    pra-pembukaan 08.45, pra-penutupan 15.50–16.00, pasca-penutupan 16.01–16.15.
-   LIBUR = salinan HOLIDAYS di scripts/notify_telegram.py — perbarui bersamaan tiap akhir tahun. */
+   Daftar libur: window.BEI_LIBUR (skrip utama). */
 (function(){
   if(!/ChartFlowApp/.test(navigator.userAgent)&&!/[?&]jam=1\b/.test(location.search)) return;
   var bar=document.querySelector("header.topbar"); if(!bar||document.getElementById("bursaJam")) return;
-  var LIBUR=("2026-01-01 2026-01-16 2026-02-16 2026-02-17 2026-03-18 2026-03-19 2026-03-20 2026-03-23 2026-03-24 2026-04-03 "+
-    "2026-05-01 2026-05-14 2026-05-15 2026-05-27 2026-05-28 2026-06-01 2026-06-16 2026-08-17 2026-08-25 2026-12-24 2026-12-25 2026-12-31 "+
-    "2027-01-01 2027-01-05 2027-02-05 2027-03-08 2027-03-09 2027-03-10 2027-03-11 2027-03-12 2027-03-15 2027-03-25 2027-03-26 "+
-    "2027-05-06 2027-05-17 2027-05-18 2027-05-19 2027-05-20 2027-06-01 2027-08-17 2027-12-24 2027-12-31").split(" ");
+  var LIBUR=window.BEI_LIBUR||[]; // daftar libur ada di skrip utama (BEI_LIBUR)
   var HARI=["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
   var st=document.createElement("style");
   st.textContent=".topbar{flex-wrap:wrap}#bursaJam{flex:1 0 100%;order:9;display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);"+

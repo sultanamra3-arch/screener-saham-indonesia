@@ -1,5 +1,10 @@
 [
  {
+  "d": "2026-11-23",
+  "t": "⚠️ Peringatan data tertinggal",
+  "x": "Bila pembaruan harian terlambat, halaman saham Indonesia kini memberi tahu berapa hari bursa data tertinggal dan tanggal harga penutupan yang sedang tampil."
+ },
+ {
   "d": "2026-11-22",
   "t": "⚙️ Pengaturan & akun jadi satu",
   "x": "Data akun (nama, masa berlaku, perangkat, alarm harga, keluar) kini ada di dalam ⚙️ Pengaturan yang disusun berkelompok seperti pengaturan aplikasi HP, di halaman ID, US, dan Kripto."

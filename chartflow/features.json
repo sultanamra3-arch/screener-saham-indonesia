@@ -228,6 +228,12 @@
    "mention": [
     "status BEI"
    ]
+  },
+  {
+   "name": "Peringatan data tertinggal",
+   "mention": [
+    "data tertinggal"
+   ]
   }
  ],
  "removed": [
