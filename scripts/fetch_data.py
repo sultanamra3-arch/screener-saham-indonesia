@@ -78,17 +78,43 @@ def universe() -> dict[str, str]:
 
     q = EquityQuery("eq", ["exchange", "JKT"])
     names, off = {}, 0
-    while off < 2000:
-        r = yf.screen(q, offset=off, size=250, sortField="intradaymarketcap", sortAsc=False)
-        quotes = (r or {}).get("quotes") or []
-        for x in quotes:
-            s = str(x.get("symbol", ""))
-            if s.endswith(".JK") and CODE.match(s[:-3]):
-                names[s[:-3]] = x.get("longName") or x.get("shortName") or s[:-3]
-        if len(quotes) < 250:
-            break
-        off += 250
-        time.sleep(1)
+    try:
+        while off < 2000:
+            r = None
+            for attempt in range(4):  # Yahoo sering menolak sesaat (401/429): coba lagi dengan jeda
+                try:
+                    r = yf.screen(q, offset=off, size=250, sortField="intradaymarketcap", sortAsc=False)
+                    break
+                except Exception as e:
+                    log(f"  Yahoo screener gagal (percobaan {attempt + 1}/4): {e}")
+                    if attempt == 3:
+                        raise
+                    time.sleep(8 * (attempt + 1))
+            quotes = (r or {}).get("quotes") or []
+            for x in quotes:
+                s = str(x.get("symbol", ""))
+                if s.endswith(".JK") and CODE.match(s[:-3]):
+                    names[s[:-3]] = x.get("longName") or x.get("shortName") or s[:-3]
+            if len(quotes) < 250:
+                break
+            off += 250
+            time.sleep(1)
+    except Exception as e:
+        # Cadangan: pakai daftar saham dari data terakhir supaya harga tetap diperbarui
+        old = {}
+        try:
+            for s in json.loads(OUT_FILE.read_text()).get("stocks", []):
+                t = str(s.get("ticker", ""))
+                if CODE.match(t):
+                    old[t] = s.get("company") or t
+        except Exception:
+            pass
+        if len(old) < 400:
+            raise
+        msg = f"Yahoo screener gagal ({e}); memakai daftar {len(old)} saham dari data terakhir"
+        log("  " + msg)
+        WARN.append(msg)
+        return old
     log(f"Yahoo screener: {len(names)} saham")
     return names
 
