@@ -8,6 +8,10 @@ on:
     # Menit tidak bulat: jadwal :00/:30 sering ditunda/dilewati GitHub saat antrean padat.
     # Jam istirahat dilewati (scripts/intraday_gate.py), kecuali sekali untuk ringkasan siang.
     - cron: "13,43 2-8 * * 1-5"
+    # Cadangan penutupan: GitHub sering menjatuhkan jadwal 10:43 UTC. Tiap cadangan murah (~20 detik) karena
+    # scripts/daily_gate.py melewatkan update bila penutupan terakhir BEI sudah masuk ke data.
+    - cron: "23 11,12,14,17,20 * * 1-5"
+    - cron: "23 0,3 * * 2-6"
   workflow_dispatch:
     inputs:
       siang:
@@ -46,6 +50,10 @@ jobs:
       - name: Cek jam bursa (update 30 menit)
         if: env.INTRADAY == '1'
         run: python scripts/intraday_gate.py | tee -a "$GITHUB_ENV"
+
+      - name: Cek apakah penutupan terakhir sudah masuk (jadwal cadangan)
+        if: env.INTRADAY != '1'
+        run: python scripts/daily_gate.py | tee -a "$GITHUB_ENV"
 
       - name: Ambil data dan hitung 7 metode
         if: env.SKIP != '1'
