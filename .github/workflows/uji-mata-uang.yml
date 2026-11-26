@@ -1,0 +1,22 @@
+name: Uji konversi mata uang (baca saja)
+
+on:
+  push:
+    branches: [fix/mata-uang-laporan-keuangan]
+
+permissions:
+  contents: read
+
+jobs:
+  uji:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python scripts/uji_mata_uang.py
