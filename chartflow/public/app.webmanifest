@@ -2,7 +2,7 @@
   "id": "/app/",
   "name": "ChartFlow Screener Saham",
   "short_name": "ChartFlow",
-  "description": "Screener saham BEI dan Wall Street dengan 7 metode investor dan trader.",
+  "description": "Screener saham BEI dan Wall Street dengan 8 metode investor dan trader.",
   "lang": "id",
   "start_url": "/app/id/",
   "scope": "/",

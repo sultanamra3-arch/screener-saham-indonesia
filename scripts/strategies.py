@@ -1,5 +1,5 @@
 """
-Tujuh metode versi asli untuk saham BEI: kriteria, aturan masuk, aturan keluar, dan alasannya.
+Delapan metode (termasuk Quality Value, uji coba) untuk saham BEI: kriteria, aturan masuk, aturan keluar, dan alasannya.
 
 Penyesuaian pasar Indonesia: arah pasar dari IHSG, biaya transaksi (beli 0,15%, jual 0,25%) masuk
 uji mundur, harga patokan dibulatkan ke fraksi harga BEI, kriteria khusus bank, dan riwayat laba
