@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <script>document.addEventListener("gesturestart",e=>e.preventDefault(),{passive:false});</script>
 <title>Screener Saham Indonesia</title>
-<meta name="description" content="Saring semua saham Bursa Efek Indonesia dengan 7 metode investor dan trader, lengkap dengan harga beli, jual, dan alasannya.">
+<meta name="description" content="Saring semua saham Bursa Efek Indonesia dengan 7 metode investor dan trader plus Quality Value (uji coba), lengkap dengan harga beli, jual, dan alasannya.">
 <link rel="manifest" href="/screener-saham/manifest.webmanifest">
 <meta name="theme-color" content="#1d4ed8">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
@@ -53,7 +53,7 @@
 "Layak beli hari ini":"Buy-eligible today","Data diperbarui":"Data updated","Diperbarui":"Updated","harga sementara":"intraday price","Harga sementara":"Intraday price","diperbarui tiap jam":"updated hourly",
 "Harga terakhir":"Last price","Likuid":"Liquid","+ Kurang likuid":"+ Less liquid","Semua saham":"All stocks","Hanya syariah":"Sharia only","Semua sektor":"All sectors","Semua kategori":"All categories",
 "Memenuhi syarat":"Qualifies","memenuhi syarat":"qualify","Layak beli":"Buy-eligible","layak beli":"buy-eligible","Di Portofolio":"In portfolio","Sinyal jual":"Sell signal","Tanpa sinyal":"No signal",
-"Gabungan 7 metode":"Combined 7 methods","Kesehatan pasar":"Market health","Memenuhi syarat per metode":"Qualifying per method","Layak beli per metode":"Buy-eligible per method",
+"Gabungan semua metode":"All methods combined","Kesehatan pasar":"Market health","Memenuhi syarat per metode":"Qualifying per method","Layak beli per metode":"Buy-eligible per method",
 "Satu saham bisa lolos lebih dari satu metode":"One stock can pass more than one method","Sektor, 1 bulan":"Sectors, 1 month","Median perubahan harga per sektor":"Median price change per sector",
 "Jarak harga dari rata-rata 200 hari":"Distance from the 200-day average","Jumlah saham per rentang 10%":"Number of stocks per 10% range","Memuat grafik…":"Loading chart…",
 "Harga penutupan harian":"Daily closing price","di bawah 40%: pasar lesu":"below 40%: weak market",
@@ -62,7 +62,7 @@
 "Jan":"Jan","Feb":"Feb","Mar":"Mar","Apr":"Apr","Mei":"May","Jun":"Jun","Jul":"Jul","Agu":"Aug","Sep":"Sep","Okt":"Oct","Nov":"Nov","Des":"Dec",
 "💡 Keterangan":"💡 Notes","💡 Saran":"💡 Suggestion","informasi edukasi, bukan ajakan membeli atau menjual":"educational information, not a recommendation to buy or sell",
 "hitungan otomatis, bukan nasihat keuangan pribadi":"automatic calculation, not personal financial advice",
-"Sinyal 7 metode per saham":"7-method signals per stock","Tampilkan":"Show","Lolos kriteria ≥ 3 metode":"Passes criteria of ≥ 3 methods","Terlambat":"Too late","Hindari":"Avoid","Tunggu":"Wait",
+"Sinyal tiap metode per saham":"Signals per stock by method","Tampilkan":"Show","Lolos kriteria ≥ 3 metode":"Passes criteria of ≥ 3 methods","Terlambat":"Too late","Hindari":"Avoid","Tunggu":"Wait",
 "bingkai hijau = lolos semua kriteria":"green frame = passes all criteria","Harga":"Price","Status per metode":"Status per method","Sinyal aktif":"Active signals","Lolos":"Passed","Transaksi/hari":"Value/day",
 "Memenuhi syarat:":"Qualifies:","Layak beli:":"Buy-eligible:","Hindari/jual:":"Avoid/sell:","syariah":"sharia","di luar area beli":"outside buy area","Ketuk saham untuk penjelasan lengkapnya.":"Tap a stock for the full explanation.",
 "Enter = buka saham teratas · Esc = tutup":"Enter = open top result · Esc = close","Tanya Flo":"Ask Flo","Asisten ChartFlow":"ChartFlow assistant","Kondisi pasar hari ini":"Market condition today",
@@ -107,7 +107,7 @@
     [/^(\d+) saham · (\d+) likuid$/,"$1 stocks · $2 liquid"],[/^(\d+) koin$/,"$1 coins"],
     [/^harga penutupan (.+)$/,"closing price $1"],[/^· harga penutupan (.+)$/,"· closing price $1"],
     [/^(Senin|Selasa|Rabu|Kamis|Jumat|Sabtu|Minggu)\b(.*)$/,function(m,d,r){return ({Senin:"Monday",Selasa:"Tuesday",Rabu:"Wednesday",Kamis:"Thursday",Jumat:"Friday",Sabtu:"Saturday",Minggu:"Sunday"})[d]+r.replace(" pukul "," at ");}],
-    [/^(Value|Growth|Quality|Dividen|CAN SLIM|Momentum|Swing): (Memenuhi syarat|Layak beli|Tunggu|Terlambat|Hindari)$/,function(m,a,b){return (a==="Dividen"?"Dividend":a)+": "+(EN[b]||b);}],
+    [/^(Value|Growth|Quality Value|Quality|Dividen|CAN SLIM|Momentum|Swing): (Memenuhi syarat|Layak beli|Tunggu|Terlambat|Hindari)$/,function(m,a,b){return (a==="Dividen"?"Dividend":a)+": "+(EN[b]||b);}],
     [/^(.+) \((\d+) saham\)$/,"$1 ($2 stocks)"]
   ];
   var ORIG=new WeakMap(), MINE=new WeakMap(), AO=new WeakMap(), ATTRS=["placeholder","aria-label","title"];
@@ -906,6 +906,12 @@ const M = [
   exit:["Jual bila kualitas memburuk: ROIC < 12%, margin kotor < 35%, atau konversi kas < 60% (bank: ROE < 12%).","Jual bila harga sangat mahal: FCF yield < 1,5% (bank: P/B > 4,5).","Tidak ada stop loss dan target harga."],
   why:"Prinsip Smith: beli perusahaan bagus, jangan membayar terlalu mahal, lalu jangan lakukan apa-apa. Bisnis yang terus menghasilkan pengembalian tinggi akan menggandakan nilainya sendiri, jadi menjual karena sudah untung justru merugikan. ROIC dipakai, bukan ROE, karena ROE bisa membesar hanya karena utang atau buyback.",
   cols:[["roic","ROIC",1],["gm","Margin kotor",1],["pfcf","P/FCF"],["de","D/E"]]},
+ {id:"qvalue",abbr:"QV",name:"Quality Value",title:"Quality Value · Uji coba",who:"Buffett",kind:"inv",trial:true,
+  desc:"Uji coba: bisnis berkualitas dengan harga wajar. Angka batasnya pilihan ChartFlow, bukan rumus resmi Buffett.",
+  entry:["Bukan bank atau keuangan. ROE terkini ≥ 15% dan utang/ekuitas 0 sampai 0,5.","Laba per saham positif tiap tahun (≥ 4 tahun data) dan tahun terakhir lebih tinggi dari tahun pertama.","Konversi kas ≥ 80% dan FCF yield ≥ 5%. Data kurang berarti tidak lolos.","Periksa sendiri (tidak dinilai otomatis): moat, kualitas manajemen, dan apakah Anda memahami bisnisnya."],
+  exit:["Peringatan evaluasi bila ROE < 12%, utang/ekuitas > 1 (atau ekuitas negatif), atau laba tahunan rugi.","Tidak ada stop loss dan target harga."],
+  why:"ROE hanya angka terkini, laba hanya ±4 tahun, dan metode ini belum diuji dengan data masa lalu. Karena masih uji coba, hasilnya tidak ikut menentukan Saran dan daftar kandidat.",
+  cols:[["roe","ROE",1],["de","D/E"],["pfcf","P/FCF"],["pe","P/E"]]},
  {id:"dividend",abbr:"D",name:"Dividen",title:"Dividend investing",who:"Dividend Aristocrats, Chowder rule",kind:"inv",
   desc:"Penghasilan dari dividen yang besar, terus naik, dan aman dibayar dari laba.",
   entry:["Yield ≥ 4% (di atas bunga deposito) dan dividen naik dalam 5 tahun terakhir.","Chowder rule: yield + pertumbuhan dividen 5 tahun ≥ 12 (yield ≥ 3%) atau ≥ 15.","Payout 0–70% dan laba tidak menyusut."],
@@ -981,6 +987,7 @@ function levels(mid, st){
   if(mid==="value"){ if(lv.buy) p.push("beli ≤ "+usd(lv.buy)); if(lv.target&&(st.raw===undefined||st.own)) p.push("target "+usd(lv.target)); else if(st.raw!==undefined&&st.s==="buy") p.push("target +50% dari harga beli Anda"); }
   else if(mid==="growth"){ if(lv.buy) p.push("beli ≤ "+usd(lv.buy)); if(lv.target) p.push("jual ≥ "+usd(lv.target)); }
   else if(mid==="quality"){ if(lv.buy) p.push("beli ≤ "+usd(lv.buy)); if(lv.sell) p.push("mahal ≥ "+usd(lv.sell)); }
+  else if(mid==="qvalue"){ if(lv.buy) p.push("harga wajar uji coba ≤ "+usd(lv.buy)); }
   else if(mid==="dividend"){ if(lv.buy) p.push("beli ≤ "+usd(lv.buy)); }
   else if(mid==="canslim"){ if(lv.buy) p.push("beli "+usd(lv.buy)); if(lv.stop) p.push("stop "+usd(lv.stop)); if(lv.target) p.push("target "+usd(lv.target)); }
   else if(mid==="swing"){ if(lv.buy) p.push("beli "+usd(lv.buy)); if(lv.exit) p.push("jual > "+usd(lv.exit)); }
@@ -1084,7 +1091,8 @@ function renderTabs(){
   }).join("");
 }
 const ltYrs=()=>LT&&LT.from?`${LT.from.slice(0,4)}–${LT.to.slice(0,4)}`:"";
-function ltInv(mid){ if(!LT||!["value","growth","quality","dividend"].includes(mid)) return "";
+function ltInv(mid){ if(!LT||!["value","growth","quality","qvalue","dividend"].includes(mid)) return "";
+  if(mid==="qvalue") return `<div class="rules"><h3>Uji mundur jangka panjang</h3><p class="note">Uji coba, belum diuji dengan data masa lalu. Sinyalnya baru dicatat maju sejak metode ini dipasang.</p></div>`;
   const D=LT.div;
   if(mid==="dividend"&&D) return `<div class="rules"><h3>Uji mundur ${D.from}–${D.to} (aturan utama)</h3><div class="statgrid">
     <div>Per tahun<b class="ok">${pct(D.cagr,1)}</b></div><div>Rata-rata saham likuid<b>${pct(D.bench,1)}</b></div>
@@ -1106,7 +1114,8 @@ function methodProof(mid){
     if(good&&L.avg>=1) return {r:0,c:"buy",ic:"✅",s:`${pct(L.avg,1)}/transaksi`,l:`rata-rata ${pct(L.avg,2)} per transaksi setelah biaya, ${yr}`};
     return {r:2,c:"hold",ic:"😐",s:good?"untung tipis":"tak konsisten",l:`rata-rata ${pct(L.avg,2)} per transaksi setelah biaya, ${yr}`}; }
   if(mid==="dividend"&&LT&&LT.div) return {r:1,c:"buy",ic:"✅",s:"tahan saat jatuh",l:`${pct(LT.div.cagr,1)} per tahun; turun terdalam 2021–26 ${nf(LT.div.dd2[0],0)}% dibanding ${nf(LT.div.dd2[1],0)}% rata-rata saham`};
-  if(["value","growth","quality","dividend"].includes(mid)) return {r:4,c:"wait",ic:"📒",s:"dicatat maju",l:`belum bisa diuji karena riwayat laporan keuangan pendek; sinyal dicatat sejak ${DATA&&DATA.started?tgl(DATA.started,1):"Oktober 2026"}`};
+  if(mid==="qvalue") return {r:4,c:"wait",ic:"🧪",s:"uji coba",l:"belum diuji dengan data masa lalu; sinyal baru dicatat sejak metode ini dipasang"};
+  if(["value","growth","quality","qvalue","dividend"].includes(mid)) return {r:4,c:"wait",ic:"📒",s:"dicatat maju",l:`belum bisa diuji karena riwayat laporan keuangan pendek; sinyal dicatat sejak ${DATA&&DATA.started?tgl(DATA.started,1):"Oktober 2026"}`};
   return null;
 }
 const proofRank=id=>id==="screen"?8:id==="uji"?9:((methodProof(id)||{r:7}).r);
@@ -1230,7 +1239,7 @@ function dashHTML(list){
   const nB=S.filter(b=>b.buy.length).length, nH=S.filter(b=>!b.buy.length&&b.hold.length).length, nS=S.filter(b=>!b.buy.length&&!b.hold.length&&b.sell.length).length, nN=S.length-nB-nH-nS;
   const parts=[[(typeof ST!=="undefined"&&ST.buy)||"Layak beli",nB,CB],["Di Portofolio",nH,C1],["Sinyal jual",nS,CS],["Tanpa sinyal",nN,"var(--d-mid)"]], tot=S.length||1, R=58, Cc=2*Math.PI*R;
   let acc=0; const ring=parts.map(([,v,c])=>{ const len=v/tot*Cc, l2=Math.max(0,len-(v?2:0)); const s=`<circle cx="75" cy="75" r="${R}" style="fill:none;stroke:${c};stroke-width:20px" stroke-dasharray="${l2.toFixed(2)} ${(Cc-l2).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}"><title>${v}</title></circle>`; acc+=len; return v?s:""; }).join("");
-  out.push(`<div class="dcard w4"><div class="dh"><div><b>Status ${S.length} saham hari ini</b><small>Gabungan 7 metode</small></div></div>
+  out.push(`<div class="dcard w4"><div class="dh"><div><b>Status ${S.length} saham hari ini</b><small>Gabungan semua metode</small></div></div>
     <div class="ddon"><div class="ring"><svg viewBox="0 0 150 150" role="img" aria-label="Sebaran status saham"><g transform="rotate(-90 75 75)">${ring}</g></svg><div><span><b>${nB}</b>${esc(((typeof ST!=="undefined"&&ST.buy)||"Layak beli").toLowerCase())}</span></div></div>
     <ul>${parts.map(([t,v,c])=>`<li><i style="background:${c}"></i><span>${t}</span><b>${v}</b><em>${nf(v/tot*100,0)}%</em></li>`).join("")}</ul></div></div>`);
 
@@ -1282,7 +1291,7 @@ function renderSummary(box){
   const E=(DATA&&DATA.etf)||{}, ek=Object.keys(E).filter(k=>k!=="IHSG"&&E[k].perf1y!=null).slice(0,3);
   const etfNote=IS_ID?(E.IHSG&&E.IHSG.perf1y!=null?`<p class="note">Pembanding: IHSG ${pct(E.IHSG.perf1y)} dalam setahun. ETF di BEI umumnya sepi transaksi, jadi membeli saham pilihan atau reksa dana indeks sering lebih praktis.</p>`:"")
     :(ek.length?`<p class="note">Cara paling sederhana tetap membeli indeks: ${ek.map(k=>`${esc(k)} ${pct(E[k].perf1y)}`).join(" · ")} dalam setahun. Bila tidak sempat memilih saham, ini pilihan dengan bukti terkuat.</p>`:"");
-  box.innerHTML=homeTop()+dashHTML(filtered())+saranBox(sm.html+candHtml+etfNote)+`<div class="rhead"><div class="l"><h2>Sinyal 7 metode per saham</h2>
+  box.innerHTML=homeTop()+dashHTML(filtered())+saranBox(sm.html+candHtml+etfNote)+`<div class="rhead"><div class="l"><h2>Sinyal tiap metode per saham</h2>
       <p class="note">${ixFilter==="L"?"Saham likuid saja. ":""}${counts.buy} saham layak beli${counts.hold?`, ${counts.hold} ada di Portofolio Anda`:""}${counts.sell?`, ${counts.sell} punya sinyal jual (hindari)`:""}. Klik baris untuk alasan, harga patokan, dan kriteria tiap metode.</p></div>
       <label for="fSel">Tampilkan <select id="fSel">${[["","Semua saham"],["buy",`Layak beli (${counts.buy})`],["hold",`Di Portofolio (${counts.hold})`],["sell",`Sinyal jual (${counts.sell})`],["pass3","Lolos kriteria ≥ 3 metode"]].map(([v,t])=>`<option value="${v}" ${v===fSel?"selected":""}>${t}</option>`).join("")}</select></label></div>
     <div class="legend">${M.map(m=>`<span><span class="mc wait" style="width:20px;height:18px">${m.abbr}</span>${esc(m.name)}</span>`).join("")}
@@ -1297,7 +1306,7 @@ function renderSummary(box){
       <td class="num">${usd(o.price)}</td>
       <td><div class="mcells">${M.map(m=>{const st=uv(o,m.id); return `<span class="mc ${st.s}${st.p?" pass":""}" title="${esc(m.name)}: ${st.s==="sell"&&!st.own?"Hindari":ST[st.s]}">${m.abbr}</span>`}).join("")}</div></td>
       <td style="font-size:13px">${act||'<span class="na">–</span>'}</td>
-      <td class="num">${x.pass}/7</td><td class="num">${o.adv!=null?"Rp"+nf(o.adv,1)+" M":"–"}</td></tr>`;
+      <td class="num">${x.pass}/${M.length}</td><td class="num">${o.adv!=null?"Rp"+nf(o.adv,1)+" M":"–"}</td></tr>`;
     return tr; }).join("")+moreRow(list.length);
 }
 
@@ -1869,7 +1878,7 @@ function renderCycles(box){
       <div class="mcard"><h4><span>Zona support</span></h4>${zoneRows(a.sup,"support")}</div>
       <div class="mcard"><h4><span>Zona resistance</span></h4>${zoneRows(a.res,"resistance")}</div>
       ${isIdx?rawanCard(a,sel)
-      :`${o?`<div class="mcard"><h4><span>Status di 7 metode</span></h4><div class="dl">${M.map(m=>{const st=uv(o,m.id);return `<div><span>${esc(m.name)}</span>${uchip(st)}</div>`}).join("")}</div></div>`:""}`}
+      :`${o?`<div class="mcard"><h4><span>Status di semua metode</span></h4><div class="dl">${M.map(m=>{const st=uv(o,m.id);return `<div><span>${esc(m.name)}</span>${uchip(st)}</div>`}).join("")}</div></div>`:""}`}
       ${isIdx?`<div class="mcard"><h4><span>Kalender 3 bulan</span></h4><div class="dl" style="max-height:320px;overflow:auto">${(a.events||[]).map(e=>`<div><span>${TYPE_ICON[e.type]||""} ${esc(e.what)}</span><span class="num">${tgl(e.d)}</span></div>`).join("")}</div></div>`:""}
       ${b?`<div class="mcard"><h4><span>Kesehatan pasar (${b.n} saham)</span></h4><div class="dl">
         <div><span>Di atas SMA200</span><span class="num ${b.above200>=50?"ok":"no"}">${nf(b.above200,1)}%</span></div>
@@ -1976,12 +1985,12 @@ function saranMarket(opt){
   const html=`<div class="sv"><div class="svh sv-${c}">${SV[c]} ${flag} ${title}</div><p style="margin:4px 0 0">${why}</p>${L.length?`<ul class="sl">${L.map(l=>`<li>${l}</li>`).join("")}</ul>`:""}${foot?`<p class="note" style="margin:6px 0 0">${foot}</p>`:""}</div>${opt&&opt.cyc&&cycleNote()?`<p class="note" style="margin-top:8px">${cycleNote()}</p>`:""}`;
   return {r,html,head:`<div class="sv"><div class="svh sv-${c}">${SV[c]} ${flag} ${title}</div><p style="margin:4px 0 0">${why}</p></div>`};
 }
-const MWHY={value:"harganya murah dibanding laba dan asetnya",growth:"labanya tumbuh cepat",quality:"bisnisnya berkualitas tinggi",dividend:"rajin membagi dividen",
+const MWHY={value:"harganya murah dibanding laba dan asetnya",growth:"labanya tumbuh cepat",quality:"bisnisnya berkualitas tinggi",qvalue:"bisnisnya berkualitas dengan harga wajar (uji coba)",dividend:"rajin membagi dividen",
   canslim:"sedang menanjak kuat dengan laba yang bagus",momentum:"termasuk yang paling kencang naiknya beberapa bulan ini",swing:"baru turun tajam dan biasanya memantul"};
 let PLAN_MEMO=null;
 function planFor(t){ if(!CYC||!CYC.watch) return null; if(!PLAN_MEMO||PLAN_MEMO.k!==CYC){ PLAN_MEMO={k:CYC,m:new Map(planList(Object.fromEntries(rows.map(o=>[o.ticker,o]))).list.map(x=>[x.t,x.pl]))}; } return PLAN_MEMO.m.get(t)||null; }
 function saranStock(o){
-  const by={buy:[],hold:[],sell:[]}; M.forEach(m=>{ const st=uv(o,m.id); if(by[st.s]) by[st.s].push(m); });
+  const by={buy:[],hold:[],sell:[]}; M.forEach(m=>{ const st=uv(o,m.id); if(!m.trial&&by[st.s]) by[st.s].push(m); });
   const own=owned(o.ticker), z=nearZones(o.ticker), p=o.price, reg=regime(), pl=planFor(o.ticker), L=[];
   const nm=a=>a.map(m=>m.name).join(", "), why=a=>{ const w=a.slice(0,2).map(m=>MWHY[m.id]).filter(Boolean); if(!w.length) return ""; const f=w[0][0].toUpperCase()+w[0].slice(1); return w[1]?`${f}, juga ${w[1]}`:f; };
   const sup=z&&z.s, res=z&&z.r;
@@ -2028,7 +2037,7 @@ function saranStock(o){
     if(trk.length&&trk.length===by.buy.length) L.push(`⚠️ Penilaian ${esc(nm(trk))} sedang sering salah, jadi jangan terlalu diandalkan.`);
     if(reg.k==="tertekan") L.push(SAFE?"⚠️ Kondisi pasar sedang lesu; risiko penurunan lanjutan lebih besar.":pick(["⚠️ Pasar sedang lesu, jadi jangan beli sekaligus.","⚠️ Pasar lagi turun: cicil saja, jangan langsung semua.","⚠️ Karena pasar lesu, beli sedikit dulu."],o.ticker+"r"));
   } else { c="n"; title=SAFE?"Belum memenuhi syarat metode mana pun.":pick(["Belum menarik. Pantau saja.","Belum ada alasan untuk membeli.","Belum masuk radar. Lewati dulu."],o.ticker);
-    L.push(`🔎 Belum ada satu pun dari 7 cara penilaian yang merekomendasikan${M.some(m=>uv(o,m.id).s==="late")?" (sinyal trading cepatnya sudah lewat)":""}.`);
+    L.push(`🔎 Belum ada satu pun dari 7 cara penilaian utama yang merekomendasikan${M.some(m=>uv(o,m.id).s==="late")?" (sinyal trading cepatnya sudah lewat)":""}.`);
     if(sup&&p) L.push(`📌 ${tip("Lantai harga","support")} terdekat: ${usd(sup.lo)}–${usd(sup.hi)}.`); }
   if(IS_ID&&o.liq&&o.liq!=="L") L.push(`⚠️ Saham ini ${o.liq==="K"?"kurang ramai":"sepi"} transaksinya: harga gampang digerakkan dan bisa susah dijual cepat.`);
   if(o.dq) L.push(`🧪 Ada angka yang janggal (${esc(o.dq)}), jadi sinyal yang terkait tidak dihitung dulu sampai datanya wajar lagi.`);
@@ -2040,7 +2049,7 @@ function saranBox(inner,short){
 }
 function candidates(){
   const r=regime(), inv=["value","growth","quality","dividend"];
-  const allow=r.k==="tertekan"?inv:M.map(m=>m.id).filter(id=>!badTrader().includes(id));
+  const allow=r.k==="tertekan"?inv:M.filter(m=>!m.trial).map(m=>m.id).filter(id=>!badTrader().includes(id));
   return filtered().map(o=>({o,b:allow.filter(id=>uv(o,id).s==="buy").length,f:allow.filter(id=>uv(o,id).fresh).length,p:M.filter(m=>mget(o,m.id).p).length}))
     .filter(x=>x.b>0).sort((a,b)=>b.b-a.b||b.p-a.p||(b.o.mcap||0)-(a.o.mcap||0)).slice(0,5);
 }
@@ -2054,7 +2063,7 @@ function toggleStar(t){ const s=stars(); s.has(t)?s.delete(t):s.add(t); store.se
 const starBtn = t => { const on=stars().has(t); return `<button type="button" class="star" data-star="${esc(t)}" aria-pressed="${on}" title="${on?"Hapus dari":"Tambah ke"} watchlist">${on?"★":"☆"}</button>`; };
 function allowedMethods(){
   const r=regime(), inv=["value","growth","quality","dividend"];
-  return r.k==="tertekan" ? inv : M.map(m=>m.id).filter(id=>!badTrader().includes(id));
+  return r.k==="tertekan" ? inv : M.filter(m=>!m.trial).map(m=>m.id).filter(id=>!badTrader().includes(id));
 }
 function sigOf(o, allow){
   const b=[], h=[];
@@ -2352,6 +2361,7 @@ function calcPlan(st){
 }
 function fillBtn(label,price,kind){ if(price==null||!isFinite(price)) return ""; return `<button type="button" class="fillb" data-fill="${kind}" data-v="${price}" title="${kind==="sup"?"Pakai sebagai harga beli; stop = batas jebolnya":kind==="entry"?"Pakai sebagai harga beli":kind==="stop"?"Pakai sebagai stop":"Pakai sebagai target"}">${label} ${usd(price)}</button>`; }
 const MKEY={value:o=>`P/E ${o.pe!=null?nf(o.pe,1):"–"} · P/B ${o.pb!=null?nf(o.pb,2):"–"}`,growth:o=>`P/E ${o.pe!=null?nf(o.pe,1):"–"}`,
+  qvalue:o=>`ROE ${o.roe!=null?nf(o.roe,1)+"%":"–"} · D/E ${o.de!=null?nf(o.de,2):"–"}`,
   quality:o=>[o.roic!=null?`ROIC ${nf(o.roic,1)}%`:o.roe!=null?`ROE ${nf(o.roe,1)}%`:"",o.gm?`margin kotor ${nf(o.gm,1)}%`:""].filter(Boolean).join(" · ")||"–",dividend:o=>`yield ${o.div!=null?nf(o.div,2)+"%":"–"} · payout ${o.payout!=null?nf(o.payout,0)+"%":"–"}`,
   canslim:o=>`RS ${o.rs!=null?nf(o.rs,0):"–"}`,momentum:o=>`peringkat ${o.momRank!=null?nf(o.momRank,0):"–"}`,swing:o=>`RSI(2) ${o.rsi2!=null?nf(o.rsi2,1):"–"}`};
 function stockPanel(t){
@@ -2378,7 +2388,7 @@ function stockPanel(t){
       <p class="note" style="margin:4px 0">S1, S2, S3 dihitung dari puncak terakhir${lad&&lad.pk.d?` (${usd(lad.pk.v)}, ${tgl(lad.pk.d)})`:""}, sama seperti di Watchlist; "tembus" = support yang sudah dilewati harga dan kini menjadi penghalang. S· = zona lemah, tidak dihitung. "Beli di sini" mengisi harga beli = batas atas zona, dan stop = sedikit di bawah zona.</p>`;
   }
   return `<div class="mcard" style="margin-top:12px"><h4><span>${esc(t)} · ${esc(o.company||"")}</span><span class="num">${usd(o.price)}</span></h4>
-    <div class="calcwrap" style="margin-top:0"><div><h3 style="margin:0 0 4px">Sinyal 7 metode</h3>${meth}</div><div><h3 style="margin:0 0 4px">Support &amp; resistance</h3>${sr}</div></div>
+    <div class="calcwrap" style="margin-top:0"><div><h3 style="margin:0 0 4px">Sinyal tiap metode</h3>${meth}</div><div><h3 style="margin:0 0 4px">Support &amp; resistance</h3>${sr}</div></div>
     <p class="note">Klik tombol harga untuk mengisi kalkulator. Klik nama metode untuk melihat syarat dan angkanya.</p></div>`;
 }
 function calcResult(st){
@@ -2668,7 +2678,7 @@ function renderSector(box){
     const list=[...R.list].sort((a,b)=>((b.perf3m??b.perf6m??-1e9)-(a.perf3m??a.perf6m??-1e9)));
     const posTxt=o=>{ const w=CYC&&CYC.watch&&CYC.watch.in[o.ticker]; if(!w) return '<span class="na">–</span>'; const rm=roomOf(o.ticker,w); return `<span class="st ${rm&&rm.ok?"buy":"hold"}">Di S${rm&&rm.lad?rm.lad.pos:1}</span>${rm&&!rm.ok?' <span class="note">ruang sempit</span>':""}`; };
     det=`<div class="rhead" style="margin-top:16px"><div class="l"><h2>${esc(R.name)}: ${R.n} saham</h2><p class="note">Diurutkan dari kenaikan 3 bulan terkuat. Dalam sektor yang kuat, saham terkuat di dalamnya biasanya memimpin.</p></div><button type="button" id="secClose">Tutup</button></div>
-      <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">1 bln</th><th class="num">3 bln</th><th class="num">6 bln</th><th>Tren</th><th>7 metode</th><th>Area support</th><th></th></tr></thead><tbody>
+      <div class="tablebox"><table><thead><tr><th>Saham</th><th class="num">Harga</th><th class="num">1 bln</th><th class="num">3 bln</th><th class="num">6 bln</th><th>Tren</th><th>Metode</th><th>Area support</th><th></th></tr></thead><tbody>
       ${list.slice(0,40).map(o=>`<tr class="row wrow" data-go="${esc(o.ticker)}" tabindex="0">${stockCell(o)}<td class="num">${usd(o.price)}</td>
         <td class="num ${o.perf1m>=0?"ok":"no"}">${pct(o.perf1m)}</td><td class="num ${o.perf3m>=0?"ok":"no"}">${pct(o.perf3m)}</td><td class="num ${o.perf6m>=0?"ok":"no"}">${pct(o.perf6m)}</td>
         <td>${typeof o.sma200!=="number"?'<span class="na">–</span>':o.sma200>0?'<span class="ok">naik</span>':'<span class="no">turun</span>'}</td>
@@ -2695,6 +2705,7 @@ function savePorto(p){ store.set(PKEY,JSON.stringify(p)); }
 const PMETH=()=>[...M.map(m=>[m.id,m.name]),["lain","Campuran / aturan sendiri"]];
 const PRULE={canslim:"CAN SLIM: dijual bila rugi −7% atau untung +20% (stop naik ke harga beli setelah sempat +10%).",value:"Value: dijual saat untung +50%, atau setelah dipegang 2 tahun.",
   growth:"Growth: dijual saat mencapai target harga metode Growth.",quality:"Quality: dipegang lama; dijual hanya bila harganya sudah sangat mahal (FCF yield < 1,5%).",
+  qvalue:"Quality Value (uji coba): dipegang lama; muncul peringatan evaluasi bila ROE < 12% atau utang/ekuitas > 1. Laba tahunan rugi terbaca dari sinyal metode.",
   dividend:"Dividen: dipegang untuk dividen; waspada bila payout di atas 100% (dividen berisiko dipotong).",momentum:"Momentum: dijual bila peringkat momentum turun di bawah 80 (dicek awal bulan).",
   swing:"Swing: dijual saat harga di atas rata-rata 5 hari, atau setelah 10 hari.",lain:"Campuran: hanya stop dan target yang Anda isi sendiri, ditambah peringatan bila ada sinyal jual dari metode mana pun."};
 function methFor(code){ const o=rows.find(x=>x.ticker===code); if(!o) return "lain"; const b=M.find(m=>uv(o,m.id).s==="buy"); return b?b.id:"lain"; }
@@ -2721,11 +2732,13 @@ function posEval(ps){
     case "value": { target=target||ps.price*1.5; if(days!=null&&days>=730) add(1,"⏰","sudah 2 tahun: aturan Graham menyuruh jual walau target belum tercapai"); break; }
     case "growth": { const lv=st&&st.lv||{}; if(!target&&lv.target) target=lv.target; break; }
     case "quality": { const lv=st&&st.lv||{}; if(lv.sell&&p>=lv.sell) add(1,"🔴","harga sudah sangat mahal (FCF yield < 1,5%): aturan Terry Smith menyuruh jual"); break; }
+    case "qvalue": { if((o.roe!=null&&o.roe<12)||(o.de!=null&&(o.de>1||o.de<0))) add(2,"⚠️","peringatan evaluasi Quality Value: periksa ulang ROE dan utang"); break; }
     case "dividend": { if(o.payout!=null&&o.payout>100) add(1,"🔴","payout di atas 100%: dividen berisiko dipotong"); break; }
     case "momentum": { if(o.momRank!=null&&o.momRank<80) add(1,"🔴",`peringkat momentum ${nf(o.momRank,0)} (< 80): jual pada pengecekan awal bulan`); break; }
     case "swing": { const a=S&&S.all.filter(v=>v!=null); if(a&&a.length>=5){ const s5=a.slice(-5).reduce((x,y)=>x+y,0)/5; if(p>s5) add(1,"🔴",`harga ${usd(p)} sudah di atas SMA5 ${usd(s5)}: aturan Connors menyuruh jual`); } if(days!=null&&days>10) add(2,"⏰","sudah lebih dari 10 hari; swing biasanya selesai 3–6 hari"); break; }
   }
-  if(st&&st.s==="sell") add(1,"🔴",`sinyal Jual ${MID[ps.method].name}: ${st.rs||st.r||""}`);
+  if(st&&st.s==="sell"&&ps.method==="qvalue") add(2,"⚠️",`peringatan evaluasi Quality Value: ${st.rs||""}`);
+  else if(st&&st.s==="sell") add(1,"🔴",`sinyal Jual ${MID[ps.method].name}: ${st.rs||st.r||""}`);
   if(stop&&p<=stop) add(0,"🛑",`kena stop loss ${usd(stop)}: jual`);
   if(target&&p>=target) add(1,"🎯",`target ${usd(target)} tercapai${ps.method==="canslim"?": jual untung (O'Neil)":": pertimbangkan jual"}`);
   const w=CYC&&CYC.watch;
@@ -2882,8 +2895,8 @@ function addToPorto(st){ store.set(WP+"porto.pre",JSON.stringify({code:st.code,p
 
 
 // ---------- navigasi v2 ----------
-const CF_ICO=(function(){ var l=document.querySelector("img.logo"), s=l?l.getAttribute("src"):"icons/icon-192.png"; return s.replace(/icon-192\.png.*$/,"")+"ui/"; })(); const UI=(n,c)=>`<img class="${c||"uic"}" src="${CF_ICO}${n}.webp" alt="" decoding="async">`; const MICO={momentum:"momentum",canslim:"canslim",dividend:"dividend",pbt:"pbt",swing:"swing",value:"value",growth:"growth",quality:"quality",screen:"screen",uji:"uji",cycles:"cycles",calc:"calc",hot:"hot",fibtime:"fibtime",divcal:"dividend",lamp:"lamp",mom90:"momentum"}; const GROUPS=[{id:"home",ic:UI("nav-home"),name:"Beranda",tabs:["summary"]},
-  {id:"saham",ic:UI("nav-saham"),name:"Saham",tabs:["momentum","dividend","canslim","swing","value","growth","quality"].filter(id=>MID[id]).concat(M.map(m=>m.id).filter(id=>!["momentum","dividend","canslim","swing","value","growth","quality"].includes(id)),IS_ID?["pbt"]:[],["screen","uji"])},
+const CF_ICO=(function(){ var l=document.querySelector("img.logo"), s=l?l.getAttribute("src"):"icons/icon-192.png"; return s.replace(/icon-192\.png.*$/,"")+"ui/"; })(); const UI=(n,c)=>`<img class="${c||"uic"}" src="${CF_ICO}${n}.webp" alt="" decoding="async">`; const MICO={momentum:"momentum",canslim:"canslim",dividend:"dividend",pbt:"pbt",swing:"swing",value:"value",growth:"growth",quality:"quality",qvalue:"quality",screen:"screen",uji:"uji",cycles:"cycles",calc:"calc",hot:"hot",fibtime:"fibtime",divcal:"dividend",lamp:"lamp",mom90:"momentum"}; const GROUPS=[{id:"home",ic:UI("nav-home"),name:"Beranda",tabs:["summary"]},
+  {id:"saham",ic:UI("nav-saham"),name:"Saham",tabs:["momentum","dividend","canslim","swing","value","growth","quality","qvalue"].filter(id=>MID[id]).concat(M.map(m=>m.id).filter(id=>!["momentum","dividend","canslim","swing","value","growth","quality","qvalue"].includes(id)),IS_ID?["pbt"]:[],["screen","uji"])},
   {id:"watch",ic:UI("nav-sinyal"),name:"Sinyal",tabs:["watch"]},{id:"porto",ic:UI("nav-porto"),name:"Portofolio",tabs:["porto"]},{id:"alat",ic:UI("nav-alat"),name:"Alat",tabs:["cycles","fibtime","calc","hot","divcal"]}];
 const groupOf=t=>GROUPS.find(g=>g.tabs.includes(t))||GROUPS[0];
 function renderSide(g,nd){
@@ -2975,7 +2988,7 @@ function renderUji(box){
   const rows=[
     meth,
     D?row("Dividen",`${D.from}–${D.to}: ${pct(D.cagr,1)}/tahun (rata-rata saham ${pct(D.bench,1)}); 2026: ${pct(D.y2026[0],0)} vs ${pct(D.y2026[1],0)}`,verd(1,"lebih tahan saat pasar jatuh")):"",
-    IS_ID?row("Value · Growth · Quality","Belum bisa diuji: riwayat laporan keuangan hanya ±4 tahun. Dicatat maju sejak "+tgl(DATA&&DATA.started,1)+".",'<span class="note">–</span>'):"",
+    IS_ID?row("Value · Growth · Quality · Quality Value","Belum bisa diuji: riwayat laporan keuangan hanya ±4 tahun. Dicatat maju sejak "+tgl(DATA&&DATA.started,1)+".",'<span class="note">–</span>'):"",
     A&&A.pick?row("Area beli",`${nf(A.pick.n,0)} transaksi, rata-rata <b class="ok">${pct(A.pick.avg,2)}</b>; ${Math.round(A.pick.sl/10)} dari 10 kena batas rugi${IS_ID?`; tanpa saringan tren & pasar hanya ${pct(A.plain.avg,2)}`:`, hampir sama dengan pasar`}`,verd(IS_ID?1:0,IS_ID?"dengan saringan tren naik & pasar tidak lesu":"")):"",
     row("Lampu pasar (tunda beli saat pasar lesu)",IS_ID?"Tahun ini CAN SLIM −18% saat IHSG −45%; Area beli naik dari +0,04% ke +0,24% per transaksi":"Momentum + beli hanya saat lampu hijau lebih baik di kedua periode uji",verd(1)),
     Tt?row("Garis tren",`${nf(Tt.n,0)} grafik, ${ltSpan()}: selisih dengan pasar kecil dan bergantian tiap tahun${tvUp?"":"; tidak ada sinyal yang konsisten lebih bagus"}`,verd(0,"pakai untuk melihat bentuk & support/resistance")):"",

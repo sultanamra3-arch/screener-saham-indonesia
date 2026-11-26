@@ -2,6 +2,12 @@
  "_info": "Daftar fitur untuk pemeriksaan halaman depan chartflow.my.id (scripts/check_landing.py). Setiap menambah/menghapus fitur: ubah daftar ini, halaman depan, dan chartflow/public/changes.json di commit yang sama.",
  "active": [
   {
+   "name": "Quality Value (uji coba)",
+   "mention": [
+    "Quality Value"
+   ]
+  },
+  {
    "name": "7 metode saham",
    "mention": [
     "7 metode"

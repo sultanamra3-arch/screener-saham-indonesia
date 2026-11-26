@@ -26,10 +26,10 @@ DATA_FILE = ROOT / "data" / "stocks.json"
 SITE = "https://sultanamra3-arch.github.io/screener-saham-indonesia/"
 TOP = 5
 WIB = ZoneInfo("Asia/Jakarta")
-NAMES = {"value": "Value", "growth": "Growth", "quality": "Quality", "dividend": "Dividen",
+NAMES = {"value": "Value", "growth": "Growth", "quality": "Quality", "qvalue": "Quality Value (uji coba)", "dividend": "Dividen",
          "canslim": "CAN SLIM", "momentum": "Momentum", "swing": "Swing"}
 # Urutan prioritas tampil: jangka panjang dulu, swing (paling sering dan paling pendek) terakhir
-ORDER = ["canslim", "value", "growth", "quality", "dividend", "momentum", "swing"]
+ORDER = ["canslim", "value", "growth", "quality", "qvalue", "dividend", "momentum", "swing"]
 HARI = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"]
 BULAN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
 # Hari libur Bursa Efek Indonesia (termasuk cuti bersama). Perbarui tiap akhir tahun.
@@ -88,6 +88,8 @@ def plan_text(mid: str, st: dict) -> str:
         return f"jual ≥ {usd(lv.get('target'))} (PEG 2)"
     if mid == "quality":
         return "tanpa stop/target, tahan selama kualitas terjaga"
+    if mid == "qvalue":
+        return "uji coba, tanpa stop/target"
     if mid == "dividend":
         return "tanpa stop/target, tahan selama dividen aman"
     return ""
@@ -168,7 +170,7 @@ def support_section(d: dict, show_waits: bool = True) -> list[str]:
     reg = market_regime(d, c)
     st = d.get("stats") or {}
     bad = {m for m in ("canslim", "momentum", "swing") if (st.get(m) or {}).get("n", 0) >= 10 and (st.get(m) or {}).get("avg", 0) < 0}
-    allow = INV if reg == "tertekan" else [m for m in ORDER if m not in bad]
+    allow = INV if reg == "tertekan" else [m for m in ORDER if m not in bad and m != "qvalue"]
     by = {o["ticker"]: o for o in d.get("stocks", [])}
 
     def sig(o, ms):

@@ -20,10 +20,10 @@ from datetime import date, timedelta
 import numpy as np
 import pandas as pd
 
-INVESTOR = ["value", "growth", "quality", "dividend"]
+INVESTOR = ["value", "growth", "quality", "qvalue", "dividend"]
 TRADER = ["canslim", "momentum", "swing"]
 METHODS = INVESTOR + TRADER
-NAMES = {"value": "Value", "growth": "Growth", "quality": "Quality", "dividend": "Dividen",
+NAMES = {"value": "Value", "growth": "Growth", "quality": "Quality", "qvalue": "Quality Value", "dividend": "Dividen",
          "canslim": "CAN SLIM", "momentum": "Momentum", "swing": "Swing"}
 WINDOW = 252  # uji mundur 1 tahun bursa
 MARKET = "^JKSE"
@@ -52,6 +52,7 @@ REASON = {
     "quality": "kualitas bisnis memburuk",
     "expensive": "harga sudah sangat mahal (FCF yield < 1,5%, atau P/B > 4,5 untuk bank)",
     "cut": "dividen dipotong",
+    "evaluasi": "perlu dievaluasi (ROE < 12%, utang/ekuitas > 1, atau laba tahunan rugi)",
     "payout": "payout di atas 100%, dividen tidak berkelanjutan",
 }
 
@@ -295,6 +296,30 @@ def crit_quality(o):
         crit("Tidak kemahalan: FCF yield ≥ 2,5%", pc(fy, 2), cmp(fy, ">=", 2.5)),
     ]
     return out, {"conv": conv, "fy": fy, "fcfps": fcfps}
+
+
+def crit_quality_value(o):
+    """Quality Value (gaya Buffett, uji coba). Data kurang = tidak lolos. Angka batasnya pilihan ChartFlow, bukan rumus Buffett."""
+    conv, fy, _ = quality_vals(o)
+    h = eps_hist(o)
+    enough = len(h) >= 4
+    sector = (o.get("sector") or "").lower()
+    nonfin = None if not sector else 0 if ("financ" in sector or is_bank(o)) else 1
+    de = o.get("de")
+    return [
+        crit("Bukan bank atau keuangan", o.get("sector") or "–", nonfin),
+        crit("ROE terkini ≥ 15%", pc(o.get("roe")), cmp(o.get("roe"), ">=", 15)),
+        crit("Laba per saham positif tiap tahun (≥ 4 tahun data)", f"{len(h)} tahun data", (1 if min(h) > 0 else 0) if enough else None),
+        crit("Laba tahun terakhir > tahun pertama", f"{len(h)} tahun data", (1 if h[-1] > h[0] else 0) if enough else None),
+        crit("Utang/ekuitas 0 sampai 0,5", num(de, 2), (1 if 0 <= de <= 0.5 else 0) if ok(de) else None),
+        crit("Konversi kas ≥ 80%", pc(conv, 0), cmp(conv, ">=", 80)),
+        crit("Harga wajar: FCF yield ≥ 5%", pc(fy, 2), cmp(fy, ">=", 5)),
+    ], {"conv": conv, "fy": fy}
+
+
+def qvalue_warn(o):
+    h = eps_hist(o)
+    return bool((ok(o.get("roe")) and o["roe"] < 12) or (ok(o.get("de")) and (o["de"] > 1 or o["de"] < 0)) or (h and h[-1] < 0))
 
 
 def crit_dividend(o):
@@ -640,6 +665,9 @@ def investor_exit(mid, o, p, extra, day):
             return "quality"
         if ok(fy) and fy < 1.5:
             return "expensive"
+    elif mid == "qvalue":
+        if qvalue_warn(o):
+            return "evaluasi"
     elif mid == "dividend":
         d = dps_now(o)
         ref = p.get("dps") or 0
@@ -666,6 +694,9 @@ def investor_levels(mid, o, extra, p=None):
     if mid == "quality":
         fc = extra.get("fcfps")
         return {"buy": px(fc / 0.025, "down") if ok(fc) else None, "sell": px(fc / 0.015, "up") if ok(fc) else None}
+    if mid == "qvalue":
+        fc = quality_vals(o)[2]
+        return {"buy": px(fc / 0.05, "down") if ok(fc) else None}
     if mid == "dividend":
         return {"buy": px(extra.get("buy"), "down")}
     return {}
@@ -676,6 +707,9 @@ def reason_investor(mid, st, o, cs, extra):
     price = o.get("price")
     if s == "sell":
         r = REASON.get(st["why"], st["why"])
+        if mid == "qvalue":
+            return (f"Evaluasi {tgl(st['sd'])} di {usd(st['sp'])}: {r}. Pencatatan uji coba sejak {tgl(st['b'])} di {usd(st['bp'])} ditutup, hasil {pc(st['ret'], 1, True)}.",
+                    f"{r} ({pc(st['ret'], 1, True)})")
         return (f"Jual {tgl(st['sd'])} di {usd(st['sp'])}: {r}. Dibeli {tgl(st['b'])} di {usd(st['bp'])}, hasil {pc(st['ret'], 1, True)}.",
                 f"{r} ({pc(st['ret'], 1, True)})")
     if s in ("buy", "hold"):
@@ -697,6 +731,11 @@ def reason_investor(mid, st, o, cs, extra):
             txt = (f"ROIC {pc(o.get('roic'), 0)}, margin kotor {pc(o.get('gm'), 0)}, konversi kas {pc(conv, 0)}, FCF yield {pc(fy, 1)}. "
                    "Terry Smith: tahan bisnis bagus selama kualitasnya terjaga; tidak ada stop loss atau target.")
             short = f"ROIC {pc(o.get('roic'), 0)}, margin {pc(o.get('gm'), 0)}"
+        elif mid == "qvalue":
+            conv, fy, _ = quality_vals(o)
+            txt = (f"Uji coba. ROE {pc(o.get('roe'), 0)}, utang/ekuitas {num(o.get('de'), 2)}, konversi kas {pc(conv, 0)}, FCF yield {pc(fy, 1)}. "
+                   "ROE hanya angka terkini, laba hanya ±4 tahun, belum diuji dengan data masa lalu. Periksa sendiri moat, manajemen, dan bisnisnya.")
+            short = f"ROE {pc(o.get('roe'), 0)}, FCF yield {pc(fy, 1)}"
         else:
             txt = (f"Yield {pc(o.get('div'), 2)}, dividen tumbuh {pc(o.get('divGrowth5y'), 1)} per tahun, payout {pc(o.get('payout'), 0)}. "
                    "Tahan selama dividen tidak dipotong; tidak ada stop loss atau target harga.")
@@ -743,7 +782,7 @@ def run(rows: list[dict], close: pd.DataFrame | None, volume: pd.DataFrame | Non
         o["m"] = {}
 
         # ---- investor
-        for mid, fn in (("value", crit_value), ("growth", crit_growth), ("quality", crit_quality), ("dividend", crit_dividend)):
+        for mid, fn in (("value", crit_value), ("growth", crit_growth), ("quality", crit_quality), ("qvalue", crit_quality_value), ("dividend", crit_dividend)):
             cs, extra = fn(o)
             k, n = count(cs)
             passed = k == n and n > 0
