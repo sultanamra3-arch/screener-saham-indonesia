@@ -261,7 +261,7 @@ if KR:
 import json as _json
 _d = _json.loads((ROOT / "data" / "stocks.json").read_text())
 _rows = [o for o in _d.get("stocks", []) if o.get("liq", "L") == "L"]
-_ORDER = ["canslim", "value", "growth", "quality", "dividend", "momentum", "swing"]
+_ORDER = ["canslim", "value", "growth", "quality", "qvalue", "dividend", "momentum", "swing"]
 
 
 def _layak(o, mid):

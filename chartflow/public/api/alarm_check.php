@@ -54,7 +54,7 @@ foreach ($db['alarms'] ?? [] as $code => $list) {
 $byT = []; foreach ($d['stocks'] as $o) if (isset($o['ticker'])) $byT[$o['ticker']] = $o;
 $cyc = json_decode((string)@file_get_contents($base . '/cycles.json'), true) ?: [];
 $broken = []; foreach ($cyc['watch']['broken'] ?? [] as $b) $broken[$b['t']] = true;
-$NAMES = ['canslim' => 'CAN SLIM', 'value' => 'Value', 'growth' => 'Growth', 'quality' => 'Quality', 'dividend' => 'Dividen', 'momentum' => 'Momentum', 'swing' => 'Swing'];
+$NAMES = ['canslim' => 'CAN SLIM', 'value' => 'Value', 'growth' => 'Growth', 'quality' => 'Quality', 'qvalue' => 'Quality Value', 'dividend' => 'Dividen', 'momentum' => 'Momentum', 'swing' => 'Swing'];
 $closes = function (string $t, string $since) use ($base) {
     $f = $base . '/ohlc/' . $t . '.json';
     if (!preg_match('/^[A-Z0-9.\-]{1,12}$/', $t) || !is_file($f)) return [];
@@ -90,6 +90,8 @@ foreach ($db['codes'] as $code => $c) {
             if (!$target && !empty($st['lv']['target'])) $target = (float)$st['lv']['target'];
         } elseif ($meth === 'quality') {
             if (!empty($st['lv']['sell']) && $p >= $st['lv']['sell']) $ev['q'] = '🔴 harga sudah sangat mahal (FCF yield < 1,5%): aturan jual Terry Smith terpenuhi';
+        } elseif ($meth === 'qvalue') {
+            if ((isset($o['roe']) && $o['roe'] < 12) || (isset($o['de']) && ($o['de'] > 1 || $o['de'] < 0))) $ev['qv'] = '⚠️ peringatan evaluasi Quality Value (uji coba): periksa ulang ROE dan utang';
         } elseif ($meth === 'dividend') {
             if (isset($o['payout']) && $o['payout'] > 100) $ev['pay'] = '🔴 payout di atas 100%: dividen berisiko dipotong';
         } elseif ($meth === 'momentum') {
@@ -98,7 +100,7 @@ foreach ($db['codes'] as $code => $c) {
             $cl = $closes($t, '0000'); $a5 = array_slice($cl, -5);
             if (count($a5) === 5 && $p > array_sum($a5) / 5) $ev['s5'] = '🔴 harga sudah di atas rata-rata 5 hari: aturan jual Connors terpenuhi';
         }
-        if ($st && ($st['s'] ?? '') === 'sell') $ev['sell'] = '🔴 tanda jual metode ' . ($NAMES[$meth] ?? $meth) . (!empty($st['rs']) ? ': ' . $st['rs'] : '');
+        if ($st && ($st['s'] ?? '') === 'sell') $ev['sell'] = ($meth === 'qvalue' ? '⚠️ evaluasi metode ' : '🔴 tanda jual metode ') . ($NAMES[$meth] ?? $meth) . (!empty($st['rs']) ? ': ' . $st['rs'] : '');
         if ($stop && $p <= $stop) $ev['stop'] = '🛑 harga menyentuh batas rugi ' . money_fmt($stop, $m) . ' (aturan stop)';
         if ($target && $p >= $target) $ev['tgt'] = '🎯 target ' . money_fmt($target, $m) . ' tercapai (aturan target' . ($meth === 'canslim' ? " O'Neil" : '') . ')';
         if (isset($broken[$t])) $ev['brk:' . $day] = '⚠️ harga ditutup di bawah lantai harga (support) hari ini';
