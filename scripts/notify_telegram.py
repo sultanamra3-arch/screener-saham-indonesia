@@ -326,6 +326,8 @@ def morning(d: dict) -> str | None:
         return None
     day = d["priceDate"]
     buys, sells, holds, first = signals(d)
+    evals = [x for x in sells if x[1] == "qvalue"]
+    sells = [x for x in sells if x[1] != "qvalue"]
     L = [f"🇮🇩 {b('Screener Saham Indonesia — ' + hari(day))}",
          f"🟢 Sinyal beli baru: {len(buys)} · 🔴 Sinyal jual (bagi pemegang): {len(sells)}"]
     mk = d.get("market") or {}
@@ -347,7 +349,13 @@ def morning(d: dict) -> str | None:
             L.append(f"{b(o['ticker'])} {usd(st.get('sp'))} · <i>{e(NAMES[mid])}: {e(st.get('rs'))}</i>")
         if len(sells) > TOP:
             L.append(f"…dan {len(sells) - TOP} lainnya di website")
-    if not buys and not sells:
+    if evals:
+        L += ["", b(f"Evaluasi uji coba ({min(len(evals), TOP)} teratas)")]
+        for o, mid, st, _ in evals[:TOP]:
+            L.append(f"{b(o['ticker'])} {usd(st.get('sp'))} · <i>{e(NAMES[mid])}: {e(st.get('rs'))}</i>")
+        if len(evals) > TOP:
+            L.append(f"…dan {len(evals) - TOP} lainnya di website")
+    if not buys and not sells and not evals:
         L += ["", "Tidak ada sinyal beli atau jual baru hari ini."]
     try:
         # area support/Rencana beli tidak lagi dikirim: hasil ujinya tipis (tab Sinyal di website)

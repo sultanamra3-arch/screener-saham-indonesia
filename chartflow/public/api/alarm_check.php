@@ -100,7 +100,7 @@ foreach ($db['codes'] as $code => $c) {
             $cl = $closes($t, '0000'); $a5 = array_slice($cl, -5);
             if (count($a5) === 5 && $p > array_sum($a5) / 5) $ev['s5'] = '🔴 harga sudah di atas rata-rata 5 hari: aturan jual Connors terpenuhi';
         }
-        if ($st && ($st['s'] ?? '') === 'sell') $ev['sell'] = '🔴 tanda jual metode ' . ($NAMES[$meth] ?? $meth) . (!empty($st['rs']) ? ': ' . $st['rs'] : '');
+        if ($st && ($st['s'] ?? '') === 'sell') $ev['sell'] = ($meth === 'qvalue' ? '⚠️ evaluasi metode ' : '🔴 tanda jual metode ') . ($NAMES[$meth] ?? $meth) . (!empty($st['rs']) ? ': ' . $st['rs'] : '');
         if ($stop && $p <= $stop) $ev['stop'] = '🛑 harga menyentuh batas rugi ' . money_fmt($stop, $m) . ' (aturan stop)';
         if ($target && $p >= $target) $ev['tgt'] = '🎯 target ' . money_fmt($target, $m) . ' tercapai (aturan target' . ($meth === 'canslim' ? " O'Neil" : '') . ')';
         if (isset($broken[$t])) $ev['brk:' . $day] = '⚠️ harga ditutup di bawah lantai harga (support) hari ini';
