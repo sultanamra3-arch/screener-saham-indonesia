@@ -247,6 +247,40 @@ def ttm_from_hist(dvh: list) -> float:
     return float(sum(v for d, v in dvh if (last - date.fromisoformat(d)).days < 330))
 
 
+_KURS: dict = {}
+
+
+def kurs_idr(cur: str) -> float | None:
+    """Kurs 1 unit mata uang `cur` ke rupiah; None bila tidak didapat."""
+    if cur not in _KURS:
+        try:
+            import yfinance as yf
+
+            h = yf.Ticker(f"{cur}IDR=X").history(period="10d")["Close"].dropna()
+            r = float(h.iloc[-1]) if len(h) else None
+        except Exception:
+            r = None
+        if not r or r <= 0:
+            return None  # tidak disimpan, supaya dicoba lagi
+        _KURS[cur] = r
+    return _KURS[cur]
+
+
+def samakan_mata_uang(f: dict, cur: str, rate: float | None, price: float | None, mc: float | None, fcf: float | None) -> dict:
+    """Laporan keuangan sebagian emiten memakai USD dsb., sedangkan harga rupiah.
+    Ubah nilai absolut ke rupiah; bila kurs tidak ada, kosongkan daripada salah."""
+    if not cur or cur == "IDR":
+        return f
+    bv = f.get("bvps")
+    # Yahoo tidak selalu konsisten: nilai buku diubah hanya bila jelas belum dalam rupiah
+    if bv and bv > 0 and price and price / bv > 100:
+        f["bvps"] = bv * rate if rate else None
+        f["pb"] = price / f["bvps"] if f["bvps"] else None
+    f["pfcf"] = mc / (fcf * rate) if rate and mc and fcf and fcf > 0 else None
+    f["epsA"] = [[y, round(v * rate, 4)] for y, v in f.get("epsA") or []] if rate else []
+    return f
+
+
 def fundamentals(code: str) -> dict | None:
     import pandas as pd
     import yfinance as yf
@@ -331,6 +365,10 @@ def fundamentals(code: str) -> dict | None:
             f["divYears"], f["dpsY"], f["dpsTTM"] = 0, 0.0, 0.0
     except Exception as e:
         log(f"  dividen {code}: {str(e)[:80]}")
+    cur = (info.get("financialCurrency") or "").upper()
+    if cur and cur != "IDR":
+        price = fnum(info.get("currentPrice")) or fnum(info.get("regularMarketPrice"))
+        samakan_mata_uang(f, cur, kurs_idr(cur), price, mc, fcf)
     return clean(f)
 
 
