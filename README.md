@@ -1,6 +1,6 @@
 # Screener Saham Indonesia
 
-Semua saham Bursa Efek Indonesia yang tersedia di Yahoo Finance (±840 saham), disaring dengan 7 metode sesuai aturan aslinya (ditambah Quality Value, uji coba terinspirasi gaya Buffett): Value (Graham), Growth (Lynch), Quality (Terry Smith), Dividen, CAN SLIM (O'Neil/Minervini), Momentum (Jegadeesh & Titman), dan Swing (Connors RSI-2). Setiap sinyal punya harga patokan (dibulatkan ke fraksi BEI) dan alasannya.
+Semua saham Bursa Efek Indonesia yang tersedia di Yahoo Finance (±840 saham), disaring dengan 8 metode (7 sesuai aturan aslinya, ditambah Quality Value, uji coba terinspirasi gaya Buffett): Value (Graham), Growth (Lynch), Quality (Terry Smith), Dividen, CAN SLIM (O'Neil/Minervini), Momentum (Jegadeesh & Titman), dan Swing (Connors RSI-2). Setiap sinyal punya harga patokan (dibulatkan ke fraksi BEI) dan alasannya.
 
 Website: `https://sultanamra3-arch.github.io/screener-saham-indonesia/`
 

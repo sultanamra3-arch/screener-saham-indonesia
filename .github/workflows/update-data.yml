@@ -55,7 +55,7 @@ jobs:
         if: env.INTRADAY != '1'
         run: python scripts/daily_gate.py | tee -a "$GITHUB_ENV"
 
-      - name: Ambil data dan hitung 7 metode
+      - name: Ambil data dan hitung 8 metode
         if: env.SKIP != '1'
         run: python scripts/fetch_data.py
 

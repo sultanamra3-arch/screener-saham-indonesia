@@ -656,7 +656,7 @@ def main():
         except Exception:
             pass
     state = load_state()
-    log("Menghitung 7 metode ...")
+    log("Menghitung 8 metode ...")
     res = strategies.run(rows, close, volume, day, state, eligible)
     import dataguard
     dq = dataguard.apply(rows, close)
