@@ -1449,7 +1449,7 @@ const lastOf=a=>{ for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return [a[i],i];
 function crossed(a,b,k=3){ // 1 = a memotong ke atas b dalam k bar terakhir, -1 = ke bawah
   const n=a.length; for(let i=n-1;i>=Math.max(1,n-k);i--){ if([a[i],b[i],a[i-1],b[i-1]].some(x=>x==null)) continue;
     if(a[i-1]<=b[i-1]&&a[i]>b[i]) return 1; if(a[i-1]>=b[i-1]&&a[i]<b[i]) return -1; } return 0; }
-const IND=[["ma20","MA20","#f59e0b",1],["ma50","MA50","#0ea5e9",1],["ma200","MA200","#e11d48",1],["ema9","EMA9","#14b8a6",0],["bb","Bollinger","#64748b",0],["vwap","VWAP 20","#a855f7",0],
+const IND=[["ma20","MA20","#f59e0b",1],["ma50","MA50","#0ea5e9",1],["ma200","MA200","#e11d48",1],["ema9","EMA9","#14b8a6",0],["bb","Bollinger","#64748b",0],["vwap","VWAP 20","#a855f7",0],["ichi","Ichimoku","#06b6d4",0],
   ["vol","Volume","#94a3b8",1],["rsi","RSI","#8b5cf6",1],["macd","MACD","#2563eb",0],["srsi","Stoch RSI","#16a34a",0],["trend","Garis tren","#0f766e",1],["path","〰️ Jalur","#7c3aed",0],["fib","⏳ Waktu Fib","#ff9f1c",0],["pbt","📈 Pullback Tren","#0e8a5f",0]];
 function indOn(){ let s=null; try{ s=JSON.parse(store.get(WP+"ind")||"null"); }catch(e){}
   if(Array.isArray(s)&&!store.get(WP+"ind.tr")){ if(!s.includes("trend")) s.push("trend"); store.set(WP+"ind",JSON.stringify(s)); store.set(WP+"ind.tr","1"); }
@@ -1471,6 +1471,10 @@ function indRead(on,B,c,hasV,x){
   if(on.has("bb")){ const u=st("bbU"), l=st("bbL"), m=st("bbM"); if(u!=null){ const pb=(p-l)/(u-l)*100, bw=x.bbU.map((v,i)=>v!=null&&x.bbM[i]?(v-x.bbL[i])/x.bbM[i]:null).filter(v=>v!=null), sq=bw.length>120&&bw[bw.length-1]<=Math.min(...bw.slice(-120))*1.05;
     out.push(`<b>Bollinger (20, 2):</b> ${p>u?"<b class='no'>harga di atas pita atas</b>, sudah meregang; rawan kembali ke tengah.":p<l?"<b class='ok'>harga di bawah pita bawah</b>, jenuh jual; sering memantul ke tengah "+f(m)+".":`harga di ${nf(pb,0)}% lebar pita (0 = pita bawah ${f(l)}, 100 = pita atas ${f(u)}).`}${sq?" Pita sedang <b>menyempit</b> (squeeze): biasanya diikuti gerakan besar, arahnya belum diketahui.":""}`); } }
   if(on.has("vwap")&&hasV){ const v=st("vwap"); if(v!=null) out.push(`<b>VWAP 20 hari ${f(v)}:</b> harga rata-rata tertimbang volume. ${p>=v?"Harga di atasnya: rata-rata pembeli 20 hari terakhir sedang untung.":"Harga di bawahnya: rata-rata pembeli 20 hari terakhir sedang rugi, sering jadi tekanan jual."}`); }
+  if(on.has("ichi")){ const I=x.ichi, n=c.length; if(!I) out.push("<b>Ichimoku:</b> butuh data candle (harga tertinggi dan terendah), belum tersedia di grafik ini.");
+    else if(I.sa[n-1]==null||I.sb[n-1]==null) out.push("<b>Ichimoku:</b> data belum cukup (perlu minimal 78 candle).");
+    else { const top=Math.max(I.sa[n-1],I.sb[n-1]), bot=Math.min(I.sa[n-1],I.sb[n-1]), fa=I.sa[n+25], fb=I.sb[n+25];
+      out.push(`<b>Ichimoku (9, 26, 52):</b> harga ${p>top?"<b class='ok'>di atas awan</b>":p<bot?"<b class='no'>di bawah awan</b>":"di dalam awan (arah belum jelas)"} (${f(bot)} – ${f(top)}). Tenkan (biru muda) ${f(I.tk[n-1])} ${I.tk[n-1]>I.kj[n-1]?"di atas":I.tk[n-1]<I.kj[n-1]?"di bawah":"sama dengan"} Kijun (cokelat) ${f(I.kj[n-1])}. Awan 26 candle ke depan ${fa>fb?"hijau":fa<fb?"merah":"datar"}. Chikou: penutupan terakhir ${p>c[n-27]?"di atas":p<c[n-27]?"di bawah":"sama dengan"} penutupan 26 candle lalu.`); } }
   if(on.has("vol")&&hasV){ const V=B.map(b=>b[5]), a=smaA(V,20), [av]=lastOf(a), lv=V[V.length-1]; if(av){ const r=lv/av, up=c[c.length-1]>=c[c.length-2];
     out.push(`<b>Volume:</b> ${nf(r,1)}× rata-rata 20 hari${r>=1.5?(up?" saat harga naik: <b class='ok'>kenaikan didukung pembeli</b>.":" saat harga turun: <b class='no'>tekanan jual besar</b>."):r<0.6?", sepi: gerakan hari ini kurang meyakinkan.":"."}`); } }
   if(on.has("rsi")){ const [r]=lastOf(x.rsi); if(r!=null) out.push(`<b>RSI (14):</b> ${rsiTxt(r)}.`); }
@@ -1674,6 +1678,22 @@ function extFut(arr,last){ // tanggal ke depan ±6 bulan; setelah kalender resmi
   let d=new Date((a[a.length-1]||last)+"T00:00:00Z");
   while(a.length<N){ d=new Date(d.getTime()+864e5); const w=d.getUTCDay(); if(!all7&&(w===0||w===6)) continue; a.push(d.toISOString().slice(0,10)); }
   return a; }
+// Ichimoku (9, 26, 52; geser 26). sa/sb sepanjang n+26 (26 hari ke depan), chikou = penutupan digeser 26 ke belakang
+function ichiA(B){ const n=B.length, S=26;
+  const mid=p=>B.map((_,i)=>{ if(i<p-1) return null; let h=-Infinity,l=Infinity; for(let j=i-p+1;j<=i;j++){ h=Math.max(h,B[j][2]); l=Math.min(l,B[j][3]); } return (h+l)/2; });
+  const tk=mid(9), kj=mid(26), m52=mid(52), sa=new Array(n+S).fill(null), sb=new Array(n+S).fill(null);
+  for(let i=0;i<n;i++){ if(tk[i]!=null&&kj[i]!=null) sa[i+S]=(tk[i]+kj[i])/2; sb[i+S]=m52[i]; }
+  return {tk,kj,sa,sb,ck:B.map((_,i)=>i+S<n?B[i+S][4]:null)}; }
+// awan di antara Span A dan Span B, digambar di belakang candle
+function ichiCloud(ch,s,sa,sb,up,down){
+  const draw=target=>target.useBitmapCoordinateSpace(({context:g,horizontalPixelRatio:hr,verticalPixelRatio:vr})=>{
+    const ts=ch.timeScale(), pt=i=>{ if(sa[i]==null||sb[i]==null) return null; const x=ts.logicalToCoordinate(i), a=s.priceToCoordinate(sa[i]), b=s.priceToCoordinate(sb[i]); return x==null||a==null||b==null?null:{x:x*hr,a:a*vr,b:b*vr}; };
+    const fill=(c,q)=>{ g.fillStyle=c+"2e"; g.beginPath(); q.forEach(([x,y],k)=>k?g.lineTo(x,y):g.moveTo(x,y)); g.closePath(); g.fill(); };
+    for(let i=1;i<sa.length;i++){ const p=pt(i-1), q=pt(i); if(!p||!q) continue; const d0=sa[i-1]-sb[i-1], d1=sa[i]-sb[i];
+      if(d0*d1<0){ const f=d0/(d0-d1), x=p.x+(q.x-p.x)*f, y=p.a+(q.a-p.a)*f; fill(d0>0?up:down,[[p.x,p.a],[x,y],[p.x,p.b]]); fill(d1>0?up:down,[[x,y],[q.x,q.a],[q.x,q.b]]); }
+      else fill(d0+d1>=0?up:down,[[p.x,p.a],[q.x,q.a],[q.x,q.b],[p.x,p.b]]); } });
+  const view={zOrder:()=>"bottom",renderer:()=>({draw})};
+  s.attachPrimitive({paneViews:()=>[view]}); }
 function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   pxObs.forEach(o=>o.disconnect()); pxObs=[];
   if(el) el.querySelectorAll(".fib-lay").forEach(x=>x.remove());
@@ -1704,6 +1724,11 @@ function drawChart(el, dates, vals, a, rawan, future, idr, opt){
   if(on.has("bb")){ x.bbM=smaA(C,20); const sd=stdA(C,20,x.bbM); x.bbU=x.bbM.map((m,i)=>m==null?null:m+2*sd[i]); x.bbL=x.bbM.map((m,i)=>m==null?null:m-2*sd[i]);
     ser(x.bbU,"#64748b",1,2); ser(x.bbM,"#64748b",1,3); ser(x.bbL,"#64748b",1,2); }
   if(on.has("vwap")&&hasV) ser(x.vwap=vwapA(B),"#a855f7",2,1);
+  if(on.has("ichi")&&candle){ const I=x.ichi=ichiA(B), all=T.concat(fut);
+    const span=(arr,color)=>{ const z=ch.addLineSeries({color,lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,priceFormat:pf});
+      z.setData(all.map((t,i)=>arr[i]==null?{time:t}:{time:t,value:arr[i]})); };
+    span(I.sa,good); span(I.sb,bad); ser(I.tk,"#06b6d4",1); ser(I.kj,"#b45309",2); ser(I.ck,"#84cc16",1,1);
+    ichiCloud(ch,s,I.sa,I.sb,"#22c55e","#ef4444"); }
   if(on.has("vol")&&hasV){ const v=ch.addHistogramSeries({priceScaleId:"vol",priceFormat:{type:"volume"},lastValueVisible:false,priceLineVisible:false});
     ch.priceScale("vol").applyOptions({scaleMargins:{top:0.86,bottom:0}});
     v.setData(B.map((b,i)=>({time:b[0],value:b[5]||0,color:(i&&b[4]<B[i-1][4])?bad+"66":good+"66"}))); }
@@ -1866,6 +1891,7 @@ function renderCycles(box){
       <div><span><b>EMA9</b>: rata-rata 9 hari yang lebih cepat bereaksi; dipakai trader jangka sangat pendek.</span></div>
       <div><span><b>Bollinger Bands</b>: MA20 ± 2 simpangan baku. Harga jarang lama di luar pita; pita menyempit sering diikuti gerakan besar.</span></div>
       <div><span><b>VWAP 20</b>: harga rata-rata 20 hari ditimbang volume, kira-kira modal rata-rata pembeli terakhir.</span></div>
+      <div><span><b>Ichimoku (9, 26, 52)</b>: Tenkan dan Kijun = titik tengah harga tertinggi dan terendah 9 dan 26 candle. Awan = dua garis (Span A dan Span B) yang digeser 26 candle ke depan; hijau bila Span A di atas Span B, merah bila sebaliknya. Chikou (garis hijau muda putus-putus) = harga penutupan yang digeser 26 candle ke belakang. Sering memberi tanda keliru saat harga bergerak menyamping.</span></div>
       <div><span><b>Volume</b>: jumlah saham yang ditransaksikan. Kenaikan dengan volume besar lebih meyakinkan.</span></div>
       <div><span><b>RSI (14)</b>: kekuatan naik vs turun, 0–100. Di atas 70 jenuh beli, di bawah 30 jenuh jual.</span></div>
       <div><span><b>MACD (12, 26, 9)</b>: selisih EMA12 dan EMA26 (biru) dengan garis sinyal (oranye). Memotong ke atas = momentum naik; batang = jarak keduanya.</span></div>
